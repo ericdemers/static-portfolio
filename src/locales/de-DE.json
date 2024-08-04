@@ -1,0 +1,13 @@
+{
+    "buttons": {
+        "clearReset": "Zeichenfläche löschen",
+        "darkMode": "Dunkles Design",
+        "lightMode": "Helles Design",
+        "export": "Speichern als...",
+        "load": "Öffnen",
+        "undo": "Rückgängig machen",
+        "redo": "Wiederholen",
+        "selectLanguage": "Sprache auswählen"
+    }
+
+}

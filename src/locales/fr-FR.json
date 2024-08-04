@@ -1,0 +1,13 @@
+{
+    "buttons": {
+        "clearReset": "Réinitialiser le canevas",
+        "darkMode": "Mode sombre",
+        "lightMode": "Mode clair",
+        "export": "Enregistrer sous...",
+        "load": "Ouvrir",
+        "undo": "Annuler",
+        "redo": "Rétablir",
+        "selectLanguage": "Choisir une langue"
+    }
+
+}

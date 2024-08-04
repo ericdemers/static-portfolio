@@ -1,0 +1,12 @@
+{
+    "buttons": {
+        "clearReset": "Reset the canvas",
+        "darkMode": "Dark mode",
+        "lightMode": "Light mode",
+        "export": "Save to...",
+        "load": "Open",
+        "undo": "Undo",
+        "redo": "Redo",
+        "selectLanguage": "Select language"
+    }
+}
