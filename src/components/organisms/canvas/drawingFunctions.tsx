@@ -86,9 +86,18 @@ export const useDrawingFunctions = () => {
     ) => {
       const innerCircleRadius = 3.5 / zoom
       const outerCircleRadius = 6 / zoom
-      const colorPalette1 = createColorPaletteRGB(curve.points.length, 0.2)
-      const colorPalette2 = createColorPaletteRGB(curve.points.length, 0.4)
-      const colorPalette3 = createColorPaletteRGB(curve.points.length, 0.7)
+      const colorPalette1 =
+        theme === "light"
+          ? createColorPaletteRGB(curve.points.length, 0.2)
+          : createColorPaletteRGB(curve.points.length, 0.5)
+      const colorPalette2 =
+        theme === "light"
+          ? createColorPaletteRGB(curve.points.length, 0.4)
+          : createColorPaletteRGB(curve.points.length, 0.7)
+      const colorPalette3 =
+        theme === "light"
+          ? createColorPaletteRGB(curve.points.length, 0.7)
+          : createColorPaletteRGB(curve.points.length, 0.9)
       switch (curve.type) {
         case CurveType.NonRational: {
           context.lineJoin = "round"
@@ -114,7 +123,7 @@ export const useDrawingFunctions = () => {
         }
       }
     },
-    [zoom],
+    [theme, zoom],
   )
 
   return {

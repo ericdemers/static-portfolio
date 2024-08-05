@@ -71,6 +71,7 @@ function Canvas(props: Readonly<CanvasProps>) {
     canvasHeight,
     canvasWidth,
     curves,
+    drawControlPoints,
     drawCurve,
     pixelRatio,
     scrollX,
