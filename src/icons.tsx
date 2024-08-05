@@ -135,3 +135,17 @@ export const FreeDrawIcon = createIcon(
   </g>,
   modifiedTablerIconProps,
 )
+
+export const LineIcon = createIcon(
+  <g>
+    <path d="M 0 17 L 20 6" strokeWidth="1.5" />
+  </g>,
+  modifiedTablerIconProps,
+)
+
+export const CircleArcIcon = createIcon(
+  <g>
+    <path d="M 2.5 17.5 A 9 9 0 0 1 17.5 8 " strokeWidth="1.5" />
+  </g>,
+  modifiedTablerIconProps,
+)

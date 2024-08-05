@@ -150,7 +150,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     [activeTool, dispatch, mouseMoveThreshold],
   )
 
-  const draw = useCallback(
+  const extendCurve = useCallback(
     (point: Coordinates, curveType: InitialCurve) => {
       if (currentlyDrawnCurve !== null) {
         let curve = { ...currentlyDrawnCurve }
@@ -159,14 +159,46 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
             const degree = curve.points.length < 5 ? curve.points.length : 5
             curve.points = [...curve.points, point]
             curve.knots = uniformKnots(degree, curve.points.length)
+            break
+          }
+          case InitialCurve.Line: {
+            curve.points = [curve.points[0], point]
+            break
+          }
+          case InitialCurve.CircleArc: {
+            break
           }
         }
         dispatch(replaceCurve({ curve }))
-        //dispatch(updateThisCurve({ curve }))
         setCurrentlyDrawnCurve(curve)
       }
     },
     [currentlyDrawnCurve, dispatch],
+  )
+
+  const draw = useCallback(
+    (
+      initialCurve: InitialCurve,
+      action: ActionType,
+      initialMousePosition: Coordinates,
+      coordinates: Coordinates,
+    ) => {
+      flushSync(() => {
+        switch (action) {
+          case "none":
+            if (mouseMoveThreshold === "exceeded") {
+              setAction("drawing") // React doesn’t update state immediately, flushSync is necessary for ipad to make the state transition fast enough
+              const curve = createCurve(initialCurve, initialMousePosition)
+              dispatch(addNewCurve({ curve }))
+              setCurrentlyDrawnCurve(curve)
+            }
+            break
+          case "drawing":
+            extendCurve(coordinates, initialCurve)
+        }
+      })
+    },
+    [dispatch, extendCurve, mouseMoveThreshold],
   )
 
   const handleMove = useCallback(
@@ -189,23 +221,10 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
           dispatch(scroll({ deltaX, deltaY }))
           break
         case "freeDraw":
-          flushSync(() => {
-            switch (action) {
-              case "none":
-                if (mouseMoveThreshold === "exceeded") {
-                  setAction("drawing") // React doesn’t update state immediately, flushSync is necessary for ipad to make the state transition fast enough
-                  const curve = createCurve(
-                    InitialCurve.Freehand,
-                    initialMousePosition,
-                  )
-                  dispatch(addNewCurve({ curve }))
-                  setCurrentlyDrawnCurve(curve)
-                }
-                break
-              case "drawing":
-                draw(coordinates, InitialCurve.Freehand)
-            }
-          })
+          draw(InitialCurve.Freehand, action, initialMousePosition, coordinates)
+          break
+        case "line":
+          draw(InitialCurve.Line, action, initialMousePosition, coordinates)
           break
       }
     },

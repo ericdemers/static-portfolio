@@ -75,6 +75,20 @@ const sketcherSlice = createSlice({
                 state.activeTool = "freeDraw"
             }
         },
+        toggleLineCreationTool(state) {
+            if (state.activeTool === "line") {
+                state.activeTool = "none"
+            } else {
+                state.activeTool = "line"
+            }
+        },
+        toggleCircleArcCreationTool(state) {
+            if (state.activeTool === "circleArc") {
+                state.activeTool = "none"
+            } else {
+                state.activeTool = "circleArc"
+            }
+        },
         activateFreeDrawFromInitialView(state) {
             state.activeTool = "freeDraw"
             state.initialView = false
@@ -118,8 +132,9 @@ export const { selectZoom, selectScrollX, selectScrollY, selectActiveTool,
     selectInitialView, selectTheme } = sketcherSlice.selectors
 
 export const { setSketcherSize, zoomIn, zoomOut, scroll, setInitialView, 
-    toggleFreeDrawCreationTool, activateFreeDrawFromInitialView, 
-    resetCanvas, setTheme, toggleTheme, 
+     activateFreeDrawFromInitialView, toggleFreeDrawCreationTool, 
+     toggleLineCreationTool, toggleCircleArcCreationTool, 
+     resetCanvas, setTheme, toggleTheme, 
     unselectCreationTool} = sketcherSlice.actions
 
 export default sketcherSlice.reducer

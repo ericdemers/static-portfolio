@@ -5,6 +5,7 @@ import { useAppSelector } from "../../../app/hooks"
 
 import { pointsOnCurve } from "../../../sketchElements/curve"
 import { selectTheme, selectZoom } from "../../templates/sketcher/sketcherSlice"
+import { createColorPaletteRGB } from "../../../utilities/color"
 
 export const useDrawingFunctions = () => {
   const theme = useAppSelector(selectTheme)
@@ -77,7 +78,47 @@ export const useDrawingFunctions = () => {
     [theme, zoom],
   )
 
+  const drawControlPoints = useCallback(
+    (
+      context: CanvasRenderingContext2D,
+      curve: Curve,
+      selectedControlPoint: number | null,
+    ) => {
+      const innerCircleRadius = 3.5 / zoom
+      const outerCircleRadius = 6 / zoom
+      const colorPalette1 = createColorPaletteRGB(curve.points.length, 0.2)
+      const colorPalette2 = createColorPaletteRGB(curve.points.length, 0.4)
+      const colorPalette3 = createColorPaletteRGB(curve.points.length, 0.7)
+      switch (curve.type) {
+        case CurveType.NonRational: {
+          context.lineJoin = "round"
+          context.lineWidth = 0
+          curve.points.forEach((p, index) => {
+            const fillStyle1 = colorPalette1[index]
+            const fillStyle2 = colorPalette2[index]
+            const fillStyle3 = colorPalette3[index]
+            const { x, y } = p
+            context.beginPath()
+            context.fillStyle = fillStyle3
+            context.arc(x, y, innerCircleRadius, 0, 2 * Math.PI, false)
+            context.fill()
+            context.arc(x, y, outerCircleRadius, 0, 2 * Math.PI, false)
+            if (index === selectedControlPoint) {
+              context.fillStyle = fillStyle2
+            } else {
+              context.fillStyle = fillStyle1
+            }
+            context.fill()
+          })
+          break
+        }
+      }
+    },
+    [zoom],
+  )
+
   return {
     drawCurve,
+    drawControlPoints,
   }
 }

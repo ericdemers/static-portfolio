@@ -11,6 +11,7 @@ import {
 } from "../../templates/sketcher/sketcherSlice"
 import { useDrawingFunctions } from "./drawingFunctions"
 import { selectCurves } from "../../../sketchElements/sketchElementsSlice"
+import { Curve } from "../../../sketchElements/curveTypes"
 
 interface CanvasProps {
   canvasWidth: number
@@ -25,7 +26,7 @@ function Canvas(props: Readonly<CanvasProps>) {
   const scrollX = useAppSelector(selectScrollX)
   const scrollY = useAppSelector(selectScrollY)
   const [pixelRatio, setPixelRatio] = useState<number>(1)
-  const { drawCurve } = useDrawingFunctions()
+  const { drawCurve, drawControlPoints } = useDrawingFunctions()
   const curves = useAppSelector(selectCurves)
 
   useLayoutEffect(() => {
@@ -60,7 +61,11 @@ function Canvas(props: Readonly<CanvasProps>) {
     context.arc(200, 275, 100, 0, Math.PI)
     context.stroke()
     */
-    curves.forEach(curve => drawCurve(context, curve))
+    curves.forEach(curve => {
+      drawCurve(context, curve)
+      drawControlPoints(context, curve, null)
+    })
+
     context.restore()
   }, [
     canvasHeight,
