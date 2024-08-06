@@ -4,12 +4,12 @@ import type { RootState} from "../app/store"
 import type { Curve } from './curveTypes';
 import type { Constraint } from './constraintTypes';
 
-interface CounterState {
+interface sketchElementsState {
     curves: readonly Curve[],
     constraints: Constraint[]
 }
 
-const initialState: CounterState = {
+const initialState: sketchElementsState = {
     curves: [],
     constraints: []
 }

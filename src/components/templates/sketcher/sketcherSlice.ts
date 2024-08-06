@@ -14,6 +14,7 @@ type SketcherState = {
     sketcherHeight: number
     activeTool: ActiveToolsType
     initialView: boolean
+    controlPolygonDisplayed: {curveIDs: string[], selectedControlPoint: {curveID: string, controlPointIndex: number} | null  } | null 
 }
 
 const initialState: SketcherState = {
@@ -25,6 +26,7 @@ const initialState: SketcherState = {
     sketcherHeight: 0,
     activeTool: "none",
     initialView: true,
+    controlPolygonDisplayed: null,
 }
 
 const zoomFactor = 1.2

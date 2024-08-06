@@ -11,7 +11,6 @@ import {
 } from "../../templates/sketcher/sketcherSlice"
 import { useDrawingFunctions } from "./drawingFunctions"
 import { selectCurves } from "../../../sketchElements/sketchElementsSlice"
-import { Curve } from "../../../sketchElements/curveTypes"
 
 interface CanvasProps {
   canvasWidth: number
@@ -45,27 +44,12 @@ function Canvas(props: Readonly<CanvasProps>) {
     context.save()
     context.strokeStyle = lineColor
     context.clearRect(0, 0, canvasWidth * pixelRatio, canvasHeight * pixelRatio)
-
     context.scale(zoom * pixelRatio, zoom * pixelRatio)
     context.translate(scrollX, scrollY)
-
-    /*
-    context.lineWidth = 1.4 / zoom
-    context.beginPath() // Start a new path
-    context.moveTo(340, 400)
-    context.lineTo(320, 110)
-    context.moveTo(220, 300)
-    context.lineTo(420, 310)
-    context.stroke() // Render the path
-    context.beginPath()
-    context.arc(200, 275, 100, 0, Math.PI)
-    context.stroke()
-    */
     curves.forEach(curve => {
       drawCurve(context, curve)
       drawControlPoints(context, curve, null)
     })
-
     context.restore()
   }, [
     canvasHeight,

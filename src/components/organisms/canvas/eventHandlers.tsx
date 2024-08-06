@@ -21,6 +21,7 @@ import { flushSync } from "react-dom"
 import {
   addNewCurve,
   replaceCurve,
+  selectCurves,
   updateThisCurve,
 } from "../../../sketchElements/sketchElementsSlice"
 import type { Curve } from "../../../sketchElements/curveTypes"
@@ -50,6 +51,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
   const [currentlyDrawnCurve, setCurrentlyDrawnCurve] = useState<Curve | null>(
     null,
   )
+  const curves = useAppSelector(selectCurves)
 
   const clickWithoutMovingResolution = 10
 
@@ -114,16 +116,38 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     [canvas, scrollX, scrollY, zoom],
   )
 
+  const onLine = useCallback(
+    (
+      endPoints: readonly [Coordinates, Coordinates],
+      point: Coordinates,
+      maxDistance = 1,
+    ) => {
+      // offset : semi-minor axis of the ellipse with the line endpoint as focal points
+      const offset = Math.sqrt(
+        Math.pow(
+          (distance(endPoints[0], point) + distance(endPoints[1], point)) / 2,
+          2,
+        ) - Math.pow(distance(endPoints[0], endPoints[1]) / 2, 2),
+      )
+      return offset < maxDistance / zoom
+    },
+    [zoom],
+  )
+
+  const getCurveAtPosition = useCallback((coordinates: Coordinates) => {
+    //return curves.map(curve => ({ ...Element, position: position }))
+  }, [])
+
   const handlePressDown = useCallback(
     (coordinates: Coordinates) => {
       setPressDown(true)
       setInitialMousePosition(coordinates)
       setMouseMoveThreshold("not exceeded")
       switch (activeTool) {
-        case "none":
+        case "none": {
+          const curve = getCurveAtPosition(coordinates)
           break
-        case "freeDraw":
-          break
+        }
       }
       if (initialView) {
         dispatch(activateFreeDrawFromInitialView())
