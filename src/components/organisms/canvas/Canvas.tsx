@@ -4,6 +4,7 @@ import { useAppSelector } from "../../../app/hooks"
 
 import { useEventHandlers } from "./eventHandlers"
 import {
+  selectControlPolygonsDispayed,
   selectScrollX,
   selectScrollY,
   selectTheme,
@@ -27,6 +28,7 @@ function Canvas(props: Readonly<CanvasProps>) {
   const [pixelRatio, setPixelRatio] = useState<number>(1)
   const { drawCurve, drawControlPoints } = useDrawingFunctions()
   const curves = useAppSelector(selectCurves)
+  const controlPolygonsDisplayed = useAppSelector(selectControlPolygonsDispayed)
 
   useLayoutEffect(() => {
     setPixelRatio(Math.ceil(window.devicePixelRatio))
@@ -48,12 +50,21 @@ function Canvas(props: Readonly<CanvasProps>) {
     context.translate(scrollX, scrollY)
     curves.forEach(curve => {
       drawCurve(context, curve)
-      drawControlPoints(context, curve, null)
+      //drawControlPoints(context, curve, null)
     })
+    if (controlPolygonsDisplayed) {
+      const selectedCurves = curves.filter(curve =>
+        controlPolygonsDisplayed.curveIDs.includes(curve.id),
+      )
+      selectedCurves.forEach(curve => {
+        drawControlPoints(context, curve, null)
+      })
+    }
     context.restore()
   }, [
     canvasHeight,
     canvasWidth,
+    controlPolygonsDisplayed,
     curves,
     drawControlPoints,
     drawCurve,

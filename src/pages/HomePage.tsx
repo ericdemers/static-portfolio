@@ -14,7 +14,7 @@ function HomePage() {
           <ul className="flex flex-row gap-16">
             <li className="animate-fade-in-up-2 hover:text-neutral-300 ]">
               <Link to="/sketcher">Sketcher &nbsp; &nbsp;</Link>
-              <div className="relative text-sm md:text-lg top-[-75%] left-[70%] opacity-50 font-light ]">
+              <div className="relative text-sm md:text-lg top-[-75%] left-[71%] opacity-50 font-light ]">
                 BSpline
               </div>
             </li>

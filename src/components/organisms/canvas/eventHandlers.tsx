@@ -11,10 +11,13 @@ import {
   selectInitialView,
   activateFreeDrawFromInitialView,
   unselectCreationTool,
+  setControlPolygonsDisplayed,
+  unselectCurvesAndCreationTool,
 } from "../../templates/sketcher/sketcherSlice"
 import {
   createCurve,
   InitialCurve,
+  pointsOnCurve,
   uniformKnots,
 } from "../../../sketchElements/curve"
 import { flushSync } from "react-dom"
@@ -116,27 +119,39 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     [canvas, scrollX, scrollY, zoom],
   )
 
-  const onLine = useCallback(
-    (
-      endPoints: readonly [Coordinates, Coordinates],
-      point: Coordinates,
-      maxDistance = 1,
-    ) => {
-      // offset : semi-minor axis of the ellipse with the line endpoint as focal points
-      const offset = Math.sqrt(
-        Math.pow(
-          (distance(endPoints[0], point) + distance(endPoints[1], point)) / 2,
-          2,
-        ) - Math.pow(distance(endPoints[0], endPoints[1]) / 2, 2),
-      )
-      return offset < maxDistance / zoom
+  const onLine = (
+    endPoints: readonly [Coordinates, Coordinates],
+    point: Coordinates,
+    zoom: number,
+    maxDistance = 1,
+  ) => {
+    // offset : semi-minor axis of the ellipse with the line endpoint as focal points
+    const offset = Math.sqrt(
+      Math.pow(
+        (distance(endPoints[0], point) + distance(endPoints[1], point)) / 2,
+        2,
+      ) - Math.pow(distance(endPoints[0], endPoints[1]) / 2, 2),
+    )
+    return offset < maxDistance / zoom
+  }
+
+  const onCurve = useCallback(
+    (point: Coordinates, curve: Curve, zoom: number) => {
+      const points = pointsOnCurve(curve, 100)
+      return points.slice(0, -1).some((curvePoint, index) => {
+        const nextCurvePoint = points[index + 1]
+        return onLine([curvePoint, nextCurvePoint], point, zoom, 10)
+      })
     },
-    [zoom],
+    [],
   )
 
-  const getCurveAtPosition = useCallback((coordinates: Coordinates) => {
-    //return curves.map(curve => ({ ...Element, position: position }))
-  }, [])
+  const getCurveAtPosition = useCallback(
+    (point: Coordinates, curves: readonly Curve[], zoom: number) => {
+      return curves.find(curve => onCurve(point, curve, zoom))
+    },
+    [onCurve],
+  )
 
   const handlePressDown = useCallback(
     (coordinates: Coordinates) => {
@@ -145,7 +160,16 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
       setMouseMoveThreshold("not exceeded")
       switch (activeTool) {
         case "none": {
-          const curve = getCurveAtPosition(coordinates)
+          const curve = getCurveAtPosition(coordinates, curves, zoom)
+          if (curve) {
+            setAction("moving curves")
+            dispatch(
+              setControlPolygonsDisplayed({
+                curveIDs: [curve.id],
+                selectedControlPoint: null,
+              }),
+            )
+          }
           break
         }
       }
@@ -153,7 +177,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
         dispatch(activateFreeDrawFromInitialView())
       }
     },
-    [activeTool, dispatch, initialView],
+    [activeTool, curves, dispatch, getCurveAtPosition, initialView, zoom],
   )
 
   const handlePressRelease = useCallback(
@@ -162,16 +186,15 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
       setInitialMousePosition(null)
       if (
         mouseMoveThreshold === "not exceeded" &&
-        (activeTool === "freeDraw" ||
-          activeTool === "line" ||
-          activeTool === "circleArc" ||
-          activeTool === "spiral")
+        activeTool !== "multipleSelection" &&
+        action !== "moving a control point" &&
+        action !== "moving curves"
       ) {
-        dispatch(unselectCreationTool())
+        dispatch(unselectCurvesAndCreationTool())
       }
       setAction("none")
     },
-    [activeTool, dispatch, mouseMoveThreshold],
+    [action, activeTool, dispatch, mouseMoveThreshold],
   )
 
   const extendCurve = useCallback(

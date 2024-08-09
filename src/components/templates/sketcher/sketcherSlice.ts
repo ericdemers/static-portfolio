@@ -14,7 +14,7 @@ type SketcherState = {
     sketcherHeight: number
     activeTool: ActiveToolsType
     initialView: boolean
-    controlPolygonDisplayed: {curveIDs: string[], selectedControlPoint: {curveID: string, controlPointIndex: number} | null  } | null 
+    controlPolygonsDisplayed: {curveIDs: string[], selectedControlPoint: {curveID: string, controlPointIndex: number} | null  } | null 
 }
 
 const initialState: SketcherState = {
@@ -26,7 +26,7 @@ const initialState: SketcherState = {
     sketcherHeight: 0,
     activeTool: "none",
     initialView: true,
-    controlPolygonDisplayed: null,
+    controlPolygonsDisplayed: null,
 }
 
 const zoomFactor = 1.2
@@ -115,6 +115,20 @@ const sketcherSlice = createSlice({
         },
         unselectCreationTool(state) {
             state.activeTool = "none"
+        },
+        unselectCurvesAndCreationTool(state) {
+            state.activeTool = "none"
+            state.controlPolygonsDisplayed = null
+        },
+        setControlPolygonsDisplayed(state, action: PayloadAction<{curveIDs: string[], selectedControlPoint: {curveID: string, controlPointIndex: number} | null  } | null >) {
+            state.controlPolygonsDisplayed = action.payload
+        },
+        addControlPolygonToBeDisplayed(state, action: PayloadAction<{curveID: string}>) {
+            if (state.controlPolygonsDisplayed) {
+                state.controlPolygonsDisplayed.curveIDs.push(action.payload.curveID)
+            } else {
+                state.controlPolygonsDisplayed = {curveIDs: [action.payload.curveID], selectedControlPoint: null}
+            }
         }
         
     },
@@ -124,20 +138,20 @@ const sketcherSlice = createSlice({
         selectScrollY: sketcher => sketcher.scrollY,
         selectActiveTool: sketcher => sketcher.activeTool,
         selectInitialView: sketcher => sketcher.initialView,
-        selectTheme: menu => menu.theme,
-
+        selectTheme: sketcher => sketcher.theme,
+        selectControlPolygonsDispayed: sketcher => sketcher.controlPolygonsDisplayed
     },
         
 })
 
 export const { selectZoom, selectScrollX, selectScrollY, selectActiveTool, 
-    selectInitialView, selectTheme } = sketcherSlice.selectors
+    selectInitialView, selectTheme, selectControlPolygonsDispayed } = sketcherSlice.selectors
 
 export const { setSketcherSize, zoomIn, zoomOut, scroll, setInitialView, 
      activateFreeDrawFromInitialView, toggleFreeDrawCreationTool, 
      toggleLineCreationTool, toggleCircleArcCreationTool, 
      resetCanvas, setTheme, toggleTheme, 
-    unselectCreationTool} = sketcherSlice.actions
+    unselectCreationTool, setControlPolygonsDisplayed, unselectCurvesAndCreationTool} = sketcherSlice.actions
 
 export default sketcherSlice.reducer
 
