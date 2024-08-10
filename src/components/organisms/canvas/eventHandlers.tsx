@@ -324,6 +324,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
           break
         }
       }
+      setMouseMoveThreshold("not exceeded")
       setAction("none")
     },
     [action, activeTool, curves, dispatch, mouseMoveThreshold],
