@@ -40,13 +40,11 @@ const sketchElementsSlice = createSlice({
                 state.curves[index] = newCurve
             }
         },
+        updateCurves(state, action: PayloadAction<{curves: Curve[]}>) {
+            state.curves = action.payload.curves
+        },
         clearCurves(state) {
             state.curves = []
-        },
-        moveCurve(state, action: PayloadAction<{displacement: {x: number, y: number}, id: string}>) {
-            const curve = state.curves.find((c) => (c.id === action.payload.id))
-            if (!curve) return
-            curve.points = curve.points.map(p => movePoint(p, action.payload.displacement))
         },
         moveCurves(state, action: PayloadAction<{displacement: {x: number, y: number}, ids: string[]}>) {
             action.payload.ids.forEach(id => {
@@ -62,7 +60,7 @@ const sketchElementsSlice = createSlice({
       },
 })
 
-export const { addNewCurve, replaceCurve, clearCurves, updateThisCurve, moveCurve, moveCurves } = sketchElementsSlice.actions
+export const { addNewCurve, replaceCurve, clearCurves, updateThisCurve, moveCurves, updateCurves } = sketchElementsSlice.actions
 export const selectCurves = (state: RootState) => state.sketchElements.present.curves
 export const selectShowUndoArrow = (state: RootState) => state.sketchElements.past.length !== 0
 export const selectShowRedoArrow = (state: RootState) => state.sketchElements.future.length !== 0

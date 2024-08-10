@@ -29,6 +29,7 @@ import { flushSync } from "react-dom"
 import {
   addNewCurve,
   moveCurves,
+  updateCurves,
   replaceCurve,
   selectCurves,
   updateThisCurve,
@@ -309,9 +310,23 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
       ) {
         dispatch(unselectCurvesAndCreationTool())
       }
+      switch (activeTool) {
+        case "singleSelection":
+        case "multipleSelection":
+        case "freeDraw":
+        case "line": {
+          switch (action) {
+            case "moving curves":
+            case "drawing":
+              dispatch(updateCurves({ curves: curves.slice() }))
+              break
+          }
+          break
+        }
+      }
       setAction("none")
     },
-    [action, activeTool, dispatch, mouseMoveThreshold],
+    [action, activeTool, curves, dispatch, mouseMoveThreshold],
   )
 
   const handleMouseDown = useCallback(
