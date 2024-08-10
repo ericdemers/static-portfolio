@@ -227,7 +227,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
           break
         }
       }
-      if (initialView) {
+      if (initialView || (curves.length === 0 && activeTool === "none")) {
         dispatch(activateFreeDrawFromInitialView())
       }
     },
