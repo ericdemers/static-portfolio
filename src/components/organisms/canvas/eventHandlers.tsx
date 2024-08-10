@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react"
 import { useAppDispatch, useAppSelector } from "../../../app/hooks"
-import { distance, type Coordinates } from "../../../sketchElements/coordinates"
+import {
+  displacement,
+  distance,
+  type Coordinates,
+} from "../../../sketchElements/coordinates"
 import { viewportCoordsToSceneCoords } from "./viewport"
 import {
   selectActiveTool,
@@ -10,9 +14,10 @@ import {
   scroll,
   selectInitialView,
   activateFreeDrawFromInitialView,
-  unselectCreationTool,
   setControlPolygonsDisplayed,
   unselectCurvesAndCreationTool,
+  selectControlPolygonsDispayed,
+  selectASingleCurve,
 } from "../../templates/sketcher/sketcherSlice"
 import {
   createCurve,
@@ -23,12 +28,12 @@ import {
 import { flushSync } from "react-dom"
 import {
   addNewCurve,
+  moveCurves,
   replaceCurve,
   selectCurves,
   updateThisCurve,
 } from "../../../sketchElements/sketchElementsSlice"
 import type { Curve } from "../../../sketchElements/curveTypes"
-import { ActionCreators } from "redux-undo"
 
 type ActionType =
   | "none"
@@ -55,6 +60,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     null,
   )
   const curves = useAppSelector(selectCurves)
+  const controlPolygonsDisplayed = useAppSelector(selectControlPolygonsDispayed)
 
   const clickWithoutMovingResolution = 10
 
@@ -153,50 +159,6 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     [onCurve],
   )
 
-  const handlePressDown = useCallback(
-    (coordinates: Coordinates) => {
-      setPressDown(true)
-      setInitialMousePosition(coordinates)
-      setMouseMoveThreshold("not exceeded")
-      switch (activeTool) {
-        case "none": {
-          const curve = getCurveAtPosition(coordinates, curves, zoom)
-          if (curve) {
-            setAction("moving curves")
-            dispatch(
-              setControlPolygonsDisplayed({
-                curveIDs: [curve.id],
-                selectedControlPoint: null,
-              }),
-            )
-          }
-          break
-        }
-      }
-      if (initialView) {
-        dispatch(activateFreeDrawFromInitialView())
-      }
-    },
-    [activeTool, curves, dispatch, getCurveAtPosition, initialView, zoom],
-  )
-
-  const handlePressRelease = useCallback(
-    (coordinates: Coordinates) => {
-      setPressDown(false)
-      setInitialMousePosition(null)
-      if (
-        mouseMoveThreshold === "not exceeded" &&
-        activeTool !== "multipleSelection" &&
-        action !== "moving a control point" &&
-        action !== "moving curves"
-      ) {
-        dispatch(unselectCurvesAndCreationTool())
-      }
-      setAction("none")
-    },
-    [action, activeTool, dispatch, mouseMoveThreshold],
-  )
-
   const extendCurve = useCallback(
     (point: Coordinates, curveType: InitialCurve) => {
       if (currentlyDrawnCurve !== null) {
@@ -248,11 +210,34 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     [dispatch, extendCurve, mouseMoveThreshold],
   )
 
-  const handleMove = useCallback(
+  const handlePressDown = useCallback(
     (coordinates: Coordinates) => {
+      setPressDown(true)
+      setInitialMousePosition(coordinates)
+      setMouseMoveThreshold("not exceeded")
+      switch (activeTool) {
+        case "none":
+        case "singleSelection": {
+          const curve = getCurveAtPosition(coordinates, curves, zoom)
+          if (curve) {
+            setAction("moving curves")
+            dispatch(selectASingleCurve({ curveID: curve.id }))
+          }
+          break
+        }
+      }
+      if (initialView) {
+        dispatch(activateFreeDrawFromInitialView())
+      }
+    },
+    [activeTool, curves, dispatch, getCurveAtPosition, initialView, zoom],
+  )
+
+  const handleMove = useCallback(
+    (newCoordinates: Coordinates) => {
       if (!initialMousePosition) return
       if (mouseMoveThreshold === "not exceeded") {
-        const d = distance(initialMousePosition, coordinates)
+        const d = distance(initialMousePosition, newCoordinates)
         if (d > clickWithoutMovingResolution / zoom) {
           setMouseMoveThreshold("just exceeded")
         }
@@ -261,29 +246,72 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
         setMouseMoveThreshold("exceeded")
       }
 
-      const deltaX = coordinates.x - initialMousePosition.x
-      const deltaY = coordinates.y - initialMousePosition.y
+      const deltaX = newCoordinates.x - initialMousePosition.x
+      const deltaY = newCoordinates.y - initialMousePosition.y
       switch (activeTool) {
         case "none":
           dispatch(scroll({ deltaX, deltaY }))
           break
         case "freeDraw":
-          draw(InitialCurve.Freehand, action, initialMousePosition, coordinates)
+          draw(
+            InitialCurve.Freehand,
+            action,
+            initialMousePosition,
+            newCoordinates,
+          )
           break
         case "line":
-          draw(InitialCurve.Line, action, initialMousePosition, coordinates)
+          draw(InitialCurve.Line, action, initialMousePosition, newCoordinates)
+          break
+        case "singleSelection":
+        case "multipleSelection":
+          switch (action) {
+            case "moving curves":
+              if (
+                controlPolygonsDisplayed &&
+                mouseMoveThreshold === "exceeded"
+              ) {
+                const v = displacement(initialMousePosition, newCoordinates)
+                dispatch(
+                  moveCurves({
+                    displacement: v,
+                    ids: controlPolygonsDisplayed.curveIDs,
+                  }),
+                )
+                setInitialMousePosition(newCoordinates)
+              }
+              break
+          }
           break
       }
     },
     [
       action,
       activeTool,
+      controlPolygonsDisplayed,
       dispatch,
       draw,
       initialMousePosition,
       mouseMoveThreshold,
       zoom,
     ],
+  )
+
+  const handlePressRelease = useCallback(
+    (coordinates: Coordinates) => {
+      setPressDown(false)
+      setInitialMousePosition(null)
+      if (
+        mouseMoveThreshold === "not exceeded" &&
+        activeTool !== "multipleSelection" &&
+        action !== "moving a control point" &&
+        action !== "moving curves"
+      ) {
+        dispatch(unselectCurvesAndCreationTool())
+      }
+      setAction("none")
+    },
+    [action, activeTool, dispatch, mouseMoveThreshold],
   )
 
   const handleMouseDown = useCallback(

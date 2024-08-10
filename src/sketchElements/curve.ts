@@ -73,4 +73,7 @@ export function uniformKnots(degree: number, numberOfControlPoints: number) {
     return knots
 }
 
-export function updateCurve(initialCurveType: InitialCurve) {}
+
+//export function updateCurve(initialCurveType: InitialCurve) {}
+
+//export function moveCurve(curves: Curve[], displacement: {x: number, y: number}) {}

@@ -123,6 +123,10 @@ const sketcherSlice = createSlice({
         setControlPolygonsDisplayed(state, action: PayloadAction<{curveIDs: string[], selectedControlPoint: {curveID: string, controlPointIndex: number} | null  } | null >) {
             state.controlPolygonsDisplayed = action.payload
         },
+        selectASingleCurve(state, action: PayloadAction<{curveID: string}>) {
+            state.controlPolygonsDisplayed = {curveIDs: [action.payload.curveID], selectedControlPoint: null}
+            state.activeTool = "singleSelection"
+        },
         addControlPolygonToBeDisplayed(state, action: PayloadAction<{curveID: string}>) {
             if (state.controlPolygonsDisplayed) {
                 state.controlPolygonsDisplayed.curveIDs.push(action.payload.curveID)
@@ -151,7 +155,7 @@ export const { setSketcherSize, zoomIn, zoomOut, scroll, setInitialView,
      activateFreeDrawFromInitialView, toggleFreeDrawCreationTool, 
      toggleLineCreationTool, toggleCircleArcCreationTool, 
      resetCanvas, setTheme, toggleTheme, 
-    unselectCreationTool, setControlPolygonsDisplayed, unselectCurvesAndCreationTool} = sketcherSlice.actions
+    unselectCreationTool, setControlPolygonsDisplayed, unselectCurvesAndCreationTool, selectASingleCurve} = sketcherSlice.actions
 
 export default sketcherSlice.reducer
 
