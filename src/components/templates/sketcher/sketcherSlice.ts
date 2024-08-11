@@ -75,6 +75,7 @@ const sketcherSlice = createSlice({
                 state.activeTool = "none"
             } else {
                 state.activeTool = "freeDraw"
+                state.controlPolygonsDisplayed = null
             }
         },
         toggleLineCreationTool(state) {
@@ -82,6 +83,7 @@ const sketcherSlice = createSlice({
                 state.activeTool = "none"
             } else {
                 state.activeTool = "line"
+                state.controlPolygonsDisplayed = null
             }
         },
         toggleCircleArcCreationTool(state) {
@@ -89,6 +91,7 @@ const sketcherSlice = createSlice({
                 state.activeTool = "none"
             } else {
                 state.activeTool = "circleArc"
+                state.controlPolygonsDisplayed = null
             }
         },
         activateFreeDrawFromInitialView(state) {

@@ -8,7 +8,6 @@ import undoable, { excludeAction } from 'redux-undo';
 export const store = configureStore({
   reducer: { 
         sketcher: sketcherReducer,
-        //sketchElements: undoable(sketchElementReducer, {filter: excludeAction(["sketchElements/replaceCurve", "sketchElements/moveCurves"]), syncFilter: true}),
         sketchElements: undoable(sketchElementReducer, {filter: excludeAction(["sketchElements/addNewCurve", "sketchElements/replaceCurve", "sketchElements/moveCurves"])}),
     }  
 })

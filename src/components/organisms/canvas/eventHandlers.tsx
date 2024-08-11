@@ -234,9 +234,8 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     [activeTool, curves, dispatch, getCurveAtPosition, initialView, zoom],
   )
 
-  const handleMove = useCallback(
-    (newCoordinates: Coordinates) => {
-      if (!initialMousePosition) return
+  const handleMouseMoveTreshold = useCallback(
+    (initialMousePosition: Coordinates, newCoordinates: Coordinates) => {
       if (mouseMoveThreshold === "not exceeded") {
         const d = distance(initialMousePosition, newCoordinates)
         if (d > clickWithoutMovingResolution / zoom) {
@@ -246,7 +245,14 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
       if (mouseMoveThreshold === "just exceeded") {
         setMouseMoveThreshold("exceeded")
       }
+    },
+    [mouseMoveThreshold, zoom],
+  )
 
+  const handleMove = useCallback(
+    (newCoordinates: Coordinates) => {
+      if (!initialMousePosition) return
+      handleMouseMoveTreshold(initialMousePosition, newCoordinates)
       const deltaX = newCoordinates.x - initialMousePosition.x
       const deltaY = newCoordinates.y - initialMousePosition.y
       switch (activeTool) {
@@ -292,9 +298,9 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
       controlPolygonsDisplayed,
       dispatch,
       draw,
+      handleMouseMoveTreshold,
       initialMousePosition,
       mouseMoveThreshold,
-      zoom,
     ],
   )
 
@@ -328,18 +334,9 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
       }
       setMouseMoveThreshold("not exceeded")
       setAction("none")
-      if (currentlyDrawnCurve) {
-        setCurrentlyDrawnCurve(null)
-      }
+      setCurrentlyDrawnCurve(null)
     },
-    [
-      action,
-      activeTool,
-      currentlyDrawnCurve,
-      curves,
-      dispatch,
-      mouseMoveThreshold,
-    ],
+    [action, activeTool, curves, dispatch, mouseMoveThreshold],
   )
 
   const handleMouseDown = useCallback(
