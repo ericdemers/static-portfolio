@@ -18,6 +18,7 @@ import {
   unselectCurvesAndCreationTool,
   selectControlPolygonsDispayed,
   selectASingleCurve,
+  zoomWithTwoFingers,
 } from "../../templates/sketcher/sketcherSlice"
 import {
   createCurve,
@@ -54,6 +55,13 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
   const [pressDown, setPressDown] = useState(false)
   const [initialMousePosition, setInitialMousePosition] =
     useState<Coordinates | null>(null)
+  const [newestMousePosition, setNewestMousePosition] =
+    useState<Coordinates | null>(null)
+  const [twoFingersTouch, setTwoFingersTouch] = useState<{
+    p0: Coordinates
+    p1: Coordinates
+    initialZoom: number
+  } | null>(null)
   const [action, setAction] = useState<ActionType>("none")
   const [mouseMoveThreshold, setMouseMoveThreshold] =
     useState<mouseMoveThresholdType>("not exceeded")
@@ -370,11 +378,91 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
 
   const handleMouseLeave = useCallback((event: MouseEvent) => {}, [])
 
-  const handleTouchStart = useCallback((event: TouchEvent) => {}, [])
+  const handleTouchStart = useCallback(
+    (event: TouchEvent) => {
+      if (event.touches.length === 1) {
+        const coordinates = getTouchCoordinates(event)
+        if (!coordinates) return
+        handlePressDown(coordinates)
+        event.preventDefault()
+        setNewestMousePosition(coordinates) //touchend event does not give its position
+      }
+      if (event.touches.length === 2) {
+        event.preventDefault()
+        const coordinates = getTwoFingersTouchCoordinates(event)
+        if (!coordinates) return
+        setTwoFingersTouch({
+          p0: coordinates.p0,
+          p1: coordinates.p1,
+          initialZoom: zoom,
+        })
+      }
+    },
+    [getTouchCoordinates, getTwoFingersTouchCoordinates, handlePressDown, zoom],
+  )
 
-  const handleTouchMove = useCallback((event: TouchEvent) => {}, [])
+  const handleTouchMove = useCallback(
+    (event: TouchEvent) => {
+      if (event.touches.length === 1) {
+        const coordinates = getTouchCoordinates(event)
+        if (!pressDown || !coordinates) return
+        handleMove(coordinates)
+        setNewestMousePosition(coordinates) //touchend event does not give its position
+      }
+      if (event.touches.length === 2) {
+        const coordinates = getTwoFingersTouchCoordinates(event)
+        if (!coordinates || !twoFingersTouch) return
+        const deltaX0 = coordinates.p0.x - twoFingersTouch.p0.x
+        const deltaY0 = coordinates.p0.y - twoFingersTouch.p0.y
+        const newDistanceX = coordinates.p1.x - coordinates.p0.x
+        const newDistanceY = coordinates.p1.y - coordinates.p0.y
+        const initialDistanceX = twoFingersTouch.p1.x - twoFingersTouch.p0.x
+        const initialDistanceY = twoFingersTouch.p1.y - twoFingersTouch.p0.y
+        const newDistance = Math.hypot(newDistanceX, newDistanceY)
+        const initialDistance = Math.hypot(initialDistanceX, initialDistanceY)
+        dispatch(
+          zoomWithTwoFingers({
+            deltaX: deltaX0,
+            deltaY: deltaY0,
+            newZoom: (zoom * newDistance) / initialDistance,
+          }),
+        )
+      }
+    },
+    [
+      dispatch,
+      getTouchCoordinates,
+      getTwoFingersTouchCoordinates,
+      handleMove,
+      pressDown,
+      twoFingersTouch,
+      zoom,
+    ],
+  )
 
-  const handleTouchEnd = useCallback((event: TouchEvent) => {}, [])
+  const handleTouchEnd = useCallback(
+    (event: TouchEvent) => {
+      if (event.touches.length === 0) {
+        setPressDown(false)
+        if (newestMousePosition) {
+          handlePressRelease(newestMousePosition)
+        }
+      }
+      if (event.touches.length === 1) {
+        setTwoFingersTouch(null)
+        const coordinates = getTouchCoordinates(event)
+        if (!coordinates) return
+        handlePressDown(coordinates)
+      }
+      setNewestMousePosition(null)
+    },
+    [
+      getTouchCoordinates,
+      handlePressDown,
+      handlePressRelease,
+      newestMousePosition,
+    ],
+  )
 
   const handleWheel = useCallback(
     (event: WheelEvent) => {
@@ -385,7 +473,16 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     [dispatch, zoom],
   )
 
-  const handleKeyPress = useCallback((event: KeyboardEvent) => {}, [])
+  const handleKeyPress = useCallback(
+    (event: KeyboardEvent) => {
+      switch (event.key) {
+        case "Escape":
+          dispatch(unselectCurvesAndCreationTool())
+          break
+      }
+    },
+    [dispatch],
+  )
 
   useEffect(() => {
     if (!canvas) return

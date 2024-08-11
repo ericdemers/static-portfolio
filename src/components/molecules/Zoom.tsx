@@ -22,17 +22,17 @@ export const Zoom = () => {
     >
       <button
         onClick={handleZoomOut}
-        className="text-neutral-600  dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-full p-2 hover:shadow-inner hover:shadow-black/10 hover:dark:shadow-white/10"
+        className="text-neutral-600  dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-full p-2 hover:shadow-inner hover:shadow-black/10 hover:dark:shadow-white/10 outline-none"
       >
         <Icon icon="ant-design:zoom-out-outlined" className="size-5 " />
       </button>
-      <button className=" text-neutral-600  dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-full p-2 hover:shadow-inner hover:shadow-black/10 hover:dark:shadow-white/10">
+      <button className=" text-neutral-600  dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-full p-2 hover:shadow-inner hover:shadow-black/10 hover:dark:shadow-white/10 outline-none">
         {/* <Icon icon="ant-design:expand-outlined" className="size-5 " /> */}
         <Icon icon="iconamoon:screen-full-light" className="size-6 " />
       </button>
       <button
         onClick={handleZoomIn}
-        className="text-neutral-600  dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-full p-2 hover:shadow-inner hover:shadow-black/10 hover:dark:shadow-white/10"
+        className="text-neutral-600  dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-full p-2 hover:shadow-inner hover:shadow-black/10 hover:dark:shadow-white/10 outline-none"
       >
         <Icon icon="ant-design:zoom-in-outlined" className="size-5 " />
       </button>

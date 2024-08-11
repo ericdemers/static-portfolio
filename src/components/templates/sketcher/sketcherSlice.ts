@@ -47,8 +47,6 @@ const sketcherSlice = createSlice({
             state.scrollX = (state.scrollX - (centerX * (newZoom / state.zoom) - centerX) / newZoom) 
             state.scrollY = (state.scrollY - (centerY * (newZoom / state.zoom) - centerY) / newZoom) 
             state.zoom = newZoom
-            console.log(centerX)
-            console.log(centerY)
         },
         zoomOut(state) {
             const newZoom = state.zoom / zoomFactor
@@ -57,6 +55,11 @@ const sketcherSlice = createSlice({
             state.scrollX = state.scrollX - (centerX * (newZoom / state.zoom) - centerX) / newZoom
             state.scrollY = state.scrollY - (centerY * (newZoom / state.zoom) - centerY) / newZoom
             state.zoom = newZoom
+        },
+        zoomWithTwoFingers(state, action: PayloadAction<{deltaX: number, deltaY: number, newZoom: number}>) {
+            state.zoom = action.payload.newZoom
+            state.scrollX = state.scrollX + action.payload.deltaX
+            state.scrollY = state.scrollY + action.payload.deltaY
         },
         scroll(state, action: PayloadAction<{deltaX: number, deltaY: number}>) {
             const {deltaX, deltaY} = action.payload
@@ -154,7 +157,7 @@ const sketcherSlice = createSlice({
 export const { selectZoom, selectScrollX, selectScrollY, selectActiveTool, 
     selectInitialView, selectTheme, selectControlPolygonsDispayed } = sketcherSlice.selectors
 
-export const { setSketcherSize, zoomIn, zoomOut, scroll, setInitialView, 
+export const { setSketcherSize, zoomIn, zoomOut, zoomWithTwoFingers, scroll, setInitialView, 
      activateFreeDrawFromInitialView, toggleFreeDrawCreationTool, 
      toggleLineCreationTool, toggleCircleArcCreationTool, 
      resetCanvas, setTheme, toggleTheme, 

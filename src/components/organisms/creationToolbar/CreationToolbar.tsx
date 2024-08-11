@@ -46,19 +46,19 @@ function CreationToolbar() {
       ) : (
         <>
           <button
-            className={`${activeTool === "freeDraw" ? "bg-blue-50" + " dark:bg-gray-600" : ""} hover:bg-neutral-100 dark:hover:bg-neutral-700 p-2 rounded-lg `}
+            className={`${activeTool === "freeDraw" ? "bg-blue-50" + " dark:bg-gray-600" : ""} hover:bg-neutral-100 dark:hover:bg-neutral-700 p-2 rounded-lg outline-none`}
             onClick={handleToggleFreeDrawCreationTool}
           >
             <div className="size-6">{FreeDrawIcon}</div>
           </button>
           <button
-            className={`${activeTool === "line" ? "bg-blue-50" + " dark:bg-gray-600" : ""} hover:bg-neutral-100 dark:hover:bg-neutral-700 p-2 rounded-lg `}
+            className={`${activeTool === "line" ? "bg-blue-50" + " dark:bg-gray-600" : ""} hover:bg-neutral-100 dark:hover:bg-neutral-700 p-2 rounded-lg outline-none`}
             onClick={handleToggleLineCreationTool}
           >
             <div className="size-6">{LineIcon}</div>
           </button>
           <button
-            className={`${activeTool === "circleArc" ? "bg-blue-50" + " dark:bg-gray-600" : ""} hover:bg-neutral-100 dark:hover:bg-neutral-700 p-2 rounded-lg `}
+            className={`${activeTool === "circleArc" ? "bg-blue-50" + " dark:bg-gray-600" : ""} hover:bg-neutral-100 dark:hover:bg-neutral-700 p-2 rounded-lg outline-none`}
             onClick={handleToggleCircleArcCreationTool}
           >
             <div className="size-6">{CircleArcIcon}</div>

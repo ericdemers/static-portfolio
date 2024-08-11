@@ -16,20 +16,20 @@ export const Undo = () => {
   const showRedo = useAppSelector(selectShowRedoArrow)
   return (
     <div className="pointer-events-auto">
-      <button>
+      <button className="outline-none">
         <ArrowUturnLeftIcon
           onClick={() => {
             dispatch(ActionCreators.undo())
           }}
-          className={`${!showUndo ? "invisible" : ""} w-9 text-neutral-600 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-full p-2 hover:shadow-inner hover:shadow-black/10 hover:dark:shadow-white/10 `}
+          className={`${!showUndo ? "invisible" : ""} w-9 text-neutral-600 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-full p-2 hover:shadow-inner hover:shadow-black/10 hover:dark:shadow-white/10`}
         />
       </button>
-      <button>
+      <button className="outline-none">
         <ArrowUturnRightIcon
           onClick={() => {
             dispatch(ActionCreators.redo())
           }}
-          className={`${!showRedo ? "invisible" : ""} w-9 text-neutral-600 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-full p-2 hover:shadow-inner hover:shadow-black/10 hover:dark:shadow-white/10" `}
+          className={`${!showRedo ? "invisible" : ""} w-9 text-neutral-600 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-full p-2 hover:shadow-inner hover:shadow-black/10 hover:dark:shadow-white/10`}
         />
       </button>
     </div>
