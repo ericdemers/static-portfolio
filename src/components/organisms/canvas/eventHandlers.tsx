@@ -318,7 +318,9 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
           switch (action) {
             case "moving curves":
             case "drawing":
-              dispatch(updateCurves({ curves: curves.slice() }))
+              if (mouseMoveThreshold === "exceeded") {
+                dispatch(updateCurves({ curves: curves.slice() }))
+              }
               break
           }
           break
@@ -326,8 +328,18 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
       }
       setMouseMoveThreshold("not exceeded")
       setAction("none")
+      if (currentlyDrawnCurve) {
+        setCurrentlyDrawnCurve(null)
+      }
     },
-    [action, activeTool, curves, dispatch, mouseMoveThreshold],
+    [
+      action,
+      activeTool,
+      currentlyDrawnCurve,
+      curves,
+      dispatch,
+      mouseMoveThreshold,
+    ],
   )
 
   const handleMouseDown = useCallback(
@@ -355,14 +367,8 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
       const coordinates = getMouseCoordinates(event)
       if (!coordinates) return
       handlePressRelease(coordinates)
-      if (currentlyDrawnCurve) {
-        //dispatch(updateThisCurve({ curve: currentlyDrawnCurve }))
-        //dispatch(ActionCreators.undo())
-        //dispatch(ActionCreators.redo())
-        setCurrentlyDrawnCurve(null)
-      }
     },
-    [currentlyDrawnCurve, getMouseCoordinates, handlePressRelease],
+    [getMouseCoordinates, handlePressRelease],
   )
 
   const handleMouseLeave = useCallback((event: MouseEvent) => {}, [])
