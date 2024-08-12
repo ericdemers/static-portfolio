@@ -12,19 +12,24 @@ import {
   selectActiveTool,
   selectControlPolygonsDispayed,
   selectInitialView,
+  selectZoom,
   setInitialView,
   toggleCircleArcCreationTool,
   toggleFreeDrawCreationTool,
   toggleLineCreationTool,
   unselectCurvesAndCreationTool,
 } from "../../templates/sketcher/sketcherSlice"
-import { deleteCurves } from "../../../sketchElements/sketchElementsSlice"
+import {
+  deleteCurves,
+  duplicateCurves,
+} from "../../../sketchElements/sketchElementsSlice"
 
 function CreationToolbar() {
   const initialView = useAppSelector(selectInitialView)
   const activeTool = useAppSelector(selectActiveTool)
   const dispatch = useAppDispatch()
   const controlPolygonsDisplayed = useAppSelector(selectControlPolygonsDispayed)
+  const zoom = useAppSelector(selectZoom)
 
   const handlePushPencil = useCallback(() => {
     dispatch(setInitialView({ show: false }))
@@ -47,6 +52,18 @@ function CreationToolbar() {
     dispatch(deleteCurves({ curveIDs: controlPolygonsDisplayed.curveIDs }))
     dispatch(unselectCurvesAndCreationTool())
   }, [controlPolygonsDisplayed, dispatch])
+
+  const handleDuplicate = useCallback(() => {
+    if (!controlPolygonsDisplayed) return
+    dispatch(
+      duplicateCurves({
+        curveIDs: controlPolygonsDisplayed.curveIDs,
+        deltaX: 30 / zoom,
+        deltaY: 30 / zoom,
+      }),
+    )
+    dispatch(unselectCurvesAndCreationTool())
+  }, [controlPolygonsDisplayed, dispatch, zoom])
 
   return (
     <div className="flex place-content-around bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-400 p-1 shadow rounded-lg select-none">
@@ -90,7 +107,10 @@ function CreationToolbar() {
           >
             <TrashIcon className="size-6 " />
           </button>
-          <button className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2">
+          <button
+            className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2"
+            onClick={handleDuplicate}
+          >
             <Square2StackIcon className="size-6 " />
           </button>
           <button className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2">

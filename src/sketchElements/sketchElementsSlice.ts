@@ -4,6 +4,7 @@ import type { RootState} from "../app/store"
 import type { Curve } from './curveTypes';
 import type { Constraint } from './constraintTypes';
 import { movePoint } from './coordinates';
+import { duplicateCurve } from './curve';
 
 
 interface sketchElementsState {
@@ -55,6 +56,9 @@ const sketchElementsSlice = createSlice({
         },
         deleteCurves(state, action: PayloadAction<{curveIDs: string[]}>) {
             state.curves = state.curves.filter((curve) => !action.payload.curveIDs.includes(curve.id))
+        },
+        duplicateCurves(state, action: PayloadAction<{curveIDs: string[], deltaX: number, deltaY: number}>) {
+            state.curves = state.curves.concat(state.curves.filter((curve) => action.payload.curveIDs.includes(curve.id)).map(curve => duplicateCurve(curve, {x: action.payload.deltaX, y: action.payload.deltaY})))
         }
 
     },
@@ -63,7 +67,7 @@ const sketchElementsSlice = createSlice({
       },
 })
 
-export const { addNewCurve, replaceCurve, clearCurves, updateThisCurve, moveCurves, updateCurves, deleteCurves } = sketchElementsSlice.actions
+export const { addNewCurve, replaceCurve, clearCurves, updateThisCurve, moveCurves, updateCurves, deleteCurves, duplicateCurves } = sketchElementsSlice.actions
 export const selectCurves = (state: RootState) => state.sketchElements.present.curves
 export const selectShowUndoArrow = (state: RootState) => state.sketchElements.past.length !== 0
 export const selectShowRedoArrow = (state: RootState) => state.sketchElements.future.length !== 0

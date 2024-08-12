@@ -19,6 +19,8 @@ import {
   selectControlPolygonsDispayed,
   selectASingleCurve,
   zoomWithTwoFingers,
+  zoomOut,
+  zoomIn,
 } from "../../templates/sketcher/sketcherSlice"
 import {
   createCurve,
@@ -35,8 +37,10 @@ import {
   selectCurves,
   updateThisCurve,
   deleteCurves,
+  duplicateCurves,
 } from "../../../sketchElements/sketchElementsSlice"
 import type { Curve } from "../../../sketchElements/curveTypes"
+import { ActionCreators } from "redux-undo"
 
 type ActionType =
   | "none"
@@ -482,6 +486,25 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     dispatch(unselectCurvesAndCreationTool())
   }, [controlPolygonsDisplayed, dispatch])
 
+  const handleDuplicate = useCallback(() => {
+    if (!controlPolygonsDisplayed) return
+    dispatch(
+      duplicateCurves({
+        curveIDs: controlPolygonsDisplayed.curveIDs,
+        deltaX: 30 / zoom,
+        deltaY: 30 / zoom,
+      }),
+    )
+    dispatch(unselectCurvesAndCreationTool())
+  }, [controlPolygonsDisplayed, dispatch, zoom])
+
+  const handleZoomOut = useCallback(() => {
+    dispatch(zoomOut())
+  }, [dispatch])
+  const handleZoomIn = useCallback(() => {
+    dispatch(zoomIn())
+  }, [dispatch])
+
   const handleKeyPress = useCallback(
     (event: KeyboardEvent) => {
       switch (event.key) {
@@ -492,9 +515,37 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
         case "Backspace":
           handleDelete()
           break
+        case "-":
+        case "_":
+          handleZoomOut()
+          break
+        case "=":
+        case "+":
+          handleZoomIn()
+          break
+      }
+      if (event.ctrlKey || (event.metaKey && event.key === "d")) {
+        handleDuplicate()
+        event.preventDefault()
+      }
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key === "z" &&
+        !event.shiftKey
+      ) {
+        dispatch(ActionCreators.undo())
+        event.preventDefault()
+      }
+      if (event.ctrlKey && event.key === "Z") {
+        dispatch(ActionCreators.redo())
+        event.preventDefault()
+      }
+      if (event.metaKey && event.key === "z" && event.shiftKey) {
+        dispatch(ActionCreators.redo())
+        event.preventDefault()
       }
     },
-    [dispatch, handleDelete],
+    [dispatch, handleDelete, handleDuplicate],
   )
 
   useEffect(() => {
