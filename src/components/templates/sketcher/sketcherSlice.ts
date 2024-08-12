@@ -1,4 +1,5 @@
 import { createSlice, type PayloadAction} from '@reduxjs/toolkit';
+import type { Curve } from '../../../sketchElements/curveTypes';
 //import type { RootState } from "../../../app/store"
 
 type Theme = "light" | "dark"
@@ -55,6 +56,24 @@ const sketcherSlice = createSlice({
             state.scrollX = state.scrollX - (centerX * (newZoom / state.zoom) - centerX) / newZoom
             state.scrollY = state.scrollY - (centerY * (newZoom / state.zoom) - centerY) / newZoom
             state.zoom = newZoom
+        },
+        zoomReset(state, action: PayloadAction<{curves: readonly Curve[]}>) {
+            const maxX = Math.max(... action.payload.curves.map(curve => Math.max(... curve.points.map(p => p.x))))
+            const maxY = Math.max(... action.payload.curves.map(curve => Math.max(... curve.points.map(p => p.y))))
+            const minX = Math.min(... action.payload.curves.map(curve => Math.min(... curve.points.map(p => p.x))))
+            const minY = Math.min(... action.payload.curves.map(curve => Math.min(... curve.points.map(p => p.y))))
+            const width = maxX - minX
+            const height = maxY - minY
+            const averageX = (maxX + minX) / 2
+            const averageY = (maxY + minY) / 2
+            const centerX = state.sketcherWidth / 2
+            const centerY = state.sketcherHeight / 2
+            const zoom1 = state.sketcherWidth / width
+            const zoom2 = state.sketcherHeight /height
+            const zoom = Math.min(zoom1, zoom2) * 0.8
+            state.zoom = zoom
+            state.scrollX = - averageX + centerX / zoom
+            state.scrollY =  - averageY + centerY / zoom
         },
         zoomWithTwoFingers(state, action: PayloadAction<{deltaX: number, deltaY: number, newZoom: number}>) {
             state.zoom = action.payload.newZoom
@@ -161,7 +180,7 @@ export const { setSketcherSize, zoomIn, zoomOut, zoomWithTwoFingers, scroll, set
      activateFreeDrawFromInitialView, toggleFreeDrawCreationTool, 
      toggleLineCreationTool, toggleCircleArcCreationTool, 
      resetCanvas, setTheme, toggleTheme, 
-    unselectCreationTool, setControlPolygonsDisplayed, unselectCurvesAndCreationTool, selectASingleCurve} = sketcherSlice.actions
+    unselectCreationTool, setControlPolygonsDisplayed, unselectCurvesAndCreationTool, selectASingleCurve, zoomReset} = sketcherSlice.actions
 
 export default sketcherSlice.reducer
 

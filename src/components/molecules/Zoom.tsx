@@ -2,7 +2,7 @@ import { Icon } from "@iconify/react"
 import { useCallback } from "react"
 
 import { useAppDispatch, useAppSelector } from "../../app/hooks"
-import { zoomIn, zoomOut } from "../templates/sketcher/sketcherSlice"
+import { zoomIn, zoomOut, zoomReset } from "../templates/sketcher/sketcherSlice"
 import { selectCurves } from "../../sketchElements/sketchElementsSlice"
 
 export const Zoom = () => {
@@ -15,6 +15,9 @@ export const Zoom = () => {
     dispatch(zoomIn())
   }, [dispatch])
   const curves = useAppSelector(selectCurves)
+  const handleZoomReset = useCallback(() => {
+    dispatch(zoomReset({ curves: curves }))
+  }, [curves, dispatch])
 
   return (
     <div
@@ -26,7 +29,10 @@ export const Zoom = () => {
       >
         <Icon icon="ant-design:zoom-out-outlined" className="size-5 " />
       </button>
-      <button className=" text-neutral-600  dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-full p-2 hover:shadow-inner hover:shadow-black/10 hover:dark:shadow-white/10 outline-none">
+      <button
+        onClick={handleZoomReset}
+        className=" text-neutral-600  dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-full p-2 hover:shadow-inner hover:shadow-black/10 hover:dark:shadow-white/10 outline-none"
+      >
         {/* <Icon icon="ant-design:expand-outlined" className="size-5 " /> */}
         <Icon icon="iconamoon:screen-full-light" className="size-6 " />
       </button>
