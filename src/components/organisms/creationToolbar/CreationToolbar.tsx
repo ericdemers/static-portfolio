@@ -1,4 +1,8 @@
-import { PencilIcon } from "@heroicons/react/24/outline"
+import {
+  PencilIcon,
+  Square2StackIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline"
 import { Icon } from "@iconify/react"
 import { CircleArcIcon, FreeDrawIcon, LineIcon } from "../../../icons"
 
@@ -6,17 +10,21 @@ import { useAppDispatch, useAppSelector } from "../../../app/hooks"
 import { useCallback } from "react"
 import {
   selectActiveTool,
+  selectControlPolygonsDispayed,
   selectInitialView,
   setInitialView,
   toggleCircleArcCreationTool,
   toggleFreeDrawCreationTool,
   toggleLineCreationTool,
+  unselectCurvesAndCreationTool,
 } from "../../templates/sketcher/sketcherSlice"
+import { deleteCurves } from "../../../sketchElements/sketchElementsSlice"
 
 function CreationToolbar() {
   const initialView = useAppSelector(selectInitialView)
   const activeTool = useAppSelector(selectActiveTool)
   const dispatch = useAppDispatch()
+  const controlPolygonsDisplayed = useAppSelector(selectControlPolygonsDispayed)
 
   const handlePushPencil = useCallback(() => {
     dispatch(setInitialView({ show: false }))
@@ -33,6 +41,12 @@ function CreationToolbar() {
   const handleToggleCircleArcCreationTool = useCallback(() => {
     dispatch(toggleCircleArcCreationTool())
   }, [dispatch])
+
+  const handleDelete = useCallback(() => {
+    if (!controlPolygonsDisplayed) return
+    dispatch(deleteCurves({ curveIDs: controlPolygonsDisplayed.curveIDs }))
+    dispatch(unselectCurvesAndCreationTool())
+  }, [controlPolygonsDisplayed, dispatch])
 
   return (
     <div className="flex place-content-around bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-400 p-1 shadow rounded-lg select-none">
@@ -62,6 +76,25 @@ function CreationToolbar() {
             onClick={handleToggleCircleArcCreationTool}
           >
             <div className="size-6">{CircleArcIcon}</div>
+          </button>
+          <button className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2">
+            <Icon icon="ph:spiral" className="size-6" />
+          </button>
+          <div className="inline-block h-[35px] min-h-[1em] w-0.5 self-stretch bg-neutral-200 dark:bg-white/10 m-1"></div>
+          <button className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2">
+            <Icon icon="radix-icons:group" className="size-6" />
+          </button>
+          <button
+            className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2"
+            onClick={handleDelete}
+          >
+            <TrashIcon className="size-6 " />
+          </button>
+          <button className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2">
+            <Square2StackIcon className="size-6 " />
+          </button>
+          <button className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2">
+            <Icon icon="material-symbols:shift-lock" className="size-6" />
           </button>
         </>
       )}

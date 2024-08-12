@@ -52,6 +52,9 @@ const sketchElementsSlice = createSlice({
                 if (!curve) return
                 curve.points = curve.points.map(p => movePoint(p, action.payload.displacement))
             })
+        },
+        deleteCurves(state, action: PayloadAction<{curveIDs: string[]}>) {
+            state.curves = state.curves.filter((curve) => !action.payload.curveIDs.includes(curve.id))
         }
 
     },
@@ -60,7 +63,7 @@ const sketchElementsSlice = createSlice({
       },
 })
 
-export const { addNewCurve, replaceCurve, clearCurves, updateThisCurve, moveCurves, updateCurves } = sketchElementsSlice.actions
+export const { addNewCurve, replaceCurve, clearCurves, updateThisCurve, moveCurves, updateCurves, deleteCurves } = sketchElementsSlice.actions
 export const selectCurves = (state: RootState) => state.sketchElements.present.curves
 export const selectShowUndoArrow = (state: RootState) => state.sketchElements.past.length !== 0
 export const selectShowRedoArrow = (state: RootState) => state.sketchElements.future.length !== 0

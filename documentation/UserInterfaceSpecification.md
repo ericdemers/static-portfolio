@@ -4,7 +4,7 @@
 
 ### Purpose
 
-The purpose of this document is to provide an accurate specification of Sketcher<sup><span style="color:rgb(190,190,190); font-weight:normal; font-size:0.7em">BSpline</span></sup> application user inteface. This specification defines the observable external behavior of the program. These are therefore the elements allow you to interact with the application.
+The purpose of this document is to provide an accurate specification of Sketcher<sup><span style="color:rgb(190,190,190); font-weight:normal; font-size:0.7em">BSpline</span></sup> application user inteface. This specification defines the observable external behavior of the program. These are therefore the elements that allow you to interact with the application.
 
 ### Overview
 
@@ -16,17 +16,15 @@ The application aims not only to be easy to use but as transparent as possible i
 
 ### Projects
 
-The Sketcher<sup><span style="color:rgb(190,190,190); font-weight:normal; font-size:0.7em">BSpline</span></sup> application allows you to edit a curve while controlling the geometric properties of that curve. It also allows you to deform several selected curves at once using general transformations of the plane. The combination of these two types of deformations, local and global, in a fluid manner, constitutes the main asset of the software.
+You can edit a curve while controlling the geometric properties of that curve. You can also deform several selected curves at once using general transformations of the plane. The combination of these two types of deformations, local and global, in a fluid manner, constitutes the main asset of the software.
 
 Geometric properties include symmetries, continuity and basic geometric contraints including the number of inflections and curvature extrema.
 
 ## Presentation of the mathematical core
 
-The mathematical core of the application rests on the shoulders of giants. Let us think for example of Felix Klein (1849-1925), Sophius Lie (1842-1899) and Jean Gaston Darboux (1842-1917) for the groups of transformations of the plane or Sergei Bernstein (1880-1968) for the Bernstein polynomials and Isaac Jacob Schoenberg (1903-1990) for the splines. These works are at the origin of the rich current literature from wich we draw.
+The mathematical core of the application rests on the shoulders of giants. Let us think for example of Felix Klein (1849-1925), Sophius Lie (1842-1899) and Jean Gaston Darboux (1842-1917) for the groups of transformations of the plane or Sergei Bernstein (1880-1968) for the Bernstein polynomials and Isaac Jacob Schoenberg (1903-1990) for the splines. These works are at the origin of the rich current literature from which we draw.
 
-The “b-spline-algorithms” package that we plan to publish on npm aims for the analytical processing of b-splines.
-
-A trust region interior point optimizer and a library to assist optimization problem formulation are also key ingredients.
+The “b-spline-algorithms” package that we plan to publish on npm aims for the analytical processing of b-splines. A trust region interior point optimizer and a library to assist optimization problem formulation are also key ingredients.
 
 ### Interaction with geometric elements
 
@@ -44,7 +42,7 @@ When one or more curve are drawn on the canvas, the selection rectangle icon bec
 
 Anytime a curve is selected, a trash can icon and a copy icon are displayed on the top menu.
 
-When a curve is selected, the set of currently applied constraints is displayed graphically directly on the curve and the set of possible constraints to add are shown on the left menu. To add one you just press the icon. To delete a constraint, you select it and press the trash can icon.
+When a curve is selected, the set of currently applied constraints is displayed graphically directly on the curve and the set of possible constraints to add are shown on the right menu. To add one you just press the icon. To delete a constraint, you select it and press the trash can icon.
 
 To rotate a symmetry axis, for example, you select a curve and apply a plan transformation to the curve.
 
@@ -56,15 +54,15 @@ Controlling the number of points of curvature extrema allows you to obtain incre
 
 ### Structural analysis
 
-The application can be in different states. The main states are: Freehand drawing of a curve, drawing of a straight line, drawing of a circular arc, single selection and multiple selection of curves.
+The application can be in different states. The main states are: Freehand drawing of a curve, drawing of a straight line, drawing of a circular arc, drawing of a spiral, single selection and multiple selection of curves.
 
 In addition to these main states, the main current actions are : no action in progress, drawing of a curve, moving the selected curves, moving a control point.
 
 Sketch elements are stored in a list with a unique identification number. The sketch elements are the different types of b-spline curves and the different types of geometric constraints that can be applied to these b-spline curves.
 
-Each curve contains the list of constraints that apply to itself. If a curve is deleted then all constraints in the list must also be deleted.
+Each curve contains the list of constraints that apply to itself. If a curve is deleted all constraints in the list are also deleted.
 
-A constraint can be shared between different ends of curves. Then the constraints must also be deleted for the other curve with the exception of symmetry constraints.
+A constraint can be shared between different curves. Then the constraints must also be deleted for the other curve with the exception of symmetry constraints.
 
 ## Menus
 
@@ -92,7 +90,7 @@ A full conic is modeled using two b-spline join at their ends with continuity co
 
 For any b-spline, it is possible to close the curve by bringing the ends together. Then nodes are added in order to superpose $d$ nodes where $d$ is the degree of the curve. Multiple nodes must be removed at the junction to increase continuity if necessary.
 
-It is possible to cut a curve by inserting enough knots and then choosing the scissor which is added to the menu. It is also possible slide enough knots together to cut a curve. If the result is two curve than you must confirm the seperation by clicking the scissor or just by deselecting the curve.
+It is possible to cut a curve by inserting enough knots and then choosing the scissor which is added to the menu. It is also possible to slide enough knots together to cut a curve. If the result is two curve than you must confirm the seperation by clicking the scissor or just by deselecting the curve.
 
 The icon for the control over the curvature extrema is an ellipse with 4 dots at its curvature extrema. An icon with a dot on the inflection of a cubic also allows you to activate control over the inflections.
 
@@ -102,7 +100,7 @@ When two extremum points of curvature come into contact, a red X is added to the
 
 The different type of b-spline curves are non rational, rational and complex. Each of these has a pythagorean hodograph subset.
 
-To change the type of a given curve, the options are line segment with two control points at the ends, an added slider for rational curves, an added control point for complex curves and an added arrow for Pythagorean hodograph curves. The current selection is always displayed on the menu. Selecting the icon displays the other options. For Pythagorean hodograph curves there is an icon on the right toolbar to change the direction of the arrow.
+To change the type of a given curve, the options are line segment with two control points at the ends, an added slider for rational curves, an added control point for complex curves and an added arrow for Pythagorean hodograph curves. The current selection is displayed on the right menu when a single curve is selected. Selecting the icon displays the other options. For Pythagorean hodograph curves there is an icon on the right toolbar to change the direction of the arrow.
 
 ## Curvature extrema and inflections
 
@@ -113,8 +111,6 @@ To change the type of a given curve, the options are line segment with two contr
 ## Glossary of terms
 
 ## Special considerations
-
-The control polygon is a b-spline of degree 1. For a symmetric curve a representative segment of the curve with its corresponding periodic b-spline basis is drawn.
 
 ## Undo Redo and the history of curve modifications
 

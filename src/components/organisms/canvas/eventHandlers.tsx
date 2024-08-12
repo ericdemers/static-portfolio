@@ -34,6 +34,7 @@ import {
   replaceCurve,
   selectCurves,
   updateThisCurve,
+  deleteCurves,
 } from "../../../sketchElements/sketchElementsSlice"
 import type { Curve } from "../../../sketchElements/curveTypes"
 
@@ -403,31 +404,33 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
 
   const handleTouchMove = useCallback(
     (event: TouchEvent) => {
-      if (event.touches.length === 1) {
-        const coordinates = getTouchCoordinates(event)
-        if (!pressDown || !coordinates) return
-        handleMove(coordinates)
-        setNewestMousePosition(coordinates) //touchend event does not give its position
-      }
-      if (event.touches.length === 2) {
-        const coordinates = getTwoFingersTouchCoordinates(event)
-        if (!coordinates || !twoFingersTouch) return
-        const deltaX0 = coordinates.p0.x - twoFingersTouch.p0.x
-        const deltaY0 = coordinates.p0.y - twoFingersTouch.p0.y
-        const newDistanceX = coordinates.p1.x - coordinates.p0.x
-        const newDistanceY = coordinates.p1.y - coordinates.p0.y
-        const initialDistanceX = twoFingersTouch.p1.x - twoFingersTouch.p0.x
-        const initialDistanceY = twoFingersTouch.p1.y - twoFingersTouch.p0.y
-        const newDistance = Math.hypot(newDistanceX, newDistanceY)
-        const initialDistance = Math.hypot(initialDistanceX, initialDistanceY)
-        dispatch(
-          zoomWithTwoFingers({
-            deltaX: deltaX0,
-            deltaY: deltaY0,
-            newZoom: (zoom * newDistance) / initialDistance,
-          }),
-        )
-      }
+      flushSync(() => {
+        if (event.touches.length === 1) {
+          const coordinates = getTouchCoordinates(event)
+          if (!pressDown || !coordinates) return
+          handleMove(coordinates)
+          setNewestMousePosition(coordinates) //touchend event does not give its position
+        }
+        if (event.touches.length === 2) {
+          const coordinates = getTwoFingersTouchCoordinates(event)
+          if (!coordinates || !twoFingersTouch) return
+          const deltaX0 = coordinates.p0.x - twoFingersTouch.p0.x
+          const deltaY0 = coordinates.p0.y - twoFingersTouch.p0.y
+          const newDistanceX = coordinates.p1.x - coordinates.p0.x
+          const newDistanceY = coordinates.p1.y - coordinates.p0.y
+          const initialDistanceX = twoFingersTouch.p1.x - twoFingersTouch.p0.x
+          const initialDistanceY = twoFingersTouch.p1.y - twoFingersTouch.p0.y
+          const newDistance = Math.hypot(newDistanceX, newDistanceY)
+          const initialDistance = Math.hypot(initialDistanceX, initialDistanceY)
+          dispatch(
+            zoomWithTwoFingers({
+              deltaX: deltaX0,
+              deltaY: deltaY0,
+              newZoom: (zoom * newDistance) / initialDistance,
+            }),
+          )
+        }
+      })
     },
     [
       dispatch,
@@ -473,15 +476,25 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     [dispatch, zoom],
   )
 
+  const handleDelete = useCallback(() => {
+    if (!controlPolygonsDisplayed) return
+    dispatch(deleteCurves({ curveIDs: controlPolygonsDisplayed.curveIDs }))
+    dispatch(unselectCurvesAndCreationTool())
+  }, [controlPolygonsDisplayed, dispatch])
+
   const handleKeyPress = useCallback(
     (event: KeyboardEvent) => {
       switch (event.key) {
         case "Escape":
           dispatch(unselectCurvesAndCreationTool())
           break
+        case "Delete":
+        case "Backspace":
+          handleDelete()
+          break
       }
     },
-    [dispatch],
+    [dispatch, handleDelete],
   )
 
   useEffect(() => {
