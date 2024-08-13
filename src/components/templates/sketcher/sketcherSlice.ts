@@ -158,6 +158,10 @@ const sketcherSlice = createSlice({
             } else {
                 state.controlPolygonsDisplayed = {curveIDs: [action.payload.curveID], selectedControlPoint: null}
             }
+        },
+        selectControlPoint(state, action: PayloadAction<{curveID: string, controlPointIndex: number}>) {
+            if (!state.controlPolygonsDisplayed) return
+            state.controlPolygonsDisplayed.selectedControlPoint = action.payload
         }
         
     },
@@ -180,7 +184,7 @@ export const { setSketcherSize, zoomIn, zoomOut, zoomWithTwoFingers, scroll, set
      activateFreeDrawFromInitialView, toggleFreeDrawCreationTool, 
      toggleLineCreationTool, toggleCircleArcCreationTool, 
      resetCanvas, setTheme, toggleTheme, 
-    unselectCreationTool, setControlPolygonsDisplayed, unselectCurvesAndCreationTool, selectASingleCurve, zoomReset} = sketcherSlice.actions
+    unselectCreationTool, setControlPolygonsDisplayed, unselectCurvesAndCreationTool, selectASingleCurve, zoomReset, selectControlPoint} = sketcherSlice.actions
 
 export default sketcherSlice.reducer
 

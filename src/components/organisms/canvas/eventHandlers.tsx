@@ -21,6 +21,7 @@ import {
   zoomWithTwoFingers,
   zoomOut,
   zoomIn,
+  selectControlPoint,
 } from "../../templates/sketcher/sketcherSlice"
 import {
   createCurve,
@@ -166,6 +167,26 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     [],
   )
 
+  const findControlPointAtPosition = useCallback(
+    (point: Coordinates, curve: Curve, maxDistance = 1) => {
+      const index = curve.points.findIndex(
+        p => distance(point, p) < maxDistance / zoom,
+      )
+      if (index === -1) return null
+      return { curveID: curve.id, index: index }
+    },
+    [zoom],
+  )
+
+  const getControlPointAtPosition = useCallback(
+    (point: Coordinates, curves: Curve[], maxDistance = 1) => {
+      return curves
+        .map(curve => findControlPointAtPosition(point, curve, maxDistance))
+        .find(value => value !== null)
+    },
+    [findControlPointAtPosition],
+  )
+
   const getCurveAtPosition = useCallback(
     (point: Coordinates, curves: readonly Curve[], zoom: number) => {
       return curves.find(curve => onCurve(point, curve, zoom))
@@ -230,8 +251,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
       setInitialMousePosition(coordinates)
       setMouseMoveThreshold("not exceeded")
       switch (activeTool) {
-        case "none":
-        case "singleSelection": {
+        case "none": {
           const curve = getCurveAtPosition(coordinates, curves, zoom)
           if (curve) {
             setAction("moving curves")
@@ -239,12 +259,49 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
           }
           break
         }
+        case "singleSelection":
+          {
+            if (!controlPolygonsDisplayed) return
+            const selectedCurves = curves.filter(curve =>
+              controlPolygonsDisplayed.curveIDs.includes(curve.id),
+            )
+            const selectedControlPoint = getControlPointAtPosition(
+              coordinates,
+              selectedCurves,
+              15,
+            )
+            if (selectedControlPoint) {
+              setAction("moving a control point")
+              dispatch(
+                selectControlPoint({
+                  curveID: selectedControlPoint.curveID,
+                  controlPointIndex: selectedControlPoint.index,
+                }),
+              )
+            } else {
+              const curve = getCurveAtPosition(coordinates, curves, zoom)
+              if (curve) {
+                setAction("moving curves")
+                dispatch(selectASingleCurve({ curveID: curve.id }))
+              }
+            }
+          }
+          break
       }
       if (initialView || (curves.length === 0 && activeTool === "none")) {
         dispatch(activateFreeDrawFromInitialView())
       }
     },
-    [activeTool, curves, dispatch, getCurveAtPosition, initialView, zoom],
+    [
+      activeTool,
+      controlPolygonsDisplayed,
+      curves,
+      dispatch,
+      getControlPointAtPosition,
+      getCurveAtPosition,
+      initialView,
+      zoom,
+    ],
   )
 
   const handleMouseMoveTreshold = useCallback(

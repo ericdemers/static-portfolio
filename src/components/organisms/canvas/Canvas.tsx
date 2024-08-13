@@ -57,7 +57,15 @@ function Canvas(props: Readonly<CanvasProps>) {
         controlPolygonsDisplayed.curveIDs.includes(curve.id),
       )
       selectedCurves.forEach(curve => {
-        drawControlPoints(context, curve, null)
+        let selectedControlPointIndex = null
+        if (
+          controlPolygonsDisplayed.selectedControlPoint &&
+          curve.id === controlPolygonsDisplayed.selectedControlPoint.curveID
+        ) {
+          selectedControlPointIndex =
+            controlPolygonsDisplayed.selectedControlPoint.controlPointIndex
+        }
+        drawControlPoints(context, curve, selectedControlPointIndex)
       })
     }
     context.restore()
