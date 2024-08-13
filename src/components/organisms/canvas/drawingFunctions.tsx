@@ -126,8 +126,30 @@ export const useDrawingFunctions = () => {
     [theme, zoom],
   )
 
+  const drawControlPolygon = useCallback(
+    (context: CanvasRenderingContext2D, curve: Curve) => {
+      const color =
+        theme === "dark" ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.2)"
+
+      switch (curve.type) {
+        case CurveType.NonRational:
+          context.lineJoin = "round"
+          context.lineWidth = 0
+          context.beginPath()
+          context.strokeStyle = color
+          context.lineWidth = 1.2 / zoom
+          context.moveTo(curve.points[0].x, curve.points[0].y)
+          curve.points.forEach(point => context.lineTo(point.x, point.y))
+          context.stroke()
+          break
+      }
+    },
+    [theme, zoom],
+  )
+
   return {
     drawCurve,
     drawControlPoints,
+    drawControlPolygon,
   }
 }

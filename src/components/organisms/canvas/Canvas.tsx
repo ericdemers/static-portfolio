@@ -25,7 +25,8 @@ function Canvas(props: Readonly<CanvasProps>) {
   const scrollX = useAppSelector(selectScrollX)
   const scrollY = useAppSelector(selectScrollY)
   const [pixelRatio, setPixelRatio] = useState<number>(1)
-  const { drawCurve, drawControlPoints } = useDrawingFunctions()
+  const { drawCurve, drawControlPoints, drawControlPolygon } =
+    useDrawingFunctions()
   const curves = useAppSelector(selectCurves)
   const controlPolygonsDisplayed = useAppSelector(selectControlPolygonsDispayed)
 
@@ -61,6 +62,7 @@ function Canvas(props: Readonly<CanvasProps>) {
             ? controlPolygonsDisplayed.selectedControlPoint.controlPointIndex
             : null
         drawControlPoints(context, curve, selectedControlPointIndex)
+        drawControlPolygon(context, curve)
       })
     }
     context.restore()
@@ -70,6 +72,7 @@ function Canvas(props: Readonly<CanvasProps>) {
     controlPolygonsDisplayed,
     curves,
     drawControlPoints,
+    drawControlPolygon,
     drawCurve,
     pixelRatio,
     scrollX,

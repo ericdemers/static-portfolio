@@ -5,6 +5,7 @@ export enum ConstraintType {
     PositionConstraint,
     ContinuityConstraint,
     SymmetryConstraint,
+    DifferentialConstraint,
 }
 
 export type Center = { point: Coordinates }
@@ -23,7 +24,7 @@ export type PositionConstraint = Readonly<{
 export type ContinuityConstraint = Readonly<{
     id: string,
     type: ConstraintType.ContinuityConstraint
-    curveID: number | [number, number]
+    curveID: string | [string, string]
     controlPointIndex: number | [number, number]
     order: number,
 }>
@@ -47,4 +48,12 @@ export type Symmetries = Readonly<{
     matrices : TransformationMatrix[]
 }>
 
-export type Constraint = PositionConstraint | ContinuityConstraint | Symmetries
+export type DifferentialConstraint = Readonly<{
+    id: string,
+    type : ConstraintType.DifferentialConstraint
+    curveID: string
+    inflection: boolean
+    curvatureExtrema: boolean
+}>
+
+export type Constraint = PositionConstraint | ContinuityConstraint | Symmetries | DifferentialConstraint

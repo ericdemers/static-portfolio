@@ -39,6 +39,7 @@ import {
   updateThisCurve,
   deleteCurves,
   duplicateCurves,
+  moveControlPoint,
 } from "../../../sketchElements/sketchElementsSlice"
 import type { Curve } from "../../../sketchElements/curveTypes"
 import { ActionCreators } from "redux-undo"
@@ -323,11 +324,12 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     (newCoordinates: Coordinates) => {
       if (!initialMousePosition) return
       handleMouseMoveTreshold(initialMousePosition, newCoordinates)
-      const deltaX = newCoordinates.x - initialMousePosition.x
-      const deltaY = newCoordinates.y - initialMousePosition.y
+      //const deltaX = newCoordinates.x - initialMousePosition.x
+      //const deltaY = newCoordinates.y - initialMousePosition.y
+      const v = displacement(initialMousePosition, newCoordinates)
       switch (activeTool) {
         case "none":
-          dispatch(scroll({ deltaX, deltaY }))
+          dispatch(scroll({ deltaX: v.x, deltaY: v.y }))
           break
         case "freeDraw":
           draw(
@@ -348,7 +350,6 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
                 controlPolygonsDisplayed &&
                 mouseMoveThreshold === "exceeded"
               ) {
-                const v = displacement(initialMousePosition, newCoordinates)
                 dispatch(
                   moveCurves({
                     displacement: v,
@@ -357,6 +358,12 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
                 )
                 setInitialMousePosition(newCoordinates)
               }
+              break
+            case "moving a control point":
+              dispatch(
+                moveControlPoint({ displacement: v, controlPolygonsDisplayed }),
+              )
+              setInitialMousePosition(newCoordinates)
               break
           }
           break

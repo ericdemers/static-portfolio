@@ -6,6 +6,8 @@ type Theme = "light" | "dark"
 
 type ActiveToolsType = "none" | "freeDraw" | "line" | "circleArc" | "spiral" | "singleSelection" | "multipleSelection"
 
+export type ControlPolygonsDisplayed = {curveIDs: string[], selectedControlPoint: {curveID: string, controlPointIndex: number} | null  } | null
+
 type SketcherState = {
     theme: Theme
     zoom: number
@@ -15,7 +17,7 @@ type SketcherState = {
     sketcherHeight: number
     activeTool: ActiveToolsType
     initialView: boolean
-    controlPolygonsDisplayed: {curveIDs: string[], selectedControlPoint: {curveID: string, controlPointIndex: number} | null  } | null 
+    controlPolygonsDisplayed: ControlPolygonsDisplayed
 }
 
 const initialState: SketcherState = {

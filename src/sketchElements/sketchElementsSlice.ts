@@ -5,6 +5,7 @@ import type { Curve } from './curveTypes';
 import type { Constraint } from './constraintTypes';
 import { movePoint } from './coordinates';
 import { duplicateCurve } from './curve';
+import type { ControlPolygonsDisplayed } from '../components/templates/sketcher/sketcherSlice';
 
 
 interface sketchElementsState {
@@ -54,6 +55,15 @@ const sketchElementsSlice = createSlice({
                 curve.points = curve.points.map(p => movePoint(p, action.payload.displacement))
             })
         },
+        moveControlPoint(state, action: PayloadAction<{displacement: {x: number, y: number}, controlPolygonsDisplayed: ControlPolygonsDisplayed}>) {
+            if (!action.payload.controlPolygonsDisplayed || !action.payload.controlPolygonsDisplayed.selectedControlPoint) return
+            const curveID = action.payload.controlPolygonsDisplayed.selectedControlPoint.curveID
+            const index = action.payload.controlPolygonsDisplayed.selectedControlPoint.controlPointIndex
+            const curve = state.curves.find((c)=> (c.id === curveID))
+            if (!curve) return
+            curve.points[index] = movePoint(curve.points[index], action.payload.displacement)
+
+        },
         deleteCurves(state, action: PayloadAction<{curveIDs: string[]}>) {
             state.curves = state.curves.filter((curve) => !action.payload.curveIDs.includes(curve.id))
         },
@@ -67,7 +77,7 @@ const sketchElementsSlice = createSlice({
       },
 })
 
-export const { addNewCurve, replaceCurve, clearCurves, updateThisCurve, moveCurves, updateCurves, deleteCurves, duplicateCurves } = sketchElementsSlice.actions
+export const { addNewCurve, replaceCurve, clearCurves, updateThisCurve, moveCurves, moveControlPoint, updateCurves, deleteCurves, duplicateCurves } = sketchElementsSlice.actions
 export const selectCurves = (state: RootState) => state.sketchElements.present.curves
 export const selectShowUndoArrow = (state: RootState) => state.sketchElements.past.length !== 0
 export const selectShowRedoArrow = (state: RootState) => state.sketchElements.future.length !== 0
