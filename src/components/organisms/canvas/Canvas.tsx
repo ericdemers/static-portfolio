@@ -1,6 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react"
 import { useAppSelector } from "../../../app/hooks"
-//import { selectTheme } from "../mainMenu/mainMenuSlice"
 
 import { useEventHandlers } from "./eventHandlers"
 import {
@@ -50,21 +49,17 @@ function Canvas(props: Readonly<CanvasProps>) {
     context.translate(scrollX, scrollY)
     curves.forEach(curve => {
       drawCurve(context, curve)
-      //drawControlPoints(context, curve, null)
     })
     if (controlPolygonsDisplayed) {
       const selectedCurves = curves.filter(curve =>
         controlPolygonsDisplayed.curveIDs.includes(curve.id),
       )
       selectedCurves.forEach(curve => {
-        let selectedControlPointIndex = null
-        if (
+        const selectedControlPointIndex =
           controlPolygonsDisplayed.selectedControlPoint &&
-          curve.id === controlPolygonsDisplayed.selectedControlPoint.curveID
-        ) {
-          selectedControlPointIndex =
-            controlPolygonsDisplayed.selectedControlPoint.controlPointIndex
-        }
+          controlPolygonsDisplayed.selectedControlPoint.curveID === curve.id
+            ? controlPolygonsDisplayed.selectedControlPoint.controlPointIndex
+            : null
         drawControlPoints(context, curve, selectedControlPointIndex)
       })
     }
