@@ -18,9 +18,7 @@ export enum Closed {
 export type Curve = {
     id: string
     type: CurveType
-    //points: ReadonlyArray<Coordinates>
     points: Coordinates[]
-    //knots: ReadonlyArray<number>
     knots: number[]
     pythagoreanHodograph?: PythagoreanHodograph
     closed?: Closed
