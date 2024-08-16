@@ -81,7 +81,8 @@ function Canvas(props: Readonly<CanvasProps>) {
     zoom,
   ])
 
-  const bg = theme === "dark" ? "black" : "white"
+  //const bg = theme === "dark" ? "black" : "white"
+  const bg = theme === "light" ? "rgba(253, 253, 253, 1)" : "rgba(0, 0, 0, 1)"
 
   return (
     <canvas

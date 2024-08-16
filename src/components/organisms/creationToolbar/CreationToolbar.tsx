@@ -4,7 +4,12 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline"
 import { Icon } from "@iconify/react"
-import { CircleArcIcon, FreeDrawIcon, LineIcon } from "../../../icons"
+import {
+  CircleArcIcon,
+  FreeDrawIcon,
+  LineIcon,
+  SimplifyIcon,
+} from "../../../icons"
 
 import { useAppDispatch, useAppSelector } from "../../../app/hooks"
 import { useCallback } from "react"
@@ -66,7 +71,7 @@ function CreationToolbar() {
   }, [controlPolygonsDisplayed, dispatch, zoom])
 
   return (
-    <div className="flex place-content-around bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-400 p-1 shadow rounded-lg select-none">
+    <div className="flex h-12 place-content-around bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-400 p-1 shadow rounded-lg select-none">
       {initialView ? (
         <button
           className="hover:bg-neutral-100 dark:hover:bg-neutral-700 p-2 rounded-lg"

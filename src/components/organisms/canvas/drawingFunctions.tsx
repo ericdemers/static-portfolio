@@ -14,7 +14,7 @@ export const useDrawingFunctions = () => {
   const drawCurve = useCallback(
     (context: CanvasRenderingContext2D, curve: Curve) => {
       const lineColor =
-        theme === "dark" ? "rgba(255, 255, 255, 1)" : "rgba(0, 0, 0, 1)"
+        theme === "dark" ? "rgba(200, 200, 200, 1)" : "rgba(0, 0, 0, 1)"
       switch (curve.type) {
         case CurveType.NonRational:
           {

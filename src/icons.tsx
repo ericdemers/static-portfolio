@@ -149,3 +149,17 @@ export const CircleArcIcon = createIcon(
   </g>,
   modifiedTablerIconProps,
 )
+
+export const SimplifyIcon = createIcon(
+  <g>
+    <path
+      d="
+      M 1 3 C 1 4 3.5 7.25, 5.5 2 S 9 10 12 5 S 15 8, 18, 4
+      M 1 11.5 C 6 8.25, 8.5 10.25, 11.5 12 S 17 12, 18 11.5
+      M 1 18 L 18 18
+      "
+      strokeWidth="1.5"
+    />
+  </g>,
+  modifiedTablerIconProps,
+)

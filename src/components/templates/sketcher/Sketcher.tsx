@@ -5,6 +5,8 @@ import CreationToolbar from "../../organisms/creationToolbar/CreationToolbar"
 import MainMenu from "../../organisms/mainMenu/MainMenu"
 import { setSketcherSize } from "./sketcherSlice"
 import { BottomMenu } from "../../organisms/bottomMenu/BottomMenu"
+import RightMenu from "../../organisms/rightMenu/RightMenu"
+import KnotVectorEditor from "../../organisms/knotVectorEditor/KnotVectorEditor"
 
 interface SketcherProps {
   sketcherWidth: number
@@ -22,11 +24,21 @@ function Sketcher(props: Readonly<SketcherProps>) {
   return (
     <>
       <Canvas canvasWidth={sketcherWidth} canvasHeight={sketcherHeight} />
-      <div className="absolute left-4 right-4 bottom-6 top-4 pointer-events-none">
+      <div className="absolute left-4 right-4 bottom-6 top-6 pointer-events-none">
         <div className="flex flex-col h-full justify-between">
-          <div className="grid grid-cols-3 gap-8 pointer-events-auto">
-            <MainMenu />
-            <CreationToolbar />
+          <div className="grid grid-cols-[3fr_9fr_3fr] gap-1 pointer-events-none">
+            <div className="pointer-events-auto">
+              <MainMenu />
+            </div>
+            <div className="pointer-events-auto">
+              <CreationToolbar />
+            </div>
+            <div className="flex col-start-3 row-start-2 justify-end pointer-events-auto">
+              <RightMenu />
+            </div>
+          </div>
+          <div className="absolute top-2/3 left-1/3 right-[5%] bottom-[5%] pointer-events-none">
+            <KnotVectorEditor />
           </div>
           <BottomMenu />
         </div>

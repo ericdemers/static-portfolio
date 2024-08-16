@@ -83,10 +83,12 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
   const getMouseCoordinates = useCallback(
     (event: MouseEvent): Coordinates | null => {
       if (!canvas) return null
+      const rect = canvas.getBoundingClientRect()
       const viewportCoords = {
-        clientX: event.clientX - canvas.offsetLeft,
-        clientY: event.clientY - canvas.offsetTop,
+        clientX: event.clientX - rect.left,
+        clientY: event.clientY - rect.top,
       }
+
       return viewportCoordsToSceneCoords(viewportCoords, {
         zoom,
         offsetLeft: 0,
@@ -101,9 +103,14 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
   const getTouchCoordinates = useCallback(
     (event: TouchEvent): Coordinates | null => {
       if (!canvas) return null
+      // const viewportCoords = {
+      //   clientX: event.touches[0].clientX - canvas.offsetLeft,
+      //   clientY: event.touches[0].clientY - canvas.offsetTop,
+      // }
+      const rect = canvas.getBoundingClientRect()
       const viewportCoords = {
-        clientX: event.touches[0].clientX - canvas.offsetLeft,
-        clientY: event.touches[0].clientY - canvas.offsetTop,
+        clientX: event.touches[0].clientX - rect.left,
+        clientY: event.touches[0].clientY - rect.top,
       }
       return viewportCoordsToSceneCoords(viewportCoords, {
         zoom,
@@ -365,6 +372,9 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
               )
               setInitialMousePosition(newCoordinates)
               break
+            case "none":
+              dispatch(scroll({ deltaX: v.x, deltaY: v.y }))
+              break
           }
           break
       }
@@ -427,11 +437,13 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
 
   const handleMouseMove = useCallback(
     (event: MouseEvent) => {
-      const coordinates = getMouseCoordinates(event)
-      if (!coordinates) return
-      if (pressDown) {
-        handleMove(coordinates)
-      }
+      flushSync(() => {
+        const coordinates = getMouseCoordinates(event)
+        if (!coordinates) return
+        if (pressDown) {
+          handleMove(coordinates)
+        }
+      })
     },
     [getMouseCoordinates, handleMove, pressDown],
   )
