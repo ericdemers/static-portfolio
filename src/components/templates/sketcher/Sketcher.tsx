@@ -21,7 +21,7 @@ function Sketcher(props: Readonly<SketcherProps>) {
   const { sketcherWidth, sketcherHeight } = props
   const dispatch = useAppDispatch()
   const showKnotVectorEditor = useAppSelector(selectShowKnotVectorEditor)
-  const controlPolygonsDispayed = useAppSelector(selectControlPolygonsDispayed)
+  const controlPolygonsDisplayed = useAppSelector(selectControlPolygonsDispayed)
 
   useEffect(() => {
     dispatch(setSketcherSize({ width: sketcherWidth, height: sketcherHeight }))
@@ -39,15 +39,15 @@ function Sketcher(props: Readonly<SketcherProps>) {
             <div className="pointer-events-auto">
               <CreationToolbar />
             </div>
-            {controlPolygonsDispayed?.curveIDs.length &&
-            controlPolygonsDispayed?.curveIDs.length > 0 ? (
+            {controlPolygonsDisplayed?.curveIDs.length &&
+            controlPolygonsDisplayed?.curveIDs.length > 0 ? (
               <div className="flex col-start-3 row-start-2 justify-end pointer-events-auto">
                 <RightMenu />
               </div>
             ) : null}
           </div>
           {showKnotVectorEditor &&
-          controlPolygonsDispayed?.curveIDs.length === 1 ? (
+          controlPolygonsDisplayed?.curveIDs.length === 1 ? (
             <div className="absolute top-2/3 left-1/3 right-[5%] bottom-[5%] pointer-events-none">
               <KnotVectorEditor />
             </div>

@@ -102,25 +102,31 @@ function CreationToolbar() {
           <button className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2">
             <Icon icon="ph:spiral" className="size-6" />
           </button>
-          <div className="inline-block h-[35px] min-h-[1em] w-0.5 self-stretch bg-neutral-200 dark:bg-white/10 m-1"></div>
-          <button className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2">
-            <Icon icon="radix-icons:group" className="size-6" />
-          </button>
-          <button
-            className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2"
-            onClick={handleDelete}
-          >
-            <TrashIcon className="size-6 " />
-          </button>
-          <button
-            className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2"
-            onClick={handleDuplicate}
-          >
-            <Square2StackIcon className="size-6 " />
-          </button>
-          <button className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2">
-            <Icon icon="material-symbols:shift-lock" className="size-6" />
-          </button>
+
+          {controlPolygonsDisplayed?.curveIDs.length &&
+          controlPolygonsDisplayed?.curveIDs.length > 0 ? (
+            <>
+              <div className="inline-block h-[35px] min-h-[1em] w-0.5 self-stretch bg-neutral-200 dark:bg-white/10 m-1"></div>
+              {/*               <button className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2">
+                <Icon icon="radix-icons:group" className="size-6" />
+              </button> */}
+              <button
+                className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2"
+                onClick={handleDuplicate}
+              >
+                <Square2StackIcon className="size-6 " />
+              </button>
+              <button
+                className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2"
+                onClick={handleDelete}
+              >
+                <TrashIcon className="size-6 " />
+              </button>
+              <button className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2">
+                <Icon icon="material-symbols:shift-lock" className="size-6" />
+              </button>
+            </>
+          ) : null}
         </>
       )}
     </div>
