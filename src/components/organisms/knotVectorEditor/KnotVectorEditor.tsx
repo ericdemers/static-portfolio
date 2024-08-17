@@ -21,6 +21,7 @@ import { createColorPaletteRGB } from "../../../utilities/color"
 import {
   moveKnot,
   selectCurves,
+  updateCurves,
 } from "../../../sketchElements/sketchElementsSlice"
 import type { Coordinates } from "../../../sketchElements/coordinates"
 import { computeDegree } from "../../../sketchElements/curve"
@@ -462,9 +463,10 @@ const KnotVectorEditor = () => {
       setInitialMouseXPosition(null)
       if (editorState === "moving a knot") {
         setEditorState("selected knot")
+        dispatch(updateCurves({ curves: curves.slice() }))
       }
     },
-    [editorState],
+    [curves, dispatch, editorState],
   )
 
   const handleMouseUp = useCallback(
