@@ -89,3 +89,23 @@ export function computeDegree(curve: Curve) {
     }
     
 }
+
+export function computeMultiplicityRight(knots: number[], index: number) {
+    let multiplicity = 0
+    let i = index + 1
+    while (i < knots.length && knots[index] > knots[i])  {
+        i += 1
+        multiplicity += 1
+    }
+    return multiplicity
+} 
+
+export function computeMultiplicityLeft(knots: number[], index: number) {
+    let multiplicity = 0
+    let i = index - 1
+    while (i > 0 && knots[index] < knots[i])  {
+        i -= 1
+        multiplicity += 1
+    }
+    return multiplicity
+} 

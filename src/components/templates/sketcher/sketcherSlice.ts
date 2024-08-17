@@ -18,6 +18,7 @@ type SketcherState = {
     activeTool: ActiveToolsType
     initialView: boolean
     controlPolygonsDisplayed: ControlPolygonsDisplayed
+    showKnotVectorEditor: boolean
 }
 
 const initialState: SketcherState = {
@@ -30,6 +31,7 @@ const initialState: SketcherState = {
     activeTool: "none",
     initialView: true,
     controlPolygonsDisplayed: null,
+    showKnotVectorEditor: false,
 }
 
 const zoomFactor = 1.2
@@ -164,7 +166,10 @@ const sketcherSlice = createSlice({
         selectControlPoint(state, action: PayloadAction<{curveID: string, controlPointIndex: number}>) {
             if (!state.controlPolygonsDisplayed) return
             state.controlPolygonsDisplayed.selectedControlPoint = action.payload
-        }
+        },
+        toggleShowKnotVectorEditor(state) {
+            state.showKnotVectorEditor = !state.showKnotVectorEditor
+        },
         
     },
     selectors: {
@@ -174,19 +179,22 @@ const sketcherSlice = createSlice({
         selectActiveTool: sketcher => sketcher.activeTool,
         selectInitialView: sketcher => sketcher.initialView,
         selectTheme: sketcher => sketcher.theme,
-        selectControlPolygonsDispayed: sketcher => sketcher.controlPolygonsDisplayed
+        selectControlPolygonsDispayed: sketcher => sketcher.controlPolygonsDisplayed,
+        selectShowKnotVectorEditor: sketcher => sketcher.showKnotVectorEditor
     },
         
 })
 
 export const { selectZoom, selectScrollX, selectScrollY, selectActiveTool, 
-    selectInitialView, selectTheme, selectControlPolygonsDispayed } = sketcherSlice.selectors
+    selectInitialView, selectTheme, selectControlPolygonsDispayed, selectShowKnotVectorEditor } = sketcherSlice.selectors
 
 export const { setSketcherSize, zoomIn, zoomOut, zoomWithTwoFingers, scroll, setInitialView, 
      activateFreeDrawFromInitialView, toggleFreeDrawCreationTool, 
      toggleLineCreationTool, toggleCircleArcCreationTool, 
      resetCanvas, setTheme, toggleTheme, 
-    unselectCreationTool, setControlPolygonsDisplayed, unselectCurvesAndCreationTool, selectASingleCurve, zoomReset, selectControlPoint} = sketcherSlice.actions
+    unselectCreationTool, setControlPolygonsDisplayed, 
+    unselectCurvesAndCreationTool, selectASingleCurve, zoomReset, 
+    selectControlPoint, toggleShowKnotVectorEditor} = sketcherSlice.actions
 
 export default sketcherSlice.reducer
 

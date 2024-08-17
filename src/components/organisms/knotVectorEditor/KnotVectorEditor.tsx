@@ -19,12 +19,17 @@ import { CurveType, type Curve } from "../../../sketchElements/curveTypes"
 import { computeBasisFunction } from "./basisFunctions"
 import { createColorPaletteRGB } from "../../../utilities/color"
 import {
-  moveKnot,
+  replaceCurve,
   selectCurves,
   updateCurves,
 } from "../../../sketchElements/sketchElementsSlice"
 import type { Coordinates } from "../../../sketchElements/coordinates"
-import { computeDegree } from "../../../sketchElements/curve"
+import {
+  computeDegree,
+  computeMultiplicityLeft,
+  computeMultiplicityRight,
+} from "../../../sketchElements/curve"
+import { flushSync } from "react-dom"
 
 /*
 interface EditorProps {
@@ -365,6 +370,23 @@ const KnotVectorEditor = () => {
     [handlePressDown],
   )
 
+  const moveKnots = useCallback(
+    (curve: Curve, index: number, newPosition: number) => {
+      let newKnots = [...curve.knots]
+      const multiplicityRight = computeMultiplicityRight(curve.knots, index)
+      const multiplicityLeft = computeMultiplicityLeft(curve.knots, index)
+      for (
+        let i = index - multiplicityLeft;
+        i < index + multiplicityRight + 1;
+        i += 1
+      ) {
+        newKnots[i] = newPosition
+      }
+      dispatch(replaceCurve({ curve: { ...curve, knots: newKnots } }))
+    },
+    [dispatch],
+  )
+
   const handleMove = useCallback(
     (point: { clientX: number; clientY: number }) => {
       const p = viewportCoordsToSceneCoords(point)
@@ -412,23 +434,24 @@ const KnotVectorEditor = () => {
         const cpd = controlPolygonsDisplayed
 
         if (!cpd || mouseMoveThreshold !== "exceeded") return
-        dispatch(
+        /*dispatch(
           moveKnot({
             index: index,
             newPosition: newPosition,
             controlPolygonsDisplayed,
           }),
-        )
+        )*/
+        moveKnots(curve, index, newPosition)
       }
     },
     [
       action,
       controlPolygonsDisplayed,
       curve,
-      dispatch,
       editorState,
       initialMouseXPosition,
       mouseMoveThreshold,
+      moveKnots,
       scroll,
       selectedKnot,
       viewportCoordsToSceneCoords,
@@ -438,7 +461,9 @@ const KnotVectorEditor = () => {
 
   const handleMouseMove = useCallback(
     (event: MouseEvent) => {
+      //flushSync(() => {
       handleMove({ clientX: event.clientX, clientY: event.clientY })
+      //})
     },
     [handleMove],
   )

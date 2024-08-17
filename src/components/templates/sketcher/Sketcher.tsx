@@ -1,9 +1,13 @@
 import { useEffect } from "react"
-import { useAppDispatch } from "../../../app/hooks"
+import { useAppDispatch, useAppSelector } from "../../../app/hooks"
 import Canvas from "../../organisms/canvas/Canvas"
 import CreationToolbar from "../../organisms/creationToolbar/CreationToolbar"
 import MainMenu from "../../organisms/mainMenu/MainMenu"
-import { setSketcherSize } from "./sketcherSlice"
+import {
+  selectControlPolygonsDispayed,
+  selectShowKnotVectorEditor,
+  setSketcherSize,
+} from "./sketcherSlice"
 import { BottomMenu } from "../../organisms/bottomMenu/BottomMenu"
 import RightMenu from "../../organisms/rightMenu/RightMenu"
 import KnotVectorEditor from "../../organisms/knotVectorEditor/KnotVectorEditor"
@@ -16,6 +20,8 @@ interface SketcherProps {
 function Sketcher(props: Readonly<SketcherProps>) {
   const { sketcherWidth, sketcherHeight } = props
   const dispatch = useAppDispatch()
+  const showKnotVectorEditor = useAppSelector(selectShowKnotVectorEditor)
+  const controlPolygonsDispayed = useAppSelector(selectControlPolygonsDispayed)
 
   useEffect(() => {
     dispatch(setSketcherSize({ width: sketcherWidth, height: sketcherHeight }))
@@ -33,13 +39,19 @@ function Sketcher(props: Readonly<SketcherProps>) {
             <div className="pointer-events-auto">
               <CreationToolbar />
             </div>
-            <div className="flex col-start-3 row-start-2 justify-end pointer-events-auto">
-              <RightMenu />
+            {controlPolygonsDispayed?.curveIDs.length &&
+            controlPolygonsDispayed?.curveIDs.length > 0 ? (
+              <div className="flex col-start-3 row-start-2 justify-end pointer-events-auto">
+                <RightMenu />
+              </div>
+            ) : null}
+          </div>
+          {showKnotVectorEditor &&
+          controlPolygonsDispayed?.curveIDs.length === 1 ? (
+            <div className="absolute top-2/3 left-1/3 right-[5%] bottom-[5%] pointer-events-none">
+              <KnotVectorEditor />
             </div>
-          </div>
-          <div className="absolute top-2/3 left-1/3 right-[5%] bottom-[5%] pointer-events-none">
-            <KnotVectorEditor />
-          </div>
+          ) : null}
           <BottomMenu />
         </div>
       </div>
