@@ -77,3 +77,15 @@ export function uniformKnots(degree: number, numberOfControlPoints: number) {
 //export function updateCurve(initialCurveType: InitialCurve) {}
 
 //export function moveCurve(curves: Curve[], displacement: {x: number, y: number}) {}
+
+export function computeDegree(curve: Curve) {
+    if (curve.degree !== undefined) return curve.degree 
+    switch (curve.type) {
+        case CurveType.NonRational :
+            return curve.knots.length - curve.points.length - 1
+        case CurveType.Rational :
+        case CurveType.Complex : 
+            return curve.knots.length - curve.points.length + (curve.points.length - 1) / 2 - 1
+    }
+    
+}

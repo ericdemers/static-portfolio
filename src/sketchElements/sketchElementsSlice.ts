@@ -62,7 +62,13 @@ const sketchElementsSlice = createSlice({
             const curve = state.curves.find((c)=> (c.id === curveID))
             if (!curve) return
             curve.points[index] = movePoint(curve.points[index], action.payload.displacement)
-
+        },
+        moveKnot(state, action: PayloadAction<{index: number, newPosition: number, controlPolygonsDisplayed: ControlPolygonsDisplayed}>){
+            if (!action.payload.controlPolygonsDisplayed) return
+            const curveID = action.payload.controlPolygonsDisplayed.curveIDs[0]
+            const curve = state.curves.find((c)=> (c.id === curveID))
+            if (!curve) return
+            curve.knots[action.payload.index] = action.payload.newPosition
         },
         deleteCurves(state, action: PayloadAction<{curveIDs: string[]}>) {
             state.curves = state.curves.filter((curve) => !action.payload.curveIDs.includes(curve.id))
@@ -77,7 +83,7 @@ const sketchElementsSlice = createSlice({
       },
 })
 
-export const { addNewCurve, replaceCurve, clearCurves, updateThisCurve, moveCurves, moveControlPoint, updateCurves, deleteCurves, duplicateCurves } = sketchElementsSlice.actions
+export const { addNewCurve, replaceCurve, clearCurves, updateThisCurve, moveCurves, moveControlPoint, moveKnot, updateCurves, deleteCurves, duplicateCurves } = sketchElementsSlice.actions
 export const selectCurves = (state: RootState) => state.sketchElements.present.curves
 export const selectShowUndoArrow = (state: RootState) => state.sketchElements.past.length !== 0
 export const selectShowRedoArrow = (state: RootState) => state.sketchElements.future.length !== 0

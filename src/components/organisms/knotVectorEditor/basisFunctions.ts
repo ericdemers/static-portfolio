@@ -1,4 +1,5 @@
 import { basisFunctions } from "../../../bSplineAlgorithms/Piegl_Tiller_NURBS_Book";
+import { computeDegree } from "../../../sketchElements/curve";
 import type { Curve } from "../../../sketchElements/curveTypes";
 
 export function computeBasisFunction(curve: Curve, step: number = 0.001) {
@@ -7,7 +8,7 @@ export function computeBasisFunction(curve: Curve, step: number = 0.001) {
     for (let i = 0; i < numberOfControlPoints; i += 1) {
         result.push([])
     }
-    const degree = curve.degree === undefined ? curve.knots.length - curve.points.length - 1 : curve.degree
+    const degree = computeDegree(curve)
     if (degree > 0) {
         curve.knots.forEach((value, knotIndex) => {
             if (knotIndex < curve.knots.length - 1 && value !== curve.knots[knotIndex + 1]) {
