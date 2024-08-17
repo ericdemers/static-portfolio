@@ -20,30 +20,36 @@ interface EditorProps {
 const KnotVectorEditor = () => {
   //const { editorWidth, editorHeight, offsetX, offsetY } = props
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const [heightWidth, setHeightWidth] = useState([0, 0])
+  const [width, setWidth] = useState(0)
+  const [height, setHeight] = useState(0)
   const theme = useAppSelector(selectTheme)
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    setHeightWidth([canvas.clientHeight, canvas.clientWidth])
-  }, [canvasRef])
+    const resizeOberver = new ResizeObserver(() => {
+      setWidth(canvas.clientWidth)
+      setHeight(canvas.clientHeight)
+    })
+    resizeOberver.observe(canvas)
+    return () => resizeOberver.disconnect()
+  }, [])
 
   useLayoutEffect(() => {
-    const ratio = heightWidth[0] / heightWidth[1]
     const canvas = canvasRef.current
     if (!canvas) return
+    const ratio = height / width
     const context = canvas.getContext("2d")
     if (!context) return
     context.save()
-    context.clearRect(0, 0, heightWidth[0], heightWidth[1])
-    context.scale(heightWidth[0], heightWidth[1])
+    context.clearRect(0, 0, height, width)
+    context.scale(width, width)
 
     const lineColor =
       theme === "dark" ? "rgba(255, 255, 255, 1)" : "rgba(0, 0, 0, 1)"
     context.strokeStyle = lineColor
     context.lineJoin = "round"
-    context.lineWidth = 1.2 / heightWidth[1]
+    context.lineWidth = 1.2 / width
     context.beginPath()
     context.moveTo(0.03, 0.7 * ratio)
     context.lineTo(0.97, 0.7 * ratio)
@@ -55,19 +61,18 @@ const KnotVectorEditor = () => {
     context.beginPath()
     context.moveTo(0.03, 0.85 * ratio)
     context.lineTo(0.97, 0.85 * ratio)
-    //context.moveTo(0.35, 0.15 * ratio)
-    //context.lineTo(0.65, 0.15 * ratio)
     context.stroke()
     context.restore()
-  }, [canvasRef, heightWidth, theme])
+    console.log("test")
+  }, [canvasRef, height, theme, width])
 
   return (
     <div className="shadow rounded-lg bg-white dark:bg-neutral-800 h-full w-full">
       <canvas
         className="w-full h-full pointer-events-auto"
         ref={canvasRef}
-        height={heightWidth[0]}
-        width={heightWidth[1]}
+        height={height}
+        width={width}
       />
     </div>
   )
