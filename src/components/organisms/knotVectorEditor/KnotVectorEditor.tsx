@@ -112,6 +112,10 @@ const KnotVectorEditor = () => {
       const offsetLeft = 0.05 + reductionFactor * scroll
       const offsetTop = 0.7 * ratio
       const colorPalette = createColorPaletteRGB(curve.points.length, 1)
+
+      context.rect(0.03, 0, 0.94, 1)
+      context.clip()
+
       switch (curve.type) {
         case CurveType.NonRational:
           {
@@ -193,6 +197,81 @@ const KnotVectorEditor = () => {
     [scroll, theme, width, zoom],
   )
 
+  const drawKnotTicks = useCallback(
+    (context: CanvasRenderingContext2D, curve: Curve, ratio: number = 1) => {
+      let lineColor =
+        theme === "dark" ? "rgba(250, 250, 250, 1)" : "rgba(0, 0, 0, 1)"
+      const scaleX = reductionFactor * zoom
+      const scaleY = 0.5
+      const offsetLeft = 0.05 + reductionFactor * scroll
+      const offsetTop = 0.7 * ratio
+      context.beginPath()
+      context.rect(0.03, 0, 0.94, 1)
+      context.clip()
+      context.strokeStyle = lineColor
+      context.lineJoin = "round"
+      context.lineWidth = 1.2 / width
+      const ticks = addSpaceBetweenTicks(curve.knots, 0.005 / zoom)
+      ticks.forEach(u => {
+        context.beginPath()
+        context.moveTo(
+          u * scaleX + offsetLeft,
+          +0.04 * ratio * scaleY + offsetTop,
+        )
+        context.lineTo(
+          u * scaleX + offsetLeft,
+          -0.04 * ratio * scaleY + offsetTop,
+        )
+        context.stroke()
+      })
+    },
+    [scroll, theme, width, zoom],
+  )
+
+  const drawZoomSlider = useCallback(
+    (context: CanvasRenderingContext2D, ratio: number = 1) => {
+      const left = leftMaximumSliderPosition
+      const right = rightMaximumSliderPosition
+      const lineColor =
+        theme === "dark" ? "rgba(250, 250, 250, 1)" : "rgba(0, 0, 0, 1)"
+      const lineColorA =
+        theme === "dark" ? "rgba(250, 250, 250, 0.5)" : "rgba(0, 0, 0, 0.5)"
+      const lineColorB =
+        theme === "dark" ? "rgba(250, 250, 250, 0.8)" : "rgba(0, 0, 0, 0.8)"
+
+      context.strokeStyle = lineColorA
+      context.lineJoin = "round"
+      context.lineWidth = 1.2 / width
+      context.beginPath()
+      context.moveTo(left, 0.15 * ratio)
+      context.lineTo(right, 0.15 * ratio)
+      context.stroke()
+      context.lineWidth = 1.5 / width
+      context.strokeStyle = lineColor
+      context.beginPath()
+      //minus symbol
+      context.moveTo(0.33 - 0.025 * ratio, 0.15 * ratio)
+      context.lineTo(0.33 + 0.025 * ratio, 0.15 * ratio)
+      //plus symbol
+      context.moveTo(0.67 - 0.025 * ratio, 0.15 * ratio)
+      context.lineTo(0.67 + 0.025 * ratio, 0.15 * ratio)
+      context.moveTo(0.67, 0.125 * ratio)
+      context.lineTo(0.67, 0.175 * ratio)
+      context.stroke()
+
+      context.lineWidth = 4.5 / width
+      context.strokeStyle = lineColorB
+      context.lineCap = "round"
+      context.beginPath()
+      //slider
+      const position = sliderPosition(zoom)
+      context.moveTo(position, 0.125 * ratio)
+      context.lineTo(position, 0.175 * ratio)
+      context.stroke()
+    },
+    [theme, width, zoom],
+  )
+
   useLayoutEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -203,9 +282,11 @@ const KnotVectorEditor = () => {
     context.clearRect(0, 0, width * pixelRatio, height * pixelRatio)
     context.scale(width * pixelRatio, width * pixelRatio)
 
+    drawZoomSlider(context, ratio)
     if (curve) {
       drawBasisFunctions(context, curve, ratio)
       drawKnotSlider(context, curve, ratio)
+      drawKnotTicks(context, curve, ratio)
     }
 
     const lineColor =
@@ -231,6 +312,7 @@ const KnotVectorEditor = () => {
     curve,
     drawBasisFunctions,
     drawKnotSlider,
+    drawKnotTicks,
     height,
     pixelRatio,
     theme,
@@ -592,6 +674,34 @@ function getKnotAtPosition(
   if (result === -1) {
     return null
   } else return result
+}
+
+export function addSpaceBetweenTicks(knots: number[], step: number = 0.01) {
+  let result: number[] = []
+  let multiplicity = 1
+  knots.forEach((u, i) => {
+    if (i === knots.length - 1) {
+      result = result.concat(distribute(u, multiplicity, step))
+    } else if (knots[i] === knots[i + 1]) {
+      multiplicity += 1
+    } else {
+      result = result.concat(distribute(u, multiplicity, step))
+      multiplicity = 1
+    }
+  })
+  return result
+}
+
+function distribute(value: number, multiplicity: number, step: number = 0.01) {
+  let result: number[] = []
+  if (multiplicity === 1) {
+    return [value]
+  }
+  const left = value - ((multiplicity - 1) * step) / 2
+  for (let i = 0; i < multiplicity; i += 1) {
+    result.push(left + i * step)
+  }
+  return result
 }
 
 export default KnotVectorEditor

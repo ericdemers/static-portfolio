@@ -4,6 +4,7 @@ import { CurveType, PythagoreanHodograph } from "./curveTypes";
 import { movePoint, type Coordinates } from "./coordinates";
 import { BSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/BSplineR1toR2";
 import { Vector2d } from "../mathVector/Vector2d";
+import { automaticFitting } from "../bSplineAlgorithms/knotPlacement/automaticFitting";
 
 export enum InitialCurve {
     Freehand,
@@ -54,6 +55,11 @@ export function CoordinatesToVector2d(list: readonly Coordinates[]) {
     return list.map(point => new Vector2d(point.x, point.y))
 }
 
+export function Vector2dToCoordinates(list: Vector2d[]) {
+    return list.map(point => {return {x: point.x, y: point.y}} )
+}
+
+/*
 export function uniformKnots(degree: number, numberOfControlPoints: number) {
     const numberOfInteriorKnot = numberOfControlPoints - degree - 1
     if (numberOfInteriorKnot < 0) {
@@ -72,6 +78,7 @@ export function uniformKnots(degree: number, numberOfControlPoints: number) {
     }
     return knots
 }
+    */
 
 
 //export function updateCurve(initialCurveType: InitialCurve) {}
@@ -109,3 +116,9 @@ export function computeMultiplicityLeft(knots: number[], index: number) {
     }
     return multiplicity
 } 
+
+export function optimizedKnotPositions(curve: Curve, scale = 1, resolutionFactor = 0.3) {
+    const bSpline = new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
+    const newBSpline = automaticFitting(bSpline, scale, resolutionFactor)
+    return ({...curve, points: Vector2dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots})
+}

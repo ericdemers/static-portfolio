@@ -26,8 +26,8 @@ import {
 import {
   createCurve,
   InitialCurve,
+  optimizedKnotPositions,
   pointsOnCurve,
-  uniformKnots,
 } from "../../../sketchElements/curve"
 import { flushSync } from "react-dom"
 import {
@@ -43,6 +43,7 @@ import {
 } from "../../../sketchElements/sketchElementsSlice"
 import type { Curve } from "../../../sketchElements/curveTypes"
 import { ActionCreators } from "redux-undo"
+import { uniformKnots } from "../../../bSplineAlgorithms/knotPlacement/automaticFitting"
 
 type ActionType =
   | "none"
@@ -403,21 +404,35 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
       ) {
         dispatch(unselectCurvesAndCreationTool())
       }
-      switch (activeTool) {
-        case "singleSelection":
-        case "multipleSelection":
-        case "freeDraw":
-        case "line": {
-          switch (action) {
-            case "moving curves":
-            case "drawing":
+      switch (action) {
+        case "moving curves":
+          if (mouseMoveThreshold === "exceeded") {
+            dispatch(updateCurves({ curves: curves.slice() }))
+          }
+          break
+        case "drawing":
+          switch (activeTool) {
+            case "freeDraw":
+              if (mouseMoveThreshold === "exceeded") {
+                if (currentlyDrawnCurve) {
+                  const curve = optimizedKnotPositions(
+                    currentlyDrawnCurve,
+                    zoom,
+                    0.3,
+                  )
+                  dispatch(updateThisCurve({ curve }))
+                }
+                //dispatch(updateCurves({ curves: curves.slice() }))
+              }
+              break
+            case "line": {
               if (mouseMoveThreshold === "exceeded") {
                 dispatch(updateCurves({ curves: curves.slice() }))
               }
               break
+            }
           }
           break
-        }
       }
       setMouseMoveThreshold("not exceeded")
       setAction("none")
@@ -621,7 +636,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
         event.preventDefault()
       }
     },
-    [dispatch, handleDelete, handleDuplicate],
+    [dispatch, handleDelete, handleDuplicate, handleZoomIn, handleZoomOut],
   )
 
   useEffect(() => {
