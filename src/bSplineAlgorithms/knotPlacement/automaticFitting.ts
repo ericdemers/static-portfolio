@@ -11,45 +11,21 @@ import { BSplineR1toR2 } from "../R1toR2/BSplineR1toR2"
 
 
 
-
-/**
- * input: b-spline of degree > 3
- * output: b-spline of degree 3
- */
 export function automaticFitting(initialSpline: BSplineR1toR2, scale = 1, resolutionFactor = 0.3) {
-    
-    
     if (initialSpline.degree < 3) {
-        //throw new Error("Assumption: degree of initial spline greater than 3")
         return initialSpline
     }
-
-    //console.log(initialSpline.degree)
-
     const spline0 = removeOverlappingControlPoints(initialSpline, 0.005 / scale)
-
-    //const spline1 = smoothControlPolygon(spline0)
-
     const spline = approximateArcLengthParametrization(spline0)
-
-    //const spline = approximateArcLengthParametrization(initialSpline)
-
-    //const spline = initialSpline
-    
     const cff = cumulativeFeatureFunction(spline, 3)
-    //console.log(cff)
-    const knots = knotDistribution(cff, 3, resolutionFactor * Math.pow(scale, 1 / 3))
-    //const knots = knotDistribution(cff, 3, 0.0005 * Math.pow(scale, 1 / 3))
-    //const knots = knotDistribution(cff, 3, 1 * scale)
-
+    let knots = knotDistribution(cff, 3, resolutionFactor * Math.pow(scale, 1 / 3))
+    if (knots.length >= initialSpline.knots.length) {
+        knots = knotDistribution(cff, 3, resolutionFactor / 2 * Math.pow(scale, 1 / 3))
+    }
     const cp = leastSquareApproximation2(spline, knots, 3)
-
     if (cp.length >= initialSpline.controlPoints.length) {
         return initialSpline
     }
-    //console.log(cff)
-    //return cffToBSpline(cff)
-    //return spline
     return new BSplineR1toR2(cp, knots)
 
 }

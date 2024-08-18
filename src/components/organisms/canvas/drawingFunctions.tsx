@@ -3,7 +3,7 @@ import { CurveType, type Curve } from "../../../sketchElements/curveTypes"
 import { useAppSelector } from "../../../app/hooks"
 //import { selectTheme } from "../mainMenu/mainMenuSlice"
 
-import { pointsOnCurve } from "../../../sketchElements/curve"
+import { pointOnCurve, pointsOnCurve } from "../../../sketchElements/curve"
 import { selectTheme, selectZoom } from "../../templates/sketcher/sketcherSlice"
 import { createColorPaletteRGB } from "../../../utilities/color"
 
@@ -147,9 +147,36 @@ export const useDrawingFunctions = () => {
     [theme, zoom],
   )
 
+  const drawPoint = useCallback(
+    (
+      context: CanvasRenderingContext2D,
+      point: { x: number; y: number },
+      size: number = 4,
+    ) => {
+      const radius = size / zoom
+      let fillStyle =
+        theme === "dark" ? "rgba(200, 200, 200, 1)" : "rgba(50, 50, 50, 1)"
+      context.beginPath()
+      context.fillStyle = fillStyle
+      context.arc(point.x, point.y, radius, 0, 2 * Math.PI, false)
+      context.fill()
+    },
+    [theme, zoom],
+  )
+
+  const drawPositionOnCurve = useCallback(
+    (context: CanvasRenderingContext2D, curve: Curve, u: number) => {
+      const point = pointOnCurve(curve, u)
+      if (!point) return
+      drawPoint(context, point, 4)
+    },
+    [drawPoint],
+  )
+
   return {
     drawCurve,
     drawControlPoints,
     drawControlPolygon,
+    drawPositionOnCurve,
   }
 }

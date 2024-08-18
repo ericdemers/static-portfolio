@@ -4,7 +4,7 @@ import { CurveType, PythagoreanHodograph } from "./curveTypes";
 import { movePoint, type Coordinates } from "./coordinates";
 import { BSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/BSplineR1toR2";
 import { Vector2d } from "../mathVector/Vector2d";
-import { automaticFitting } from "../bSplineAlgorithms/knotPlacement/automaticFitting";
+import { automaticFitting, removeASingleKnot } from "../bSplineAlgorithms/knotPlacement/automaticFitting";
 
 export enum InitialCurve {
     Freehand,
@@ -49,6 +49,29 @@ export function pointsOnCurve(curve: Curve, numberOfPoints: number = 1000) {
             return [{x: 0, y: 0}]
           break
     }
+}
+
+export function pointOnCurve(curve: Curve, u: number) {
+    switch(curve.type) {
+        case CurveType.NonRational : {
+            const bspline: BSplineR1toR2 =  new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
+            const p = bspline.evaluate(u)
+            return {x: p.x, y: p.y}
+        }
+    }
+
+}
+
+export function interiorKnot(curve: Curve) {
+    switch(curve.type) {
+        case CurveType.NonRational: {
+            const degree =  curve.knots.length - curve.points.length- 1
+            const result = curve.knots.length - 2 * degree - 2
+            if (result > 0) return result
+        }
+        break
+    }
+
 }
   
 export function CoordinatesToVector2d(list: readonly Coordinates[]) {
@@ -117,8 +140,44 @@ export function computeMultiplicityLeft(knots: number[], index: number) {
     return multiplicity
 } 
 
+
+
 export function optimizedKnotPositions(curve: Curve, scale = 1, resolutionFactor = 0.3) {
     const bSpline = new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
     const newBSpline = automaticFitting(bSpline, scale, resolutionFactor)
     return ({...curve, points: Vector2dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots})
+}
+
+export function insertKnot(u: number, curve: Curve) {
+    switch (curve.type) {
+        case CurveType.NonRational: {
+            const bspline =  new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
+            const newBSpline = bspline.insertKnot(u)
+            return ({...curve, points: Vector2dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots})
+        }
+        
+    }
+}
+
+export function removeAKnot(curve: Curve, knotIndex: number) {
+
+
+    switch (curve.type) {
+        case CurveType.NonRational:
+        {
+            const bspline =  new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
+            const newBSpline = removeASingleKnot(bspline, knotIndex + bspline.degree + 1)
+            return ({...curve, points: Vector2dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots})
+        }
+        case CurveType.Complex:
+            {
+                /*
+                const bspline =  new BSplineR1toC2(CoordinatesToComplex2d(curve.points), curve.knots)
+                const newBSpline = removeASingleKnotFromComplexCurve(bspline, knotIndex + bspline.degree + 1)
+                curvesCopy[index] = {id, type: BSplineEnumType.NonRational,  points: Complex2dToCoordinates(newBSpline.controlPoints ), knots: newBSpline.knots}
+                */
+            }
+            break
+    }
+
 }

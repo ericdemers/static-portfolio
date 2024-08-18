@@ -19,6 +19,8 @@ type SketcherState = {
     initialView: boolean
     controlPolygonsDisplayed: ControlPolygonsDisplayed
     showKnotVectorEditor: boolean
+    selectedKnot: number | null
+    parametricPosition: number | null
 }
 
 const initialState: SketcherState = {
@@ -32,6 +34,8 @@ const initialState: SketcherState = {
     initialView: true,
     controlPolygonsDisplayed: null,
     showKnotVectorEditor: false,
+    selectedKnot: null,
+    parametricPosition: null,
 }
 
 const zoomFactor = 1.2
@@ -170,6 +174,12 @@ const sketcherSlice = createSlice({
         toggleShowKnotVectorEditor(state) {
             state.showKnotVectorEditor = !state.showKnotVectorEditor
         },
+        setSelectedKnot(state, action: PayloadAction<{value: number | null}>) {
+            state.selectedKnot = action.payload.value
+        },
+        setParametricPosition(state, action: PayloadAction<{value: number | null}>) {
+            state.parametricPosition = action.payload.value
+        },
         
     },
     selectors: {
@@ -180,13 +190,16 @@ const sketcherSlice = createSlice({
         selectInitialView: sketcher => sketcher.initialView,
         selectTheme: sketcher => sketcher.theme,
         selectControlPolygonsDispayed: sketcher => sketcher.controlPolygonsDisplayed,
-        selectShowKnotVectorEditor: sketcher => sketcher.showKnotVectorEditor
+        selectShowKnotVectorEditor: sketcher => sketcher.showKnotVectorEditor,
+        selectSelectedKnot: sketcher => sketcher.selectedKnot,
+        selectParametricPosition: sketcher => sketcher.parametricPosition
     },
         
 })
 
 export const { selectZoom, selectScrollX, selectScrollY, selectActiveTool, 
-    selectInitialView, selectTheme, selectControlPolygonsDispayed, selectShowKnotVectorEditor } = sketcherSlice.selectors
+    selectInitialView, selectTheme, selectControlPolygonsDispayed, selectShowKnotVectorEditor,
+    selectSelectedKnot, selectParametricPosition } = sketcherSlice.selectors
 
 export const { setSketcherSize, zoomIn, zoomOut, zoomWithTwoFingers, scroll, setInitialView, 
      activateFreeDrawFromInitialView, toggleFreeDrawCreationTool, 
@@ -194,7 +207,7 @@ export const { setSketcherSize, zoomIn, zoomOut, zoomWithTwoFingers, scroll, set
      resetCanvas, setTheme, toggleTheme, 
     unselectCreationTool, setControlPolygonsDisplayed, 
     unselectCurvesAndCreationTool, selectASingleCurve, zoomReset, 
-    selectControlPoint, toggleShowKnotVectorEditor} = sketcherSlice.actions
+    selectControlPoint, toggleShowKnotVectorEditor, setSelectedKnot, setParametricPosition} = sketcherSlice.actions
 
 export default sketcherSlice.reducer
 

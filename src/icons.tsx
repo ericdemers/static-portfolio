@@ -163,3 +163,22 @@ export const SimplifyIcon = createIcon(
   </g>,
   modifiedTablerIconProps,
 )
+
+export const InsertKnotIcon = createIcon(
+  <g strokeLinecap="round">
+    <path d="M 0 10 L 6 10" strokeWidth="1.2" />
+    <path d="M 14 10 L 20 10" strokeWidth="1.2" />
+    <path d="M 10 8 L 10 12.5" strokeWidth="4" />
+  </g>,
+  modifiedTablerIconProps,
+)
+
+export const DeleteKnotIcon = createIcon(
+  <g strokeLinecap="round">
+    <path d="M 0 10 L 6 10" strokeWidth="1.2" />
+    <path d="M 14 10 L 20 10" strokeWidth="1.2" />
+    <path d="M 10 8 L 10 12.5" strokeWidth="4" />
+    <path d="M 6 6 L 14 14.5" strokeWidth="1.2" />
+  </g>,
+  modifiedTablerIconProps,
+)

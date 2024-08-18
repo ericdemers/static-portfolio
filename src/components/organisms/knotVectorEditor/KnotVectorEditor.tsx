@@ -13,7 +13,11 @@ import {
 import { useAppDispatch, useAppSelector } from "../../../app/hooks"
 import {
   selectControlPolygonsDispayed,
+  selectParametricPosition,
+  selectSelectedKnot,
   selectTheme,
+  setParametricPosition,
+  setSelectedKnot,
 } from "../../templates/sketcher/sketcherSlice"
 import { CurveType, type Curve } from "../../../sketchElements/curveTypes"
 import { computeBasisFunction } from "./basisFunctions"
@@ -59,9 +63,6 @@ const KnotVectorEditor = () => {
   >(null)
 
   const dispatch = useAppDispatch()
-
-  const [selectedKnot, setSelectedKnot] = useState<number | null>(null)
-
   const [curve, setCurve] = useState<Curve | null>(null)
   const curves = useAppSelector(selectCurves)
   const controlPolygonsDisplayed = useAppSelector(selectControlPolygonsDispayed)
@@ -69,6 +70,8 @@ const KnotVectorEditor = () => {
   const [width, setWidth] = useState(0)
   const [height, setHeight] = useState(0)
   const theme = useAppSelector(selectTheme)
+  const selectedKnot = useAppSelector(selectSelectedKnot)
+  const parametricPosition = useAppSelector(selectParametricPosition)
   const [zoom, setZoom] = useState(1)
   const [action, setAction] = useState<ActionType>("none")
   const [scroll, setScroll] = useState(0)
@@ -182,19 +185,25 @@ const KnotVectorEditor = () => {
         context.lineTo(u, -0.025 * ratio + offsetTop)
         context.stroke()
       })
-      /*
-      if (sketcherState.selectedKnot !== null) {
-        const u = ticks[sketcherState.selectedKnot]
-        context.lineWidth = 6 / windowWidth
+
+      if (selectedKnot !== null) {
+        const u = ticks[selectedKnot]
+        context.lineWidth = 6 / width
         context.beginPath()
         context.moveTo(u, +0.025 * ratio + offsetTop)
         context.lineTo(u, -0.025 * ratio + offsetTop)
         context.stroke()
-        context.restore()
       }
-      */
+      if (parametricPosition !== null) {
+        const u = parametricPosition * scaleX + offsetLeft
+        context.lineWidth = 1.2 / width
+        context.beginPath()
+        context.moveTo(u, +0.025 * ratio + offsetTop)
+        context.lineTo(u, -0.025 * ratio + offsetTop)
+        context.stroke()
+      }
     },
-    [scroll, theme, width, zoom],
+    [parametricPosition, scroll, selectedKnot, theme, width, zoom],
   )
 
   const drawKnotTicks = useCallback(
@@ -313,6 +322,7 @@ const KnotVectorEditor = () => {
     drawBasisFunctions,
     drawKnotSlider,
     drawKnotTicks,
+    drawZoomSlider,
     height,
     pixelRatio,
     theme,
@@ -384,9 +394,8 @@ const KnotVectorEditor = () => {
       } else if (onBasisFunctionsArea(point)) {
         setAction("scrolling")
         setInitialMouseXPosition(point.x)
-        //actionManager.renderAction(
-        //  "removeParametricPositionOnCurveAndKnotSelection",
-        //)
+        dispatch(setSelectedKnot({ value: null }))
+        dispatch(setParametricPosition({ value: null }))
       } else if (onKnotSliderArea(point)) {
         setInitialMouseXPosition(point.x)
         if (curve) {
@@ -399,25 +408,21 @@ const KnotVectorEditor = () => {
             scaleX,
             offsetLeft,
           )
+          let position = positionToParameterOnKnotSlider(
+            point.x,
+            scaleX,
+            offsetLeft,
+          )
+          if (position < 0) position = 0
+          if (position > 1) position = 1
           const knotIndex = getKnotAtPosition(point.x, knots)
-          //setSelectedKnot(knotIndex)
           if (knotIndex !== null) {
-            //actionManager.renderAction("selectKnot", knotIndex)
-            setSelectedKnot(knotIndex)
+            dispatch(setSelectedKnot({ value: knotIndex }))
+            dispatch(setParametricPosition({ value: position }))
             setEditorState("moving a knot")
           } else {
-            let position = positionToParameterOnKnotSlider(
-              point.x,
-              scaleX,
-              offsetLeft,
-            )
-            if (position < 0) position = 0
-            if (position > 1) position = 1
-            //setParametricPosition(position)
-            //actionManager.renderAction(
-            //  "displayParametricPositionOnCurveAndRemoveKnotSelection",
-            //  position,
-            //)
+            dispatch(setSelectedKnot({ value: null }))
+            dispatch(setParametricPosition({ value: position }))
             setEditorState("display position on abscissa")
           }
         }
@@ -425,6 +430,7 @@ const KnotVectorEditor = () => {
     },
     [
       curve,
+      dispatch,
       onBasisFunctionsArea,
       onKnotSliderArea,
       onZoomSlider,
@@ -516,13 +522,7 @@ const KnotVectorEditor = () => {
         const cpd = controlPolygonsDisplayed
 
         if (!cpd || mouseMoveThreshold !== "exceeded") return
-        /*dispatch(
-          moveKnot({
-            index: index,
-            newPosition: newPosition,
-            controlPolygonsDisplayed,
-          }),
-        )*/
+        dispatch(setParametricPosition({ value: newPosition }))
         moveKnots(curve, index, newPosition)
       }
     },
@@ -530,6 +530,7 @@ const KnotVectorEditor = () => {
       action,
       controlPolygonsDisplayed,
       curve,
+      dispatch,
       editorState,
       initialMouseXPosition,
       mouseMoveThreshold,
