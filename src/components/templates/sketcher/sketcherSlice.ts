@@ -152,6 +152,8 @@ const sketcherSlice = createSlice({
         unselectCurvesAndCreationTool(state) {
             state.activeTool = "none"
             state.controlPolygonsDisplayed = null
+            state.selectedKnot = null
+            state.parametricPosition = null
         },
         setControlPolygonsDisplayed(state, action: PayloadAction<{curveIDs: string[], selectedControlPoint: {curveID: string, controlPointIndex: number} | null  } | null >) {
             state.controlPolygonsDisplayed = action.payload

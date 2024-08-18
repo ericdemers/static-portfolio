@@ -22,6 +22,7 @@ import {
   zoomOut,
   zoomIn,
   selectControlPoint,
+  setSelectedKnot,
 } from "../../templates/sketcher/sketcherSlice"
 import {
   createCurve,

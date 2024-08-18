@@ -99,9 +99,9 @@ function CreationToolbar() {
           >
             <div className="size-6">{CircleArcIcon}</div>
           </button>
-          <button className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2">
+          {/*           <button className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2">
             <Icon icon="ph:spiral" className="size-6" />
-          </button>
+          </button> */}
 
           {controlPolygonsDisplayed?.curveIDs.length &&
           controlPolygonsDisplayed?.curveIDs.length > 0 ? (

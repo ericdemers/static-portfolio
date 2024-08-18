@@ -182,3 +182,19 @@ export const DeleteKnotIcon = createIcon(
   </g>,
   modifiedTablerIconProps,
 )
+
+export const UpArrowIcon = createIcon(
+  <g strokeLinecap="round">
+    <path d="M 0 15 L 10 5" strokeWidth="1.5" />
+    <path d="M 10 5 L 20 15" strokeWidth="1.5" />
+  </g>,
+  modifiedTablerIconProps,
+)
+
+export const DownArrowIcon = createIcon(
+  <g strokeLinecap="round">
+    <path d="M 0 8 L 10 18" strokeWidth="1.5" />
+    <path d="M 10 18 L 20 8" strokeWidth="1.5" />
+  </g>,
+  modifiedTablerIconProps,
+)

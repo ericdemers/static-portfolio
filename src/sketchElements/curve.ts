@@ -181,3 +181,33 @@ export function removeAKnot(curve: Curve, knotIndex: number) {
     }
 
 }
+
+export function elevateDegree(curve: Curve) {
+
+    switch (curve.type) {
+        case CurveType.NonRational: {
+            const bspline =  new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
+            const newBSpline = bspline.elevateDegree()
+            return ({...curve, points: Vector2dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots})
+        }
+        break
+        case CurveType.Rational: {
+            /*
+            const bspline =  new RationalBSplineR1toR2(CoordinatesToVector3d(curve.points), curve.knots)
+            const newBSpline = bspline.elevateDegree()
+            curvesCopy[index] = {id, type: BSplineEnumType.Rational,  points: Vector3dToCoordinates(newBSpline.controlPoints ), knots: newBSpline.knots}
+            */
+        }
+        break
+        case CurveType.Complex: {
+            /*
+            const bspline =  new BSplineR1toC2(CoordinatesToComplex2d(curve.points), curve.knots)
+            const newBSpline = bspline.elevateDegree()
+            //console.log(newBSpline)
+            curvesCopy[index] = {id, type: BSplineEnumType.Complex,  points: Complex2dToCoordinates(newBSpline.controlPoints ), knots: newBSpline.knots}
+            }
+            */
+        }
+        break
+ 
+} }

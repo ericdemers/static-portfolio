@@ -1,7 +1,13 @@
 import { useCallback } from "react"
 import { useAppDispatch, useAppSelector } from "../../../app/hooks"
-import { DeleteKnotIcon, InsertKnotIcon, SimplifyIcon } from "../../../icons"
 import {
+  DeleteKnotIcon,
+  InsertKnotIcon,
+  SimplifyIcon,
+  UpArrowIcon,
+} from "../../../icons"
+import {
+  elevateDegree,
   insertKnot,
   interiorKnot,
   optimizedKnotPositions,
@@ -17,6 +23,8 @@ import {
   selectSelectedKnot,
   selectShowKnotVectorEditor,
   selectZoom,
+  setParametricPosition,
+  setSelectedKnot,
   toggleShowKnotVectorEditor,
 } from "../../templates/sketcher/sketcherSlice"
 
@@ -36,6 +44,8 @@ function RightMenu() {
 
   const handleToggleShowKnotVectorEditor = () => {
     dispatch(toggleShowKnotVectorEditor())
+    dispatch(setSelectedKnot({ value: null }))
+    dispatch(setParametricPosition({ value: null }))
   }
 
   const handleSimplifyCurve = () => {
@@ -58,6 +68,13 @@ function RightMenu() {
     dispatch(updateThisCurve({ curve: newCurve }))
   }
 
+  const handleElevateDegree = () => {
+    if (!selectedCurve) return
+    const newCurve = elevateDegree(selectedCurve)
+    if (!newCurve) return
+    dispatch(updateThisCurve({ curve: newCurve }))
+  }
+
   return (
     <div className="w-12 flex flex-col  place-content-around bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-400 p-1 shadow rounded-lg select-none">
       <ul>
@@ -69,6 +86,15 @@ function RightMenu() {
             B
           </button>
         </li>
+        <li>
+          <button
+            onClick={handleElevateDegree}
+            className={` hover:bg-neutral-100 dark:hover:bg-neutral-700 p-2 rounded-lg outline-none`}
+          >
+            <div className="size-6">{UpArrowIcon}</div>
+          </button>
+        </li>
+
         {selectedCurve && interiorKnot(selectedCurve) ? (
           <li>
             <button
