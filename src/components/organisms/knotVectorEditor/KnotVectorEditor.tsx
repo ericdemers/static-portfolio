@@ -471,6 +471,7 @@ const KnotVectorEditor = () => {
         newKnots[i] = newPosition
       }
       dispatch(replaceCurve({ curve: { ...curve, knots: newKnots } }))
+      dispatch(setParametricPosition({ value: newPosition }))
     },
     [dispatch],
   )
@@ -522,7 +523,7 @@ const KnotVectorEditor = () => {
         const cpd = controlPolygonsDisplayed
 
         if (!cpd || mouseMoveThreshold !== "exceeded") return
-        dispatch(setParametricPosition({ value: newPosition }))
+        //dispatch(setParametricPosition({ value: newPosition }))
         moveKnots(curve, index, newPosition)
       }
     },
@@ -530,7 +531,6 @@ const KnotVectorEditor = () => {
       action,
       controlPolygonsDisplayed,
       curve,
-      dispatch,
       editorState,
       initialMouseXPosition,
       mouseMoveThreshold,

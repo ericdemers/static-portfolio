@@ -11,6 +11,7 @@ import {
 import { BottomMenu } from "../../organisms/bottomMenu/BottomMenu"
 import RightMenu from "../../organisms/rightMenu/RightMenu"
 import KnotVectorEditor from "../../organisms/knotVectorEditor/KnotVectorEditor"
+import { selectCurves } from "../../../sketchElements/sketchElementsSlice"
 
 interface SketcherProps {
   sketcherWidth: number
@@ -22,6 +23,13 @@ function Sketcher(props: Readonly<SketcherProps>) {
   const dispatch = useAppDispatch()
   const showKnotVectorEditor = useAppSelector(selectShowKnotVectorEditor)
   const controlPolygonsDisplayed = useAppSelector(selectControlPolygonsDispayed)
+
+  const curves = useAppSelector(selectCurves)
+
+  const singleCurveSelected =
+    controlPolygonsDisplayed !== null &&
+    curves.find(curve => curve.id === controlPolygonsDisplayed.curveIDs[0]) &&
+    controlPolygonsDisplayed.curveIDs.length === 1
 
   useEffect(() => {
     dispatch(setSketcherSize({ width: sketcherWidth, height: sketcherHeight }))
@@ -46,8 +54,7 @@ function Sketcher(props: Readonly<SketcherProps>) {
               </div>
             ) : null}
           </div>
-          {showKnotVectorEditor &&
-          controlPolygonsDisplayed?.curveIDs.length === 1 ? (
+          {showKnotVectorEditor && singleCurveSelected ? (
             <div className="absolute top-2/3 left-1/3 right-[5%] bottom-[5%] pointer-events-none">
               <KnotVectorEditor />
             </div>

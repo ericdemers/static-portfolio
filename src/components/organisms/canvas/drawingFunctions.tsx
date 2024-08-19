@@ -121,6 +121,45 @@ export const useDrawingFunctions = () => {
           })
           break
         }
+        case CurveType.Rational:
+        case CurveType.Complex: {
+          const s1 =
+            theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"
+          const s2 =
+            theme === "dark" ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.2)"
+          const s3 =
+            theme === "dark" ? "rgba(255, 255, 255, 0.5)" : "rgba(0, 0, 0, 0.5)"
+          context.lineJoin = "round"
+          context.lineWidth = 0
+          curve.points.forEach((p, index) => {
+            let fillStyle1: string
+            let fillStyle2: string
+            let fillStyle3: string
+
+            if (index % 2 === 0) {
+              fillStyle1 = colorPalette1[index / 2]
+              fillStyle2 = colorPalette2[index / 2]
+              fillStyle3 = colorPalette3[index / 2]
+            } else {
+              fillStyle1 = s1
+              fillStyle2 = s2
+              fillStyle3 = s3
+            }
+            const { x, y } = p
+            context.beginPath()
+            context.fillStyle = fillStyle3
+            context.arc(x, y, innerCircleRadius, 0, 2 * Math.PI, false)
+            context.fill()
+            context.arc(x, y, outerCircleRadius, 0, 2 * Math.PI, false)
+            if (index === selectedControlPoint) {
+              context.fillStyle = fillStyle2
+            } else {
+              context.fillStyle = fillStyle1
+            }
+            context.fill()
+          })
+          break
+        }
       }
     },
     [theme, zoom],
@@ -142,6 +181,42 @@ export const useDrawingFunctions = () => {
           curve.points.forEach(point => context.lineTo(point.x, point.y))
           context.stroke()
           break
+        case CurveType.Complex: {
+          /*
+            context.lineJoin = "round";
+            context.lineWidth = 0;
+            for (let i = 0; i < curve.points.length - 2; i += 2) {
+              const points = arcPointsFromMultiplePoints([
+                curve.points[i],
+                curve.points[i + 1],
+                curve.points[i + 2],
+              ]);
+              context.strokeStyle = fillStyle4;
+              context.lineJoin = "round";
+              context.lineWidth = 1.5 / zoom;
+              context.beginPath();
+              //context.moveTo(points[0].x, points[0].y)
+              const circle = circleArcFromThreePoints(
+                points[0],
+                points[Math.floor(points.length / 2)],
+                points[points.length - 1]
+              );
+              if (!circle) {
+                //context.moveTo(points[0].x, points[0].y)
+                //context.lineTo(points[points.length - 1].x, points[points.length - 1].y)
+                context.moveTo(curve.points[i].x, curve.points[i].y);
+                context.lineTo(curve.points[i + 2].x, curve.points[i + 2].y);
+                context.stroke();
+              } else {
+                context.moveTo(curve.points[i].x, curve.points[i].y);
+                const { xc, yc, r, startAngle, endAngle, counterclockwise } =
+                  circle;
+                context.arc(xc, yc, r, startAngle, endAngle, counterclockwise);
+                context.stroke();
+              }
+            }*/
+          break
+        }
       }
     },
     [theme, zoom],

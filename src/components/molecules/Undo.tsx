@@ -9,6 +9,7 @@ import {
   selectShowRedoArrow,
   selectShowUndoArrow,
 } from "../../sketchElements/sketchElementsSlice"
+import { setControlPolygonsDisplayed } from "../templates/sketcher/sketcherSlice"
 
 export const Undo = () => {
   const dispatch = useAppDispatch()
@@ -20,6 +21,7 @@ export const Undo = () => {
         <ArrowUturnLeftIcon
           onClick={() => {
             dispatch(ActionCreators.undo())
+            //dispatch(setControlPolygonsDisplayed(null))
           }}
           className={`${!showUndo ? "invisible" : ""} w-9 text-neutral-600 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-full p-2 hover:shadow-inner hover:shadow-black/10 hover:dark:shadow-white/10`}
         />

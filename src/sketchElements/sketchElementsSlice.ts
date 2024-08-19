@@ -56,7 +56,7 @@ const sketchElementsSlice = createSlice({
             })
         },
         moveControlPoint(state, action: PayloadAction<{displacement: {x: number, y: number}, controlPolygonsDisplayed: ControlPolygonsDisplayed}>) {
-            if (!action.payload.controlPolygonsDisplayed || !action.payload.controlPolygonsDisplayed.selectedControlPoint) return
+            if (!action.payload.controlPolygonsDisplayed?.selectedControlPoint) return
             const curveID = action.payload.controlPolygonsDisplayed.selectedControlPoint.curveID
             const index = action.payload.controlPolygonsDisplayed.selectedControlPoint.controlPointIndex
             const curve = state.curves.find((c)=> (c.id === curveID))

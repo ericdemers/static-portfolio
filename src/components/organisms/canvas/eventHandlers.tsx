@@ -351,6 +351,14 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
         case "line":
           draw(InitialCurve.Line, action, initialMousePosition, newCoordinates)
           break
+        case "circleArc":
+          draw(
+            InitialCurve.CircleArc,
+            action,
+            initialMousePosition,
+            newCoordinates,
+          )
+          break
         case "singleSelection":
         case "multipleSelection":
           switch (action) {
@@ -407,6 +415,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
       }
       switch (action) {
         case "moving curves":
+        case "moving a control point":
           if (mouseMoveThreshold === "exceeded") {
             dispatch(updateCurves({ curves: curves.slice() }))
           }
@@ -439,7 +448,15 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
       setAction("none")
       setCurrentlyDrawnCurve(null)
     },
-    [action, activeTool, curves, dispatch, mouseMoveThreshold],
+    [
+      action,
+      activeTool,
+      currentlyDrawnCurve,
+      curves,
+      dispatch,
+      mouseMoveThreshold,
+      zoom,
+    ],
   )
 
   const handleMouseDown = useCallback(
