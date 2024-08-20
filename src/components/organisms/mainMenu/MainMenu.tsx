@@ -57,7 +57,6 @@ function MainMenu() {
           anchor="bottom start"
           className="bg-white dark:bg-neutral-800 absolute mt-2 ml-0 text-gray-700 dark:text-neutral-400 shadow-lg p-2 rounded-lg overflow-auto focus:outline-none select-none"
         >
-          {/*
           <MenuItem>
             <button className="group flex w-full items-center gap-2 rounded-lg py-1.5 px-3 data-[focus]:bg-neutral-400/10">
               <FolderOpenIcon className="size-4 " />
@@ -67,7 +66,7 @@ function MainMenu() {
               </kbd>
             </button>
           </MenuItem>
-           <MenuItem>
+          <MenuItem>
             <button className="group flex w-full items-center gap-2 rounded-lg py-1.5 px-3 data-[focus]:bg-neutral-400/10">
               <ArrowDownTrayIcon className="size-4 " />
               {t("buttons.export")}
@@ -75,7 +74,7 @@ function MainMenu() {
                 ⌘S
               </kbd>
             </button>
-          </MenuItem> */}
+          </MenuItem>
           <MenuItem>
             <button
               onClick={handleResetCanvas}

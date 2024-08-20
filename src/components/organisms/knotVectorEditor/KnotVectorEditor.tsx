@@ -174,9 +174,10 @@ const KnotVectorEditor = () => {
                   grad.addColorStop(
                     i / b.length,
                     colorPaletteAngle[
-                      (Math.round((arg * 180) / Math.PI) +
-                        (bIndex / basisFunctions.length) * 360) %
-                        360
+                      Math.round(
+                        (arg * 180) / Math.PI +
+                          (bIndex / basisFunctions.length) * 360,
+                      ) % 360
                     ],
                   )
                 }

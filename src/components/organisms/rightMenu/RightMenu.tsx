@@ -27,6 +27,7 @@ import {
   setSelectedKnot,
   toggleShowKnotVectorEditor,
 } from "../../templates/sketcher/sketcherSlice"
+import { CurveType } from "../../../sketchElements/curveTypes"
 
 function RightMenu() {
   const dispatch = useAppDispatch()
@@ -95,7 +96,7 @@ function RightMenu() {
           </button>
         </li>
 
-        {selectedCurve ? (
+        {selectedCurve && selectedCurve.type === CurveType.NonRational ? (
           <li>
             <button
               onClick={handleSimplifyCurve}
@@ -115,7 +116,8 @@ function RightMenu() {
             </button>
           </li>
         ) : null}
-        {selectedKnot !== null ? (
+        {selectedKnot !== null &&
+        selectedCurve?.type === CurveType.NonRational ? (
           <li>
             <button
               onClick={handleDeleteKnot}

@@ -9,6 +9,8 @@ import { averagePhi, cadd, cdiv, cmult, csub } from "../mathVector/ComplexGrassm
 import { arcPoints, arrayRange, complexMassPointsFromCircleArc, q0FromPhi } from "./circleArc";
 import { BSplineR1toC2 } from "../bSplineAlgorithms/R1toC2/BSplineR1toC2";
 import { Complex2d } from "../mathVector/Complex2d";
+import { RationalBSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/RationalBSplineR1toR2";
+import { Vector3d } from "../mathVector/Vector3d";
 
 export enum InitialCurve {
     Freehand,
@@ -86,9 +88,36 @@ export function CoordinatesToVector2d(list: readonly Coordinates[]) {
     return list.map(point => new Vector2d(point.x, point.y))
 }
 
+export function CoordinatesToVector3d(list: Coordinates[]) {
+    const cps = CoordinatesToComplex2d(list)
+    const result = cps.map(p => new Vector3d(p.c0.x, p.c0.y, p.c1.x))
+    return result
+
+}
+
 export function Vector2dToCoordinates(list: Vector2d[]) {
     return list.map(point => {return {x: point.x, y: point.y}} )
 }
+
+
+function Vector3dToCoordinates(list: Vector3d[]) {
+    const ps: Coordinates[] = list.map(point => {return {x : point.x / point.z, y : point.y / point.z}})
+    let q: Coordinates[] = []
+    for (let i = 1; i < list.length; i += 1) {
+        const div = (list[i-1].z + list[i].z)
+        const x = (list[i-1].x + list[i].x) / div
+        const y = (list[i-1].y + list[i].y) / div
+        q.push({x, y})
+    }
+    let result: Coordinates[] = [ps[0]]
+    for (let i = 0; i < q.length; i += 1) {
+        result.push(q[i])
+        result.push(ps[i + 1])
+    }
+    return result
+
+}
+
 
 export function CoordinatesToComplex2d(list: Coordinates[]) {
     let z: Coordinates[] = []
@@ -202,6 +231,17 @@ export function insertKnot(u: number, curve: Curve) {
             const newBSpline = bspline.insertKnot(u)
             return ({...curve, points: Vector2dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots})
         }
+        case CurveType.Rational: {
+            const bspline =  new RationalBSplineR1toR2(CoordinatesToVector3d(curve.points), curve.knots)
+            const newBSpline = bspline.insertKnot(u)
+            return ({...curve, points: Vector3dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots})
+
+        }
+        case CurveType.Complex: {
+            const bspline =  new BSplineR1toC2(CoordinatesToComplex2d(curve.points), curve.knots)
+            const newBSpline = bspline.insertKnot(u)
+            return ({...curve, points: Complex2dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots})
+        }
         
     }
 }
@@ -230,33 +270,23 @@ export function removeAKnot(curve: Curve, knotIndex: number) {
 }
 
 export function elevateDegree(curve: Curve) {
-
     switch (curve.type) {
         case CurveType.NonRational: {
             const bspline =  new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
             const newBSpline = bspline.elevateDegree()
             return ({...curve, points: Vector2dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots})
         }
-        break
         case CurveType.Rational: {
-            /*
             const bspline =  new RationalBSplineR1toR2(CoordinatesToVector3d(curve.points), curve.knots)
             const newBSpline = bspline.elevateDegree()
-            curvesCopy[index] = {id, type: BSplineEnumType.Rational,  points: Vector3dToCoordinates(newBSpline.controlPoints ), knots: newBSpline.knots}
-            */
+            return ({...curve, points: Vector3dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots})   
+
         }
-        break
-        case CurveType.Complex: {
-            /*
+        case CurveType.Complex: {  
             const bspline =  new BSplineR1toC2(CoordinatesToComplex2d(curve.points), curve.knots)
             const newBSpline = bspline.elevateDegree()
-            //console.log(newBSpline)
-            curvesCopy[index] = {id, type: BSplineEnumType.Complex,  points: Complex2dToCoordinates(newBSpline.controlPoints ), knots: newBSpline.knots}
-            }
-            */
+            return ({...curve, points: Complex2dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots})   
         }
-        break
- 
 } }
 
 export function arcPointsFrom3Points(points: Coordinates[]) {
