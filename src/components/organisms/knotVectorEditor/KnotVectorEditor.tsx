@@ -262,24 +262,36 @@ const KnotVectorEditor = () => {
         context.beginPath()
         context.moveTo(u, +0.025 * ratio + offsetTop)
         context.lineTo(u, -0.025 * ratio + offsetTop)
+        context.save()
+        context.setTransform(1, 0, 0, 1, 0, 0)
+        context.lineWidth = 9
         context.stroke()
+        context.restore()
       })
 
       if (selectedKnot !== null) {
         const u = ticks[selectedKnot]
-        context.lineWidth = 6 / width
+        //context.lineWidth = 6 / width
         context.beginPath()
         context.moveTo(u, +0.025 * ratio + offsetTop)
         context.lineTo(u, -0.025 * ratio + offsetTop)
+        context.save()
+        context.setTransform(1, 0, 0, 1, 0, 0)
+        context.lineWidth = 11
         context.stroke()
+        context.restore()
       }
       if (parametricPosition !== null) {
         const u = parametricPosition * scaleX + offsetLeft
-        context.lineWidth = 1.2 / width
+        //context.lineWidth = 1.2 / width
         context.beginPath()
         context.moveTo(u, +0.025 * ratio + offsetTop)
         context.lineTo(u, -0.025 * ratio + offsetTop)
+        context.save()
+        context.setTransform(1, 0, 0, 1, 0, 0)
+        context.lineWidth = 3
         context.stroke()
+        context.restore()
       }
     },
     [parametricPosition, scroll, selectedKnot, theme, width, zoom],
@@ -310,7 +322,11 @@ const KnotVectorEditor = () => {
           u * scaleX + offsetLeft,
           -0.04 * ratio * scaleY + offsetTop,
         )
+        context.save()
+        context.setTransform(1, 0, 0, 1, 0, 0)
+        context.lineWidth = 2
         context.stroke()
+        context.restore()
       })
     },
     [scroll, theme, width, zoom],
@@ -329,12 +345,16 @@ const KnotVectorEditor = () => {
 
       context.strokeStyle = lineColorA
       context.lineJoin = "round"
-      context.lineWidth = (0.7 / width) * pixelRatio
       context.beginPath()
       context.moveTo(left, 0.15 * ratio)
       context.lineTo(right, 0.15 * ratio)
+
+      context.save()
+      context.setTransform(1, 0, 0, 1, 0, 0)
+      context.lineWidth = 2
       context.stroke()
-      context.lineWidth = 1.5 / width
+      context.restore()
+
       context.strokeStyle = lineColor
       context.beginPath()
       //minus symbol
@@ -345,9 +365,14 @@ const KnotVectorEditor = () => {
       context.lineTo(0.67 + 0.025 * ratio, 0.15 * ratio)
       context.moveTo(0.67, 0.125 * ratio)
       context.lineTo(0.67, 0.175 * ratio)
-      context.stroke()
 
-      context.lineWidth = 4.5 / width
+      context.save()
+      context.setTransform(1, 0, 0, 1, 0, 0)
+      context.lineWidth = 3
+      context.stroke()
+      context.restore()
+
+      //context.lineWidth = 4.5 / width
       context.strokeStyle = lineColorB
       context.lineCap = "round"
       context.beginPath()
@@ -355,9 +380,14 @@ const KnotVectorEditor = () => {
       const position = sliderPosition(zoom)
       context.moveTo(position, 0.125 * ratio)
       context.lineTo(position, 0.175 * ratio)
+
+      context.save()
+      context.setTransform(1, 0, 0, 1, 0, 0)
+      context.lineWidth = 9
       context.stroke()
+      context.restore()
     },
-    [pixelRatio, theme, width, zoom],
+    [theme, zoom],
   )
 
   useLayoutEffect(() => {
@@ -379,23 +409,27 @@ const KnotVectorEditor = () => {
 
     const lineColor =
       theme === "dark" ? "rgba(250, 250, 250, 1)" : "rgba(0, 0, 0, 1)"
-    context.strokeStyle = lineColor
-    context.lineJoin = "round"
 
-    context.lineWidth = (0.7 / width) * pixelRatio
     context.beginPath()
     context.moveTo(0.03, 0.7 * ratio)
     context.lineTo(0.97, 0.7 * ratio)
+    context.restore()
+    context.lineWidth = 3
+    context.strokeStyle = lineColor
     context.stroke()
 
-    let lineColorA =
-      theme === "dark" ? "rgba(250, 250, 250, 0.5)" : "rgba(0, 0, 0, 0.5)"
-    context.strokeStyle = lineColorA
+    context.save()
+    context.scale(width * pixelRatio, width * pixelRatio)
+
     context.beginPath()
     context.moveTo(0.03, 0.85 * ratio)
     context.lineTo(0.97, 0.85 * ratio)
-    context.stroke()
     context.restore()
+    let lineColorA =
+      theme === "dark" ? "rgba(250, 250, 250, 0.5)" : "rgba(0, 0, 0, 0.5)"
+    context.lineWidth = 3
+    context.strokeStyle = lineColorA
+    context.stroke()
   }, [
     canvasRef,
     curve,
