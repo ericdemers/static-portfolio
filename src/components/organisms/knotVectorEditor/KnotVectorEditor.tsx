@@ -20,7 +20,10 @@ import {
   setSelectedKnot,
 } from "../../templates/sketcher/sketcherSlice"
 import { CurveType, type Curve } from "../../../sketchElements/curveTypes"
-import { computeBasisFunction } from "./basisFunctions"
+import {
+  computeBasisFunction,
+  computeComplexRationalBasisFunction,
+} from "./basisFunctions"
 import { createColorPaletteRGB } from "../../../utilities/color"
 import {
   replaceCurve,
@@ -34,6 +37,8 @@ import {
   computeMultiplicityRight,
 } from "../../../sketchElements/curve"
 import { flushSync } from "react-dom"
+import { carg, cnorm } from "../../../mathVector/ComplexGrassmannSpace"
+import { b } from "vitest/dist/suite-IbNSsUWN.js"
 
 /*
 interface EditorProps {
@@ -115,6 +120,7 @@ const KnotVectorEditor = () => {
       const offsetLeft = 0.05 + reductionFactor * scroll
       const offsetTop = 0.7 * ratio
       const colorPalette = createColorPaletteRGB(curve.points.length, 1)
+      const colorPaletteAngle = createColorPaletteRGB(360, 0.2)
 
       context.rect(0.03, 0, 0.94, 1)
       context.clip()
@@ -145,6 +151,79 @@ const KnotVectorEditor = () => {
               }
             })
             //context.restore()
+          }
+          break
+        case CurveType.Complex:
+          {
+            const basisFunctions = computeComplexRationalBasisFunction(curve)
+            context.lineWidth = 6 / width
+            basisFunctions.forEach((b, bIndex) => {
+              if (b[0] !== undefined) {
+                context.beginPath()
+                context.moveTo(
+                  b[0].u * scaleX + offsetLeft,
+                  (-Math.atan(cnorm(b[0].value)) / Math.PI) *
+                    2 *
+                    ratio *
+                    scaleY +
+                    offsetTop,
+                )
+                const grad = context.createLinearGradient(0, 0, 1, 0)
+                for (let i = 0; i < b.length; i += 1) {
+                  const arg = carg(b[i].value)
+                  grad.addColorStop(
+                    i / b.length,
+                    colorPaletteAngle[
+                      (Math.round((arg * 180) / Math.PI) +
+                        (bIndex / basisFunctions.length) * 360) %
+                        360
+                    ],
+                  )
+                }
+                context.strokeStyle = grad
+                b.forEach((point, index) => {
+                  if (index === 0) return
+                  context.lineTo(
+                    point.u * scaleX + offsetLeft,
+                    (-Math.atan(cnorm(point.value)) / Math.PI) *
+                      2 *
+                      ratio *
+                      scaleY +
+                      offsetTop,
+                  )
+                })
+                context.stroke()
+              }
+            })
+
+            //context.strokeStyle = colorPalette[0]
+            context.lineJoin = "round"
+            context.lineWidth = 1.8 / width
+            basisFunctions.forEach((b, index) => {
+              if (b[0] !== undefined) {
+                context.beginPath()
+                context.strokeStyle = colorPalette[index]
+                context.moveTo(
+                  b[0].u * scaleX + offsetLeft,
+                  (-Math.atan(cnorm(b[0].value)) / Math.PI) *
+                    2 *
+                    ratio *
+                    scaleY +
+                    offsetTop,
+                )
+                b.forEach((point, index) =>
+                  context.lineTo(
+                    point.u * scaleX + offsetLeft,
+                    (-Math.atan(cnorm(point.value)) / Math.PI) *
+                      2 *
+                      ratio *
+                      scaleY +
+                      offsetTop,
+                  ),
+                )
+                context.stroke()
+              }
+            })
           }
           break
       }
@@ -250,7 +329,7 @@ const KnotVectorEditor = () => {
 
       context.strokeStyle = lineColorA
       context.lineJoin = "round"
-      context.lineWidth = 1.2 / width
+      context.lineWidth = (0.7 / width) * pixelRatio
       context.beginPath()
       context.moveTo(left, 0.15 * ratio)
       context.lineTo(right, 0.15 * ratio)
@@ -278,7 +357,7 @@ const KnotVectorEditor = () => {
       context.lineTo(position, 0.175 * ratio)
       context.stroke()
     },
-    [theme, width, zoom],
+    [pixelRatio, theme, width, zoom],
   )
 
   useLayoutEffect(() => {
@@ -302,7 +381,8 @@ const KnotVectorEditor = () => {
       theme === "dark" ? "rgba(250, 250, 250, 1)" : "rgba(0, 0, 0, 1)"
     context.strokeStyle = lineColor
     context.lineJoin = "round"
-    context.lineWidth = 1.2 / width
+
+    context.lineWidth = (0.7 / width) * pixelRatio
     context.beginPath()
     context.moveTo(0.03, 0.7 * ratio)
     context.lineTo(0.97, 0.7 * ratio)
@@ -571,10 +651,11 @@ const KnotVectorEditor = () => {
       setInitialMouseXPosition(null)
       if (editorState === "moving a knot") {
         setEditorState("selected knot")
-        dispatch(updateCurves({ curves: curves.slice() }))
+        if (mouseMoveThreshold === "exceeded")
+          dispatch(updateCurves({ curves: curves.slice() }))
       }
     },
-    [curves, dispatch, editorState],
+    [curves, dispatch, editorState, mouseMoveThreshold],
   )
 
   const handleMouseUp = useCallback(

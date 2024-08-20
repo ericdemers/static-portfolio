@@ -95,7 +95,7 @@ function RightMenu() {
           </button>
         </li>
 
-        {selectedCurve && interiorKnot(selectedCurve) ? (
+        {selectedCurve ? (
           <li>
             <button
               onClick={handleSimplifyCurve}

@@ -23,6 +23,7 @@ import {
   zoomIn,
   selectControlPoint,
   setSelectedKnot,
+  zoomReset,
 } from "../../templates/sketcher/sketcherSlice"
 import {
   createCurve,
@@ -665,6 +666,9 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
   const handleZoomIn = useCallback(() => {
     dispatch(zoomIn())
   }, [dispatch])
+  const handleZoomReset = useCallback(() => {
+    dispatch(zoomReset({ curves: curves }))
+  }, [curves, dispatch])
 
   const handleKeyPress = useCallback(
     (event: KeyboardEvent) => {
@@ -684,6 +688,20 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
         case "+":
           handleZoomIn()
           break
+        case "0":
+          handleZoomReset()
+      }
+      if (event.ctrlKey || (event.metaKey && event.key === "=")) {
+        handleZoomIn()
+        event.preventDefault()
+      }
+      if (event.ctrlKey || (event.metaKey && event.key === "-")) {
+        handleZoomOut()
+        event.preventDefault()
+      }
+      if (event.ctrlKey || (event.metaKey && event.key === "0")) {
+        handleZoomReset()
+        event.preventDefault()
       }
       if (event.ctrlKey || (event.metaKey && event.key === "d")) {
         handleDuplicate()
