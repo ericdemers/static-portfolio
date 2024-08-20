@@ -17,6 +17,35 @@ export const useDrawingFunctions = () => {
   const theme = useAppSelector(selectTheme)
   const zoom = useAppSelector(selectZoom)
 
+  const drawComplexSplineOfDegreeOne = useCallback(
+    (context: CanvasRenderingContext2D, curve: Curve) => {
+      for (let i = 0; i < curve.points.length - 2; i += 2) {
+        const points = arcPointsFrom3Points([
+          curve.points[i],
+          curve.points[i + 1],
+          curve.points[i + 2],
+        ])
+        context.beginPath()
+        const circle = circleArcFromThreePoints(
+          points[0],
+          points[Math.floor(points.length / 2)],
+          points[points.length - 1],
+        )
+        if (!circle) {
+          context.moveTo(curve.points[i].x, curve.points[i].y)
+          context.lineTo(curve.points[i + 2].x, curve.points[i + 2].y)
+          context.stroke()
+        } else {
+          context.moveTo(curve.points[i].x, curve.points[i].y)
+          const { xc, yc, r, startAngle, endAngle, counterclockwise } = circle
+          context.arc(xc, yc, r, startAngle, endAngle, counterclockwise)
+          context.stroke()
+        }
+      }
+    },
+    [],
+  )
+
   const drawCurve = useCallback(
     (context: CanvasRenderingContext2D, curve: Curve) => {
       const lineColor =
@@ -48,6 +77,7 @@ export const useDrawingFunctions = () => {
           }
           break
         case CurveType.Complex:
+          // note:  curve.knots.length === 0 means that the curve is drawn for the first time
           if (curve.points.length >= 3 && curve.knots.length === 0) {
             const points = arcPointsFrom3Points(curve.points)
             context.strokeStyle = lineColor
@@ -65,19 +95,25 @@ export const useDrawingFunctions = () => {
             context.arc(xc, yc, r, startAngle, endAngle, counterclockwise)
             context.stroke()
           } else if (curve.points.length >= 3) {
+            const degree =
+              curve.knots.length - (curve.points.length + 1) / 2 - 1
             context.strokeStyle = lineColor
             context.lineJoin = "round"
             context.lineWidth = 1.5 / zoom
-            context.beginPath()
-            const points = pointsOnCurve(curve, 1000)
-            context.moveTo(points[0].x, points[0].y)
-            points.forEach(point => context.lineTo(point.x, point.y))
-            context.stroke()
+            if (degree === 1) {
+              drawComplexSplineOfDegreeOne(context, curve)
+            } else {
+              context.beginPath()
+              const points = pointsOnCurve(curve, 1000)
+              context.moveTo(points[0].x, points[0].y)
+              points.forEach(point => context.lineTo(point.x, point.y))
+              context.stroke()
+            }
           }
           break
       }
     },
-    [theme, zoom],
+    [drawComplexSplineOfDegreeOne, theme, zoom],
   )
 
   const drawControlPoints = useCallback(
@@ -184,40 +220,15 @@ export const useDrawingFunctions = () => {
           context.stroke()
           break
         case CurveType.Complex: {
+          context.strokeStyle = color
           context.lineJoin = "round"
-          context.lineWidth = 0
-          for (let i = 0; i < curve.points.length - 2; i += 2) {
-            const points = arcPointsFrom3Points([
-              curve.points[i],
-              curve.points[i + 1],
-              curve.points[i + 2],
-            ])
-            context.strokeStyle = color
-            context.lineJoin = "round"
-            context.lineWidth = 1.5 / zoom
-            context.beginPath()
-            const circle = circleArcFromThreePoints(
-              points[0],
-              points[Math.floor(points.length / 2)],
-              points[points.length - 1],
-            )
-            if (!circle) {
-              context.moveTo(curve.points[i].x, curve.points[i].y)
-              context.lineTo(curve.points[i + 2].x, curve.points[i + 2].y)
-              context.stroke()
-            } else {
-              context.moveTo(curve.points[i].x, curve.points[i].y)
-              const { xc, yc, r, startAngle, endAngle, counterclockwise } =
-                circle
-              context.arc(xc, yc, r, startAngle, endAngle, counterclockwise)
-              context.stroke()
-            }
-          }
+          context.lineWidth = 1.5 / zoom
+          drawComplexSplineOfDegreeOne(context, curve)
           break
         }
       }
     },
-    [theme, zoom],
+    [drawComplexSplineOfDegreeOne, theme, zoom],
   )
 
   const drawPoint = useCallback(
