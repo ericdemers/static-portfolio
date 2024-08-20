@@ -413,23 +413,28 @@ const KnotVectorEditor = () => {
     context.beginPath()
     context.moveTo(0.03, 0.7 * ratio)
     context.lineTo(0.97, 0.7 * ratio)
-    context.restore()
+
+    context.save()
+    context.setTransform(1, 0, 0, 1, 0, 0)
     context.lineWidth = 3
     context.strokeStyle = lineColor
     context.stroke()
-
-    context.save()
-    context.scale(width * pixelRatio, width * pixelRatio)
+    context.restore()
 
     context.beginPath()
     context.moveTo(0.03, 0.85 * ratio)
     context.lineTo(0.97, 0.85 * ratio)
-    context.restore()
+
+    //context.save()
+    context.setTransform(1, 0, 0, 1, 0, 0)
     let lineColorA =
       theme === "dark" ? "rgba(250, 250, 250, 0.5)" : "rgba(0, 0, 0, 0.5)"
     context.lineWidth = 3
     context.strokeStyle = lineColorA
     context.stroke()
+    //context.restore()
+
+    context.restore()
   }, [
     canvasRef,
     curve,
