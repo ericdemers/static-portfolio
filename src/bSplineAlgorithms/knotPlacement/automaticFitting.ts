@@ -1,5 +1,6 @@
 // Reference : Fast Automatic Knot Placement Method for Accurate B-spline curve Fitting, by Raine Yeh, Youssef S. G. Nashed, Tom Peterka, Xavier Tricoche, Computer-aided design 128 (2020)
 
+import { KMS_REDUCE_CROSS_ACCOUNT_REGION_POLICY_SCOPE } from "aws-cdk-lib/cx-api"
 import { CholeskyDecomposition } from "../../linearAlgebra/CholeskyDecomposition"
 import { DenseMatrix } from "../../linearAlgebra/DenseMatrix"
 import { zeroVector } from "../../linearAlgebra/MathVectorBasicOperations"
@@ -16,16 +17,35 @@ export function automaticFitting(initialSpline: BSplineR1toR2, scale = 1, resolu
         return initialSpline
     }
     const spline0 = removeOverlappingControlPoints(initialSpline, 0.005 / scale)
+    //console.log(spline0)
     const spline = approximateArcLengthParametrization(spline0)
+    //console.log(spline)
+    //const spline = approximateArcLengthParametrization(initialSpline)
+    //const spline = initialSpline
+    //const spline = spline0
+    
+
     const cff = cumulativeFeatureFunction(spline, 3)
     let knots = knotDistribution(cff, 3, resolutionFactor * Math.pow(scale, 1 / 3))
     if (knots.length >= initialSpline.knots.length) {
         knots = knotDistribution(cff, 3, resolutionFactor / 2 * Math.pow(scale, 1 / 3))
     }
+    //console.log(spline)
     const cp = leastSquareApproximation2(spline, knots, 3)
     if (cp.length >= initialSpline.controlPoints.length) {
         return initialSpline
     }
+    //console.log(cp)
+    let terminate = false
+    cp.forEach( c=>{
+            if(isNaN(c.x) || isNaN(c.y)){
+                //console.log(c.x)
+                //console.log(initialSpline)
+                terminate = true
+            }
+        }
+    )
+    if (terminate) return
     return new BSplineR1toR2(cp, knots)
 
 }
@@ -67,6 +87,9 @@ function removeOverlappingControlPoints(spline: BSplineR1toR2, tolerance = 0.000
         }
     })
     //console.log(newControlPoints.length)
+    if (newControlPoints.length - spline.degree - 1 < 0) {
+        return spline
+    }
     let newKnots = uniformKnots(spline.degree, newControlPoints.length)
     return new BSplineR1toR2(newControlPoints, newKnots)
 }
@@ -137,6 +160,7 @@ export function knotDistribution(cumulativeFeatureFunction: {xs: number[], ys: n
         }
     }
     // Remove last interior knot !!!!!!!!!!!!!!!!!!!!!
+    if (result.length > degree + 1)
     result.splice(-1)
     result = result.concat(Array(degree + 1).fill(1))
     //console.log(result)
@@ -398,7 +422,7 @@ function smoothControlPolygon(spline: BSplineR1toR2) {
 export function uniformKnots(degree: number, numberOfControlPoints: number) {
     const numberOfInteriorKnot = numberOfControlPoints - degree - 1
     if (numberOfInteriorKnot < 0) {
-        throw new Error("The number of interior knot cannot be negative")
+        throw new Error("The number of interior knot cannot be negative") 
     }
     let knots: number[] = []
     for (let i = 0; i < degree + 1; i += 1) {

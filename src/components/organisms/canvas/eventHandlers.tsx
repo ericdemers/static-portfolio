@@ -27,6 +27,7 @@ import {
 import {
   createCurve,
   InitialCurve,
+  normalizeCircle,
   optimizedKnotPositions,
   pointsOnCurve,
 } from "../../../sketchElements/curve"
@@ -204,15 +205,22 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     [onCurve],
   )
 
+  /*
   const extendCurve = useCallback(
     (point: Coordinates, curveType: InitialCurve) => {
       if (currentlyDrawnCurve !== null) {
         let curve = { ...currentlyDrawnCurve }
+        const curvePoints = curve.points.map(p => {
+          return { x: p.x, y: p.y }
+        })
         switch (curveType) {
           case InitialCurve.Freehand: {
-            const degree = curve.points.length < 5 ? curve.points.length : 5
-            curve.points = [...curve.points, point]
-            curve.knots = uniformKnots(degree, curve.points.length)
+            //curve.points = [...curve.points, point]
+            const newCurvePoints = [...curvePoints, point]
+            let degree = 1
+            if (newCurvePoints.length > 7) degree = 5
+            //const degree = curve.points.length < 7 ? curve.points.length - 2 : 5
+            curve.knots = uniformKnots(degree, newCurvePoints.length)
             break
           }
           case InitialCurve.Line: {
@@ -220,6 +228,44 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
             break
           }
           case InitialCurve.CircleArc: {
+            curve.points = [...curve.points, point]
+            break
+          }
+        }
+        dispatch(replaceCurve({ curve }))
+        setCurrentlyDrawnCurve(curve)
+      }
+    },
+    [currentlyDrawnCurve, dispatch],
+  )
+    */
+
+  const extendCurve = useCallback(
+    (point: Coordinates, curveType: InitialCurve) => {
+      if (currentlyDrawnCurve !== null) {
+        const curvePoints = currentlyDrawnCurve.points.map(p => {
+          return { x: p.x, y: p.y }
+        })
+        const curve = {
+          ...currentlyDrawnCurve,
+          points: curvePoints,
+          knots: currentlyDrawnCurve.knots,
+        }
+        switch (curveType) {
+          case InitialCurve.Freehand: {
+            const degree = curvePoints.length < 5 ? curvePoints.length : 5
+            const newCurvePoints = [...curvePoints, point]
+            curve.knots = uniformKnots(degree, newCurvePoints.length)
+            //console.log(curve.knots)
+            curve.points = newCurvePoints
+            break
+          }
+          case InitialCurve.Line: {
+            curve.points = [curve.points[0], point]
+            break
+          }
+          case InitialCurve.CircleArc: {
+            curve.points = [...curve.points, point]
             break
           }
         }
@@ -333,6 +379,8 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     (newCoordinates: Coordinates) => {
       if (!initialMousePosition) return
       handleMouseMoveTreshold(initialMousePosition, newCoordinates)
+      //if (mouseMoveThreshold !== "exceeded") return
+      //if (pressDown === false) return
       //const deltaX = newCoordinates.x - initialMousePosition.x
       //const deltaY = newCoordinates.y - initialMousePosition.y
       const v = displacement(initialMousePosition, newCoordinates)
@@ -403,10 +451,8 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
 
   const handlePressRelease = useCallback(
     (coordinates: Coordinates) => {
-      setPressDown(false)
-      setInitialMousePosition(null)
       if (
-        mouseMoveThreshold === "not exceeded" &&
+        mouseMoveThreshold !== "exceeded" &&
         activeTool !== "multipleSelection" &&
         action !== "moving a control point" &&
         action !== "moving curves"
@@ -432,21 +478,27 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
                   )
                   dispatch(updateThisCurve({ curve }))
                 }
-                //dispatch(updateCurves({ curves: curves.slice() }))
               }
               break
             case "line": {
-              if (mouseMoveThreshold === "exceeded") {
-                dispatch(updateCurves({ curves: curves.slice() }))
-              }
+              if (currentlyDrawnCurve)
+                dispatch(updateThisCurve({ curve: currentlyDrawnCurve }))
               break
             }
+            case "circleArc":
+              if (currentlyDrawnCurve) {
+                const c = normalizeCircle(currentlyDrawnCurve)
+                dispatch(updateThisCurve({ curve: c }))
+              }
+              break
           }
           break
       }
+      setPressDown(false)
       setMouseMoveThreshold("not exceeded")
       setAction("none")
       setCurrentlyDrawnCurve(null)
+      setInitialMousePosition(null)
     },
     [
       action,

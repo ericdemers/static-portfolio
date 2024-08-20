@@ -8,6 +8,7 @@ import undoable, { excludeAction } from 'redux-undo';
 export const store = configureStore({
   reducer: { 
         sketcher: sketcherReducer,
+        //note: "sketcher/setParametricPosition" added to the filter otherwise simultanuous dispatch with replace curve cause problem with undo"
         sketchElements: undoable(sketchElementReducer, {filter: excludeAction(["sketchElements/addNewCurve", "sketchElements/replaceCurve", "sketchElements/moveCurves", "sketchElements/moveControlPoint", "sketcher/setParametricPosition"])}),
     }  
 })

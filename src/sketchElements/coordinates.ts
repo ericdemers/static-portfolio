@@ -15,3 +15,7 @@ export function displacement(c1: Coordinates, c2: Coordinates): Coordinates {
     return {x: cx2 - cx1, y: cy2 - cy1}
 }
 
+export function middlePoint(c0: Coordinates, c1: Coordinates): Coordinates {
+    return {x: (c0.x + c1.x) / 2, y: (c0.y + c1.y) / 2}
+}
+

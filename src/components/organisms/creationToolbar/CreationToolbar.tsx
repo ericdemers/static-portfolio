@@ -122,9 +122,9 @@ function CreationToolbar() {
               >
                 <TrashIcon className="size-6 " />
               </button>
-              <button className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2">
+              {/*               <button className=" hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg outline-none p-2">
                 <Icon icon="material-symbols:shift-lock" className="size-6" />
-              </button>
+              </button> */}
             </>
           ) : null}
         </>

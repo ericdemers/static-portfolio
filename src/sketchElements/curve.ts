@@ -1,10 +1,14 @@
 import { nanoid } from "@reduxjs/toolkit";
 import type { Curve } from "./curveTypes";
 import { CurveType, PythagoreanHodograph } from "./curveTypes";
-import { movePoint, type Coordinates } from "./coordinates";
+import { middlePoint, movePoint, type Coordinates } from "./coordinates";
 import { BSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/BSplineR1toR2";
 import { Vector2d } from "../mathVector/Vector2d";
 import { automaticFitting, removeASingleKnot } from "../bSplineAlgorithms/knotPlacement/automaticFitting";
+import { averagePhi, cadd, cdiv, cmult, csub } from "../mathVector/ComplexGrassmannSpace";
+import { arcPoints, arrayRange, complexMassPointsFromCircleArc, q0FromPhi } from "./circleArc";
+import { BSplineR1toC2 } from "../bSplineAlgorithms/R1toC2/BSplineR1toC2";
+import { Complex2d } from "../mathVector/Complex2d";
 
 export enum InitialCurve {
     Freehand,
@@ -21,7 +25,7 @@ export function createCurve(type: InitialCurve, point: Coordinates) : Curve {
         case InitialCurve.Line:
             return {id, type: CurveType.NonRational, points: [point, point], knots: [0, 0, 1, 1]} 
         case InitialCurve.CircleArc:
-            return {id, type: CurveType.Complex, points: [point, point, point], knots: [0, 0, 1, 1]}
+            return {id, type: CurveType.Complex, points: [point, point, point], knots: []}
         case InitialCurve.Spiral:
             return {id, type: CurveType.NonRational, points: [point, point, point, point, point, point], knots: [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], pythagoreanHodograph: PythagoreanHodograph.Primitive}
     }
@@ -44,10 +48,12 @@ export function pointsOnCurve(curve: Curve, numberOfPoints: number = 1000) {
         }
         case CurveType.Rational:
             return [{x: 0, y: 0}]
-          break
         case CurveType.Complex:
-            return [{x: 0, y: 0}]
-          break
+            return [...Array(numberOfPoints).keys()].map((u) => {
+                const bspline = new BSplineR1toC2(CoordinatesToComplex2d(curve.points), curve.knots)
+                const p = bspline.evaluate(u / (numberOfPoints - 1)).toComplexNumber()
+                return {x: p.x, y: p.y}
+            })
     }
 }
 
@@ -58,6 +64,8 @@ export function pointOnCurve(curve: Curve, u: number) {
             const p = bspline.evaluate(u)
             return {x: p.x, y: p.y}
         }
+        case CurveType.Complex :
+            break
     }
 
 }
@@ -81,6 +89,41 @@ export function CoordinatesToVector2d(list: readonly Coordinates[]) {
 export function Vector2dToCoordinates(list: Vector2d[]) {
     return list.map(point => {return {x: point.x, y: point.y}} )
 }
+
+export function CoordinatesToComplex2d(list: Coordinates[]) {
+    let z: Coordinates[] = []
+    let q: Coordinates[] = []
+    for(let i = 0; i < list.length; i += 1) {
+        if (i % 2 === 0) {
+            z.push(list[i])
+        } else {
+            q.push(list[i])
+        }
+    }
+
+    let cps: Complex2d[] = [new Complex2d(z[0], {x: 1, y: 0})]
+    for (let i = 1; i < z.length; i += 1) {
+        const w = cmult(cps[i - 1].c1, cdiv( csub(q[i - 1], z[i - 1]), csub(z[i], q[i - 1]) ) )
+        cps.push(new Complex2d(cmult(z[i], w), w))
+    }
+    return cps
+}
+
+export function Complex2dToCoordinates(list: Complex2d[]) {
+    const z = list.map(point => cdiv(point.c0, point.c1))
+    let q: Coordinates[] = []
+    for (let i = 1; i < z.length; i += 1) {
+        q.push(cdiv (cadd(list[i - 1].c0, list[i].c0), cadd(list[i - 1].c1, list[i].c1)) )
+    }
+    let result: Coordinates[] = [z[0]]
+    for (let i = 0; i < q.length; i += 1) {
+        result.push(q[i])
+        result.push(z[i + 1])
+    }
+    return result
+}
+
+
 
 /*
 export function uniformKnots(degree: number, numberOfControlPoints: number) {
@@ -144,9 +187,13 @@ export function computeMultiplicityLeft(knots: number[], index: number) {
 
 export function optimizedKnotPositions(curve: Curve, scale = 1, resolutionFactor = 0.3) {
     const bSpline = new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
-    const newBSpline = automaticFitting(bSpline, scale, resolutionFactor)
+    let newBSpline = automaticFitting(bSpline, scale, resolutionFactor)
+    if (newBSpline === undefined) {
+        newBSpline = bSpline
+    }
     return ({...curve, points: Vector2dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots})
 }
+    
 
 export function insertKnot(u: number, curve: Curve) {
     switch (curve.type) {
@@ -211,3 +258,31 @@ export function elevateDegree(curve: Curve) {
         break
  
 } }
+
+export function arcPointsFrom3Points(points: Coordinates[]) {
+    const phi = averagePhi(points)
+    const z0 = points[0]
+    const z1 = points[points.length - 1]
+    const q0 = q0FromPhi(phi, z0, z1)
+    const cm = complexMassPointsFromCircleArc({z0: z0, z1: z1, q0: q0})
+    const us = arrayRange(0, 1, 0.01)
+    return arcPoints(cm.p0, cm.p1, us)
+}
+
+export function normalizeCircle(c: Curve): Curve { 
+    
+    let curveCopy = structuredClone(c)
+    if (c.points.length === 1) {
+        curveCopy.points = [c.points[0], c.points[0], c.points[0]]
+    } else if (c.points.length === 2) {
+        curveCopy.points = [c.points[0], middlePoint(c.points[0], c.points[1]), c.points[1]]
+    } else if (c.points.length > 3) {
+        const z0 = c.points[0]
+        const z1 = c.points[c.points.length - 1]
+        const phi = averagePhi(c.points)
+        const q0 = q0FromPhi(phi, z0, z1)
+        curveCopy.points = [z0, q0, z1]
+        curveCopy.knots = [0, 0, 1, 1]
+    }
+    return curveCopy
+}

@@ -3,9 +3,15 @@ import { CurveType, type Curve } from "../../../sketchElements/curveTypes"
 import { useAppSelector } from "../../../app/hooks"
 //import { selectTheme } from "../mainMenu/mainMenuSlice"
 
-import { pointOnCurve, pointsOnCurve } from "../../../sketchElements/curve"
+import {
+  arcPointsFrom3Points,
+  InitialCurve,
+  pointOnCurve,
+  pointsOnCurve,
+} from "../../../sketchElements/curve"
 import { selectTheme, selectZoom } from "../../templates/sketcher/sketcherSlice"
 import { createColorPaletteRGB } from "../../../utilities/color"
+import { circleArcFromThreePoints } from "../../../sketchElements/circleArc"
 
 export const useDrawingFunctions = () => {
   const theme = useAppSelector(selectTheme)
@@ -42,35 +48,31 @@ export const useDrawingFunctions = () => {
           }
           break
         case CurveType.Complex:
-          {
-            /*
-            if (curve.points.length >= 3 && curve.knots.length === 0) {
-              const points = arcPointsFromMultiplePoints(curve.points)
-              context.strokeStyle = lineColor
-              context.lineJoin = "round"
-              context.lineWidth = 1.5 / sketcherState.zoom
-              context.beginPath()
-              context.moveTo(points[0].x, points[0].y)
-              const circle = circleArcFromThreePoints(
-                points[0],
-                points[Math.floor(points.length / 2)],
-                points[points.length - 1],
-              )
-              if (!circle) return
-              const { xc, yc, r, startAngle, endAngle, counterclockwise } =
-                circle
-              context.arc(xc, yc, r, startAngle, endAngle, counterclockwise)
-              context.stroke()
-            } else if (curve.points.length >= 3) {
-              context.strokeStyle = lineColor
-              context.lineJoin = "round"
-              context.lineWidth = 1.5 / sketcherState.zoom
-              context.beginPath()
-              const points = pointsOnComplexCurve(curve, 1000)
-              context.moveTo(points[0].x, points[0].y)
-              points.forEach(point => context.lineTo(point.x, point.y))
-              context.stroke()
-            }*/
+          if (curve.points.length >= 3 && curve.knots.length === 0) {
+            const points = arcPointsFrom3Points(curve.points)
+            context.strokeStyle = lineColor
+            context.lineJoin = "round"
+            context.lineWidth = 1.5 / zoom
+            context.beginPath()
+            context.moveTo(points[0].x, points[0].y)
+            const circle = circleArcFromThreePoints(
+              points[0],
+              points[Math.floor(points.length / 2)],
+              points[points.length - 1],
+            )
+            if (!circle) return
+            const { xc, yc, r, startAngle, endAngle, counterclockwise } = circle
+            context.arc(xc, yc, r, startAngle, endAngle, counterclockwise)
+            context.stroke()
+          } else if (curve.points.length >= 3) {
+            context.strokeStyle = lineColor
+            context.lineJoin = "round"
+            context.lineWidth = 1.5 / zoom
+            context.beginPath()
+            const points = pointsOnCurve(curve, 1000)
+            context.moveTo(points[0].x, points[0].y)
+            points.forEach(point => context.lineTo(point.x, point.y))
+            context.stroke()
           }
           break
       }
@@ -182,39 +184,35 @@ export const useDrawingFunctions = () => {
           context.stroke()
           break
         case CurveType.Complex: {
-          /*
-            context.lineJoin = "round";
-            context.lineWidth = 0;
-            for (let i = 0; i < curve.points.length - 2; i += 2) {
-              const points = arcPointsFromMultiplePoints([
-                curve.points[i],
-                curve.points[i + 1],
-                curve.points[i + 2],
-              ]);
-              context.strokeStyle = fillStyle4;
-              context.lineJoin = "round";
-              context.lineWidth = 1.5 / zoom;
-              context.beginPath();
-              //context.moveTo(points[0].x, points[0].y)
-              const circle = circleArcFromThreePoints(
-                points[0],
-                points[Math.floor(points.length / 2)],
-                points[points.length - 1]
-              );
-              if (!circle) {
-                //context.moveTo(points[0].x, points[0].y)
-                //context.lineTo(points[points.length - 1].x, points[points.length - 1].y)
-                context.moveTo(curve.points[i].x, curve.points[i].y);
-                context.lineTo(curve.points[i + 2].x, curve.points[i + 2].y);
-                context.stroke();
-              } else {
-                context.moveTo(curve.points[i].x, curve.points[i].y);
-                const { xc, yc, r, startAngle, endAngle, counterclockwise } =
-                  circle;
-                context.arc(xc, yc, r, startAngle, endAngle, counterclockwise);
-                context.stroke();
-              }
-            }*/
+          context.lineJoin = "round"
+          context.lineWidth = 0
+          for (let i = 0; i < curve.points.length - 2; i += 2) {
+            const points = arcPointsFrom3Points([
+              curve.points[i],
+              curve.points[i + 1],
+              curve.points[i + 2],
+            ])
+            context.strokeStyle = color
+            context.lineJoin = "round"
+            context.lineWidth = 1.5 / zoom
+            context.beginPath()
+            const circle = circleArcFromThreePoints(
+              points[0],
+              points[Math.floor(points.length / 2)],
+              points[points.length - 1],
+            )
+            if (!circle) {
+              context.moveTo(curve.points[i].x, curve.points[i].y)
+              context.lineTo(curve.points[i + 2].x, curve.points[i + 2].y)
+              context.stroke()
+            } else {
+              context.moveTo(curve.points[i].x, curve.points[i].y)
+              const { xc, yc, r, startAngle, endAngle, counterclockwise } =
+                circle
+              context.arc(xc, yc, r, startAngle, endAngle, counterclockwise)
+              context.stroke()
+            }
+          }
           break
         }
       }
