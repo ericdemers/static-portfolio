@@ -6,7 +6,7 @@ export const testSave = () => {
     saveAs(blob, "hello world.txt")
 }
 
-export const saveCurves = (curves: Curve[]) => {
+export const saveCurves = (curves: readonly Curve[]) => {
     const blob = new Blob([JSON.stringify(curves)], {type: 'application/json' })
     saveAs(blob, "curves.json")
 }
