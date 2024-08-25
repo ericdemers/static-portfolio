@@ -299,13 +299,13 @@ export function arcPointsFrom3Points(points: Coordinates[]) {
     return arcPoints(cm.p0, cm.p1, us)
 }
 
-export function arcPointsFrom3PointsOrNoisyPoints(points: Coordinates[]) {
+export function threeArcPointsFromNoisyPoints(points: Coordinates[]) {
     const phi = weigthedAveragePhi(points)
     const z0 = points[0]
     const z1 = points[points.length - 1]
     const q0 = q0FromPhi(phi, z0, z1)
     const cm = complexMassPointsFromCircleArc({z0: z0, z1: z1, q0: q0})
-    const us = arrayRange(0, 1, 0.01)
+    const us = arrayRange(0, 1, 0.5)
     return arcPoints(cm.p0, cm.p1, us)
 }
 

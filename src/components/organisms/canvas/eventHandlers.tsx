@@ -31,6 +31,7 @@ import {
   normalizeCircle,
   optimizedKnotPositions,
   pointsOnCurve,
+  threeArcPointsFromNoisyPoints,
 } from "../../../sketchElements/curve"
 import { flushSync } from "react-dom"
 import {
@@ -44,14 +45,23 @@ import {
   duplicateCurves,
   moveControlPoint,
 } from "../../../sketchElements/sketchElementsSlice"
-import { CurveType, type Curve } from "../../../sketchElements/curveTypes"
+import {
+  Closed,
+  CurveType,
+  type Curve,
+} from "../../../sketchElements/curveTypes"
 import { ActionCreators } from "redux-undo"
 import { uniformKnots } from "../../../bSplineAlgorithms/knotPlacement/automaticFitting"
-import { circleArcFromThreePoints } from "../../../sketchElements/circleArc"
+import {
+  circleArcFromThreePoints,
+  complexMassPointsFromCircleArc,
+  q0FromPhi,
+} from "../../../sketchElements/circleArc"
 import {
   cmult,
   conjugate,
   positiveAtan2,
+  weigthedAveragePhi,
 } from "../../../mathVector/ComplexGrassmannSpace"
 
 type ActionType =
@@ -87,6 +97,14 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
   )
   const curves = useAppSelector(selectCurves)
   const controlPolygonsDisplayed = useAppSelector(selectControlPolygonsDispayed)
+  const [drawnCircleArc, setDrawnCircleArc] = useState<{
+    xc: number
+    yc: number
+    r: number
+    startAngle: number
+    endAngle: number
+    counterclockwise: boolean
+  } | null>(null)
 
   const clickWithoutMovingResolution = 10
 
@@ -174,68 +192,84 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     return offset < maxDistance / zoom
   }
 
-  const onCircleArc = (
-    threePoints: readonly Coordinates[],
-    point: Coordinates,
-    zoom: number,
-    maxDistance = 1,
-  ) => {
-    const circle = circleArcFromThreePoints(
-      threePoints[0],
-      threePoints[1],
-      threePoints[2],
-    )
-    if (circle) {
-      const distanceFromCenter = Math.hypot(
-        point.x - circle.xc,
-        point.y - circle.yc,
+  const onCircleArc = useCallback(
+    (
+      threePoints: readonly Coordinates[],
+      point: Coordinates,
+      zoom: number,
+      maxDistance = 1,
+    ) => {
+      const circle = circleArcFromThreePoints(
+        threePoints[0],
+        threePoints[1],
+        threePoints[2],
       )
-      const offset = Math.abs(distanceFromCenter - circle.r)
-      const a = {
-        x: Math.cos(circle.startAngle),
-        y: Math.sin(circle.startAngle),
+      if (circle) {
+        const distanceFromCenter = Math.hypot(
+          point.x - circle.xc,
+          point.y - circle.yc,
+        )
+        const offset = Math.abs(distanceFromCenter - circle.r)
+        const a = {
+          x: Math.cos(circle.startAngle),
+          y: Math.sin(circle.startAngle),
+        }
+        const b = { x: point.x - circle.xc, y: point.y - circle.yc }
+        const c = { x: Math.cos(circle.endAngle), y: Math.sin(circle.endAngle) }
+        const v1 = circle.counterclockwise
+          ? cmult(conjugate(a), b)
+          : cmult(conjugate(b), a)
+        const v2 = circle.counterclockwise
+          ? cmult(conjugate(a), c)
+          : cmult(conjugate(c), a)
+        const av1 = positiveAtan2(v1.y, v1.x)
+        const av2 = positiveAtan2(v2.y, v2.x)
+        const between = av1 > av2
+
+        return offset < maxDistance / zoom && between
+      } else {
+        return onLine(
+          [threePoints[0], threePoints[2]],
+          point,
+          zoom,
+          maxDistance,
+        )
       }
-      const b = { x: point.x - circle.xc, y: point.y - circle.yc }
-      const c = { x: Math.cos(circle.endAngle), y: Math.sin(circle.endAngle) }
-      const v1 = circle.counterclockwise
-        ? cmult(conjugate(a), b)
-        : cmult(conjugate(b), a)
-      const v2 = circle.counterclockwise
-        ? cmult(conjugate(a), c)
-        : cmult(conjugate(c), a)
-      const av1 = positiveAtan2(v1.y, v1.x)
-      const av2 = positiveAtan2(v2.y, v2.x)
-      const between = av1 > av2
+    },
+    [],
+  )
 
-      return offset < maxDistance / zoom && between
-    } else {
-      return onLine([threePoints[0], threePoints[2]], point, zoom, maxDistance)
-    }
-  }
-
-  const onCircle = (
-    threePoints: readonly Coordinates[],
-    point: Coordinates,
-    zoom: number,
-    maxDistance = 1,
-  ) => {
-    const circle = circleArcFromThreePoints(
-      threePoints[0],
-      threePoints[1],
-      threePoints[2],
-    )
-    if (circle) {
-      const distanceFromCenter = Math.hypot(
-        point.x - circle.xc,
-        point.y - circle.yc,
+  const onCircle = useCallback(
+    (
+      threePoints: readonly Coordinates[],
+      point: Coordinates,
+      zoom: number,
+      maxDistance = 1,
+    ) => {
+      const circle = circleArcFromThreePoints(
+        threePoints[0],
+        threePoints[1],
+        threePoints[2],
       )
-      const offset = Math.abs(distanceFromCenter - circle.r)
+      if (circle) {
+        const distanceFromCenter = Math.hypot(
+          point.x - circle.xc,
+          point.y - circle.yc,
+        )
+        const offset = Math.abs(distanceFromCenter - circle.r)
 
-      return offset < maxDistance / zoom
-    } else {
-      return onLine([threePoints[0], threePoints[2]], point, zoom, maxDistance)
-    }
-  }
+        return offset < maxDistance / zoom
+      } else {
+        return onLine(
+          [threePoints[0], threePoints[2]],
+          point,
+          zoom,
+          maxDistance,
+        )
+      }
+    },
+    [],
+  )
 
   const onCurve = useCallback(
     (point: Coordinates, curve: Curve, zoom: number) => {
@@ -244,7 +278,11 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
         curve.points.length === 3 &&
         curve.knots.length === 4
       ) {
-        return onCircleArc(curve.points, point, zoom, 10)
+        if (curve.closed === undefined) {
+          return onCircleArc(curve.points, point, zoom, 10)
+        } else {
+          return onCircle(curve.points, point, zoom, 10)
+        }
       }
       const points = pointsOnCurve(curve, 100)
       return points.slice(0, -1).some((curvePoint, index) => {
@@ -252,7 +290,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
         return onLine([curvePoint, nextCurvePoint], point, zoom, 10)
       })
     },
-    [],
+    [onCircle, onCircleArc],
   )
 
   const findControlPointAtPosition = useCallback(
@@ -342,7 +380,56 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
             break
           }
           case InitialCurve.CircleArc: {
-            curve.points = [...curve.points, point]
+            if (curve.closed === Closed.True) {
+              return
+            }
+            if (curve.points.length >= 3 && curve.knots.length === 0) {
+              const phi = weigthedAveragePhi(curve.points)
+              if (phi > Math.PI / 2 || phi < -Math.PI / 2) {
+                const points = threeArcPointsFromNoisyPoints(curve.points)
+                curve.points = points
+                curve.knots = [0, 0, 1, 1]
+                setDrawnCircleArc(
+                  circleArcFromThreePoints(points[0], points[1], points[2]),
+                )
+              } else curve.points = [...curve.points, point]
+            } else if (drawnCircleArc !== null) {
+              const vector = {
+                x: point.x - drawnCircleArc.xc,
+                y: point.y - drawnCircleArc.yc,
+              }
+              const angle = Math.atan2(vector.y, vector.x)
+
+              const delta = 0.1
+              if (Math.abs(drawnCircleArc.startAngle - angle) < delta) {
+                curve.closed = Closed.True
+                const p0 = {
+                  x: drawnCircleArc.xc - drawnCircleArc.r,
+                  y: drawnCircleArc.yc,
+                }
+                const p1 = {
+                  x: drawnCircleArc.xc,
+                  y: drawnCircleArc.yc - drawnCircleArc.r,
+                }
+                const p2 = {
+                  x: drawnCircleArc.xc + drawnCircleArc.r,
+                  y: drawnCircleArc.yc,
+                }
+                curve.points = [p0, p1, p2]
+              } else {
+                const newPoint = {
+                  x: drawnCircleArc.xc + drawnCircleArc.r * Math.cos(angle),
+                  y: drawnCircleArc.yc + drawnCircleArc.r * Math.sin(angle),
+                }
+                const distributedPoints = threeArcPointsFromNoisyPoints([
+                  curve.points[0],
+                  curve.points[1],
+                  curve.points[2],
+                ])
+                setDrawnCircleArc({ ...drawnCircleArc, endAngle: angle })
+                curve.points = [curve.points[0], distributedPoints[1], newPoint]
+              }
+            } else curve.points = [...curve.points, point]
             break
           }
         }
@@ -350,7 +437,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
         setCurrentlyDrawnCurve(curve)
       }
     },
-    [currentlyDrawnCurve, dispatch],
+    [currentlyDrawnCurve, dispatch, drawnCircleArc],
   )
 
   const draw = useCallback(
@@ -576,6 +663,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
       setAction("none")
       setCurrentlyDrawnCurve(null)
       setInitialMousePosition(null)
+      setDrawnCircleArc(null)
     },
     [
       action,
@@ -800,7 +888,14 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
         event.preventDefault()
       }
     },
-    [dispatch, handleDelete, handleDuplicate, handleZoomIn, handleZoomOut],
+    [
+      dispatch,
+      handleDelete,
+      handleDuplicate,
+      handleZoomIn,
+      handleZoomOut,
+      handleZoomReset,
+    ],
   )
 
   useEffect(() => {

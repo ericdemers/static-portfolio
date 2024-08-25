@@ -1,10 +1,14 @@
 import { useCallback } from "react"
-import { CurveType, type Curve } from "../../../sketchElements/curveTypes"
+import {
+  Closed,
+  CurveType,
+  type Curve,
+} from "../../../sketchElements/curveTypes"
 import { useAppSelector } from "../../../app/hooks"
 //import { selectTheme } from "../mainMenu/mainMenuSlice"
 
 import {
-  arcPointsFrom3PointsOrNoisyPoints,
+  threeArcPointsFromNoisyPoints,
   InitialCurve,
   pointOnCurve,
   pointsOnCurve,
@@ -19,23 +23,36 @@ export const useDrawingFunctions = () => {
 
   const drawComplexSplineOfDegreeOne = useCallback(
     (context: CanvasRenderingContext2D, curve: Curve) => {
-      for (let i = 0; i < curve.points.length - 2; i += 2) {
-        context.beginPath()
+      if (curve.points.length === 3 && curve.closed === Closed.True) {
         const circle = circleArcFromThreePoints(
-          curve.points[i],
-          curve.points[i + 1],
-          curve.points[i + 2],
+          curve.points[0],
+          curve.points[1],
+          curve.points[2],
         )
+        if (!circle) return
+        const { xc, yc, r, startAngle, endAngle, counterclockwise } = circle
+        context.beginPath()
+        context.arc(xc, yc, r, 0, 2 * Math.PI, counterclockwise)
+        context.stroke()
+      } else {
+        for (let i = 0; i < curve.points.length - 2; i += 2) {
+          context.beginPath()
+          const circle = circleArcFromThreePoints(
+            curve.points[i],
+            curve.points[i + 1],
+            curve.points[i + 2],
+          )
 
-        if (!circle) {
-          context.moveTo(curve.points[i].x, curve.points[i].y)
-          context.lineTo(curve.points[i + 2].x, curve.points[i + 2].y)
-          context.stroke()
-        } else {
-          context.moveTo(curve.points[i].x, curve.points[i].y)
-          const { xc, yc, r, startAngle, endAngle, counterclockwise } = circle
-          context.arc(xc, yc, r, startAngle, endAngle, counterclockwise)
-          context.stroke()
+          if (!circle) {
+            context.moveTo(curve.points[i].x, curve.points[i].y)
+            context.lineTo(curve.points[i + 2].x, curve.points[i + 2].y)
+            context.stroke()
+          } else {
+            context.moveTo(curve.points[i].x, curve.points[i].y)
+            const { xc, yc, r, startAngle, endAngle, counterclockwise } = circle
+            context.arc(xc, yc, r, startAngle, endAngle, counterclockwise)
+            context.stroke()
+          }
         }
       }
     },
@@ -75,8 +92,7 @@ export const useDrawingFunctions = () => {
         case CurveType.Complex:
           // note:  curve.knots.length === 0 means that the curve is drawn for the first time
           if (curve.points.length >= 3 && curve.knots.length === 0) {
-            const points = arcPointsFrom3PointsOrNoisyPoints(curve.points)
-            //const points = curve.points
+            const points = threeArcPointsFromNoisyPoints(curve.points)
             context.strokeStyle = lineColor
             context.lineJoin = "round"
             context.lineWidth = 1.5 / zoom
@@ -84,14 +100,10 @@ export const useDrawingFunctions = () => {
             context.moveTo(points[0].x, points[0].y)
             const circle = circleArcFromThreePoints(
               points[0],
-              points[Math.floor(points.length / 2)],
-              //points[
-              //  longuestChord(points[0], points[points.length - 1], points)
-              //],
-              points[points.length - 1],
+              points[1],
+              points[2],
             )
             if (!circle) return
-            //console.log(circle)
             const { xc, yc, r, startAngle, endAngle, counterclockwise } = circle
             context.arc(xc, yc, r, startAngle, endAngle, counterclockwise)
             context.stroke()
