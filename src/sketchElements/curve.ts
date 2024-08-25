@@ -5,7 +5,7 @@ import { middlePoint, movePoint, type Coordinates } from "./coordinates";
 import { BSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/BSplineR1toR2";
 import { Vector2d } from "../mathVector/Vector2d";
 import { automaticFitting, removeASingleKnot } from "../bSplineAlgorithms/knotPlacement/automaticFitting";
-import { averagePhi, cadd, cdiv, cmult, csub } from "../mathVector/ComplexGrassmannSpace";
+import { averagePhi, cadd, cdiv, cmult, csub, weigthedAveragePhi } from "../mathVector/ComplexGrassmannSpace";
 import { arcPoints, arrayRange, complexMassPointsFromCircleArc, q0FromPhi } from "./circleArc";
 import { BSplineR1toC2 } from "../bSplineAlgorithms/R1toC2/BSplineR1toC2";
 import { Complex2d } from "../mathVector/Complex2d";
@@ -299,6 +299,16 @@ export function arcPointsFrom3Points(points: Coordinates[]) {
     return arcPoints(cm.p0, cm.p1, us)
 }
 
+export function arcPointsFrom3PointsOrNoisyPoints(points: Coordinates[]) {
+    const phi = weigthedAveragePhi(points)
+    const z0 = points[0]
+    const z1 = points[points.length - 1]
+    const q0 = q0FromPhi(phi, z0, z1)
+    const cm = complexMassPointsFromCircleArc({z0: z0, z1: z1, q0: q0})
+    const us = arrayRange(0, 1, 0.01)
+    return arcPoints(cm.p0, cm.p1, us)
+}
+
 export function normalizeCircle(c: Curve): Curve { 
     
     let curveCopy = structuredClone(c)
@@ -309,7 +319,8 @@ export function normalizeCircle(c: Curve): Curve {
     } else if (c.points.length > 3) {
         const z0 = c.points[0]
         const z1 = c.points[c.points.length - 1]
-        const phi = averagePhi(c.points)
+        //const phi = averagePhi(c.points)
+        const phi = weigthedAveragePhi(c.points)
         const q0 = q0FromPhi(phi, z0, z1)
         curveCopy.points = [z0, q0, z1]
         curveCopy.knots = [0, 0, 1, 1]

@@ -1,3 +1,5 @@
+import type { Coordinates} from "../sketchElements/coordinates";
+import { distanceSquare } from "../sketchElements/coordinates"
 
 export type Complex = {
     x: number
@@ -11,6 +13,10 @@ export function cnorm(p: Complex) {
 export function carg(p: Complex) {
     const result = Math.atan2(p.y, p.x)
     return result >= 0 ? result : result + Math.PI * 2
+}
+
+export function conjugate(p: Complex): Complex {
+    return {x: p.x, y : -p.y} 
 }
 
 /**
@@ -112,9 +118,39 @@ export function averagePhi(points: Complex[]) {
     return average(phis)
 }
 
+export function weigthedAveragePhi(points: Complex[]) {
+    if (points.length < 3) { return 0}
+    const z0 = points[0]
+    const z1 = points[points.length - 1]
+    const interiorPoints = points.slice(1, -1)
+    const phis = interiorPoints.map(p => cphi(z0, z1, p))
+    let weight = chordsSquare(z0, z1, interiorPoints)
+    return weightedAverage(phis, weight)
+}
+
+export function chordsSquare(p0: Coordinates, p1: Coordinates, points: Coordinates[]) {
+   return points.map((p) => {
+        const v = distanceSquare(p0, p) + distanceSquare(p1, p)
+        //if (v<100) return 0 
+        //else return v
+        //
+        return v}
+    )
+}
 
 export function average(ns: number[]) {
     return ns.reduce((a, b) => a + b, 0) / ns.length
+}
+
+export function weightedAverage(ns: number[], weights: number[]) {
+    const nsw = ns.map((v, i) => v * weights[i])
+    const sum = weights.reduce((a,b) => a + b, 0)
+    return nsw.reduce((a, b) => a + b, 0) / sum
+}
+
+export function positiveAtan2(y: number, x: number) {
+    const angle = Math.atan2(y, x)
+    return angle > 0 ? angle : angle + 2 * Math.PI
 }
 
 

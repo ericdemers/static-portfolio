@@ -5,6 +5,9 @@ export type Coordinates = Readonly<{
 
 export const distance = (a: Coordinates, b: Coordinates) => Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2)) 
 
+export const distanceSquare = (a: Coordinates, b: Coordinates) => (Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2))
+
+
 export function movePoint(point: Coordinates, vector: {x: number, y: number}): Coordinates {
     return {x: point.x + vector.x, y: point.y + vector.y}
 }

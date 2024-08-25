@@ -44,9 +44,15 @@ import {
   duplicateCurves,
   moveControlPoint,
 } from "../../../sketchElements/sketchElementsSlice"
-import type { Curve } from "../../../sketchElements/curveTypes"
+import { CurveType, type Curve } from "../../../sketchElements/curveTypes"
 import { ActionCreators } from "redux-undo"
 import { uniformKnots } from "../../../bSplineAlgorithms/knotPlacement/automaticFitting"
+import { circleArcFromThreePoints } from "../../../sketchElements/circleArc"
+import {
+  cmult,
+  conjugate,
+  positiveAtan2,
+} from "../../../mathVector/ComplexGrassmannSpace"
 
 type ActionType =
   | "none"
@@ -168,8 +174,78 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     return offset < maxDistance / zoom
   }
 
+  const onCircleArc = (
+    threePoints: readonly Coordinates[],
+    point: Coordinates,
+    zoom: number,
+    maxDistance = 1,
+  ) => {
+    const circle = circleArcFromThreePoints(
+      threePoints[0],
+      threePoints[1],
+      threePoints[2],
+    )
+    if (circle) {
+      const distanceFromCenter = Math.hypot(
+        point.x - circle.xc,
+        point.y - circle.yc,
+      )
+      const offset = Math.abs(distanceFromCenter - circle.r)
+      const a = {
+        x: Math.cos(circle.startAngle),
+        y: Math.sin(circle.startAngle),
+      }
+      const b = { x: point.x - circle.xc, y: point.y - circle.yc }
+      const c = { x: Math.cos(circle.endAngle), y: Math.sin(circle.endAngle) }
+      const v1 = circle.counterclockwise
+        ? cmult(conjugate(a), b)
+        : cmult(conjugate(b), a)
+      const v2 = circle.counterclockwise
+        ? cmult(conjugate(a), c)
+        : cmult(conjugate(c), a)
+      const av1 = positiveAtan2(v1.y, v1.x)
+      const av2 = positiveAtan2(v2.y, v2.x)
+      const between = av1 > av2
+
+      return offset < maxDistance / zoom && between
+    } else {
+      return onLine([threePoints[0], threePoints[2]], point, zoom, maxDistance)
+    }
+  }
+
+  const onCircle = (
+    threePoints: readonly Coordinates[],
+    point: Coordinates,
+    zoom: number,
+    maxDistance = 1,
+  ) => {
+    const circle = circleArcFromThreePoints(
+      threePoints[0],
+      threePoints[1],
+      threePoints[2],
+    )
+    if (circle) {
+      const distanceFromCenter = Math.hypot(
+        point.x - circle.xc,
+        point.y - circle.yc,
+      )
+      const offset = Math.abs(distanceFromCenter - circle.r)
+
+      return offset < maxDistance / zoom
+    } else {
+      return onLine([threePoints[0], threePoints[2]], point, zoom, maxDistance)
+    }
+  }
+
   const onCurve = useCallback(
     (point: Coordinates, curve: Curve, zoom: number) => {
+      if (
+        curve.type === CurveType.Complex &&
+        curve.points.length === 3 &&
+        curve.knots.length === 4
+      ) {
+        return onCircleArc(curve.points, point, zoom, 10)
+      }
       const points = pointsOnCurve(curve, 100)
       return points.slice(0, -1).some((curvePoint, index) => {
         const nextCurvePoint = points[index + 1]

@@ -4,7 +4,7 @@ import { useAppSelector } from "../../../app/hooks"
 //import { selectTheme } from "../mainMenu/mainMenuSlice"
 
 import {
-  arcPointsFrom3Points,
+  arcPointsFrom3PointsOrNoisyPoints,
   InitialCurve,
   pointOnCurve,
   pointsOnCurve,
@@ -20,17 +20,13 @@ export const useDrawingFunctions = () => {
   const drawComplexSplineOfDegreeOne = useCallback(
     (context: CanvasRenderingContext2D, curve: Curve) => {
       for (let i = 0; i < curve.points.length - 2; i += 2) {
-        const points = arcPointsFrom3Points([
+        context.beginPath()
+        const circle = circleArcFromThreePoints(
           curve.points[i],
           curve.points[i + 1],
           curve.points[i + 2],
-        ])
-        context.beginPath()
-        const circle = circleArcFromThreePoints(
-          points[0],
-          points[Math.floor(points.length / 2)],
-          points[points.length - 1],
         )
+
         if (!circle) {
           context.moveTo(curve.points[i].x, curve.points[i].y)
           context.lineTo(curve.points[i + 2].x, curve.points[i + 2].y)
@@ -79,7 +75,8 @@ export const useDrawingFunctions = () => {
         case CurveType.Complex:
           // note:  curve.knots.length === 0 means that the curve is drawn for the first time
           if (curve.points.length >= 3 && curve.knots.length === 0) {
-            const points = arcPointsFrom3Points(curve.points)
+            const points = arcPointsFrom3PointsOrNoisyPoints(curve.points)
+            //const points = curve.points
             context.strokeStyle = lineColor
             context.lineJoin = "round"
             context.lineWidth = 1.5 / zoom
@@ -88,9 +85,13 @@ export const useDrawingFunctions = () => {
             const circle = circleArcFromThreePoints(
               points[0],
               points[Math.floor(points.length / 2)],
+              //points[
+              //  longuestChord(points[0], points[points.length - 1], points)
+              //],
               points[points.length - 1],
             )
             if (!circle) return
+            //console.log(circle)
             const { xc, yc, r, startAngle, endAngle, counterclockwise } = circle
             context.arc(xc, yc, r, startAngle, endAngle, counterclockwise)
             context.stroke()

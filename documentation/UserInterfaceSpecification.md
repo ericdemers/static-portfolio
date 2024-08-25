@@ -74,17 +74,13 @@ A constraint can be shared between different curves. Then the constraints must a
 
 ### Circle and Conic
 
-The arc icon on the top creation toolbar allows you to draw either an arc or a complete circle. When the two end points are closed enough the option to close the circle is shown on the right toolbar. When the control point of the full circle is selected, the toolbar offers the option to open the circle.
+The arc icon on the top creation toolbar allows you to draw either an arc or a complete circle. When the two endpoints are close enough, the circle close itself and moving further the cursor moves the newly created circle.
 
-The arc of a circle is manipulated using three points. The complete circle consists of two arcs join at its end with a G2 constraint at one end and a G0 constraint at the other.
+Once created, the arc or the full circle can be modified using the 3 control points.
 
-It is by default manipulated using a single point. The position of this point allows you to increase the radius of the circle and also gives the position where to open the circle to obtain an arc.
+A conic is obtained by switching from complex to rational b-spline. The conic can be manipulated with the second degree Bézier curve control polygon.
 
-If the circle is big enough the single control point becomes 3 points so that it is possible to increase quickly the radius of the curve to get a straight line for example.
-
-On the right toolbar the conic transformation aid icon is available when such a curve is alone. It can be closed or open. The two focal points, the two directrix and a point on the conic allow easy transformations of the conic. The point on the conic gives also to position to open the conic.
-
-A full conic is modeled using two b-spline join at their ends with continuity constraints.
+The option to close or to open the circle or the conic is shown on the right toolbar.
 
 ### Toolbar for a B-spline curve
 

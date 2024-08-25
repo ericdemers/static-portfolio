@@ -1,6 +1,6 @@
 import type { ComplexMassPoint} from "../mathVector/ComplexGrassmannSpace";
 import { cdiv, cm2c, cmadd, cmult, cmX, cphi, csub, type Complex } from "../mathVector/ComplexGrassmannSpace"
-import type { Coordinates } from "./coordinates"
+import { distance, distanceSquare, middlePoint, type Coordinates } from "./coordinates"
 
 
 export type CircleArc = {
@@ -64,5 +64,21 @@ export function circleArcFromThreePoints(p0: Coordinates, p1: Coordinates, p2: C
     const endAngle = Math.atan2(p2.y - yc, p2.x - xc)
     return {xc: xc, yc: yc, r: r, startAngle: startAngle, endAngle: endAngle, counterclockwise: counterclockwise}
 }
+
+/*
+export function longuestChord(p0: Coordinates, p1: Coordinates, points: Coordinates[]) {
+    let index = Math.floor(points.length / 2)
+    let maxChord = 0
+    points.forEach((p, i) => {
+        const chord = distanceSquare(p0, p) + distanceSquare(p1, p)
+        if (chord > maxChord) {
+            maxChord = chord
+            index = i
+        }
+    })
+    return index
+}
+    */
+
 
 
