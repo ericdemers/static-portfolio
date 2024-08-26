@@ -239,6 +239,30 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     [],
   )
 
+  const onCircleArcs = useCallback(
+    (
+      points: readonly Coordinates[],
+      point: Coordinates,
+      zoom: number,
+      maxDistance = 1,
+    ) => {
+      for (let i = 0; i < points.length - 2; i += 2) {
+        if (
+          onCircleArc(
+            [points[i], points[i + 1], points[i + 2]],
+            point,
+            zoom,
+            maxDistance,
+          )
+        ) {
+          return true
+        }
+      }
+      return false
+    },
+    [onCircleArc],
+  )
+
   const onCircle = useCallback(
     (
       threePoints: readonly Coordinates[],
@@ -275,13 +299,14 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     (point: Coordinates, curve: Curve, zoom: number) => {
       if (
         curve.type === CurveType.Complex &&
-        curve.points.length === 3 &&
-        curve.knots.length === 4
+        curve.knots.length - (curve.points.length + 1) / 2 - 1 === 1
       ) {
         if (curve.closed === undefined) {
-          return onCircleArc(curve.points, point, zoom, 10)
+          return onCircleArcs(curve.points, point, zoom, 10)
         } else {
-          return onCircle(curve.points, point, zoom, 10)
+          if (curve.points.length === 3 && curve.knots.length === 4) {
+            return onCircle(curve.points, point, zoom, 10)
+          }
         }
       }
       const points = pointsOnCurve(curve, 100)
@@ -290,7 +315,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
         return onLine([curvePoint, nextCurvePoint], point, zoom, 10)
       })
     },
-    [onCircle, onCircleArc],
+    [onCircle, onCircleArcs],
   )
 
   const findControlPointAtPosition = useCallback(

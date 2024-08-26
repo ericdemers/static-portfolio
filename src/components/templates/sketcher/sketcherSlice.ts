@@ -33,7 +33,7 @@ const initialState: SketcherState = {
     activeTool: "none",
     initialView: true,
     controlPolygonsDisplayed: null,
-    showKnotVectorEditor: false,
+    showKnotVectorEditor: true,
     selectedKnot: null,
     parametricPosition: null,
 }
