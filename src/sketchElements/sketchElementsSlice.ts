@@ -4,8 +4,9 @@ import type { RootState} from "../app/store"
 import type { Curve } from './curveTypes';
 import type { Constraint } from './constraintTypes';
 import { movePoint } from './coordinates';
-import { duplicateCurve } from './curve';
+import { duplicateCurve, joinTwoCurves, reverseCurveDirection } from './curve';
 import type { ControlPolygonsDisplayed } from '../components/templates/sketcher/sketcherSlice';
+import type { WritableDraft } from 'immer';
 
 
 interface sketchElementsState {
@@ -63,6 +64,27 @@ const sketchElementsSlice = createSlice({
             if (!curve) return
             curve.points[index] = movePoint(curve.points[index], action.payload.displacement)
         },
+        joinCurves(state, action: PayloadAction<{selectedControlPoint: { curveID: string; controlPointIndex: number },
+            overAnEndPoint: {
+              curveID: string
+              index: number
+            }}>) {
+               let firstCurve = state.curves.find((c)=> (c.id === action.payload.selectedControlPoint.curveID))
+               let secondCurve = state.curves.find((curve) => curve.id === action.payload.overAnEndPoint.curveID)
+               if (!firstCurve || !secondCurve) return
+               if (action.payload.selectedControlPoint.controlPointIndex === 0) {
+                firstCurve = reverseCurveDirection(firstCurve)
+               }
+               if (action.payload.overAnEndPoint.index === 1) {
+                secondCurve = reverseCurveDirection(secondCurve)
+               }
+               const curve = joinTwoCurves(firstCurve, secondCurve)
+               state.curves = state.curves.filter((curve) => curve.id !== action.payload.overAnEndPoint.curveID)
+               const index = state.curves.findIndex((c: Curve) => (c.id === curve.id))
+               if (index !== -1) {
+                   state.curves[index] = curve as WritableDraft<Curve>
+               }
+        },
         /*
         moveKnot(state, action: PayloadAction<{index: number, newPosition: number, controlPolygonsDisplayed: ControlPolygonsDisplayed}>){
             if (!action.payload.controlPolygonsDisplayed) return
@@ -85,7 +107,7 @@ const sketchElementsSlice = createSlice({
       },
 })
 
-export const { addNewCurve, replaceCurve, clearCurves, updateThisCurve, moveCurves, moveControlPoint, updateCurves, deleteCurves, duplicateCurves } = sketchElementsSlice.actions
+export const { addNewCurve, replaceCurve, clearCurves, updateThisCurve, moveCurves, moveControlPoint, joinCurves, updateCurves, deleteCurves, duplicateCurves } = sketchElementsSlice.actions
 export const selectCurves = (state: RootState) => state.sketchElements.present.curves
 export const selectShowUndoArrow = (state: RootState) => state.sketchElements.past.length !== 0
 export const selectShowRedoArrow = (state: RootState) => state.sketchElements.future.length !== 0

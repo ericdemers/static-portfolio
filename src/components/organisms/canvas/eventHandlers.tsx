@@ -44,6 +44,7 @@ import {
   deleteCurves,
   duplicateCurves,
   moveControlPoint,
+  joinCurves,
 } from "../../../sketchElements/sketchElementsSlice"
 import {
   Closed,
@@ -106,7 +107,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     counterclockwise: boolean
   } | null>(null)
 
-  const clickWithoutMovingResolution = 10
+  const clickWithoutMovingResolution = 1
 
   const getMouseCoordinates = useCallback(
     (event: MouseEvent): Coordinates | null => {
@@ -329,6 +330,20 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     [zoom],
   )
 
+  const findCurveExtremity = useCallback(
+    (point: Coordinates, curve: Curve, maxDistance = 1) => {
+      if (curve.closed === Closed.True) return null
+      if (curve.id === controlPolygonsDisplayed?.curveIDs[0]) return null
+      const index = [
+        curve.points[0],
+        curve.points[curve.points.length - 1],
+      ].findIndex(p => distance(point, p) < maxDistance / zoom)
+      if (index === -1) return null
+      return { curveID: curve.id, index: index }
+    },
+    [controlPolygonsDisplayed?.curveIDs, zoom],
+  )
+
   const getControlPointAtPosition = useCallback(
     (point: Coordinates, curves: Curve[], maxDistance = 1) => {
       return curves
@@ -336,6 +351,15 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
         .find(value => value !== null)
     },
     [findControlPointAtPosition],
+  )
+
+  const getCurveExtremity = useCallback(
+    (point: Coordinates, curves: readonly Curve[], maxDistance = 1) => {
+      return curves
+        .map(curve => findCurveExtremity(point, curve, maxDistance))
+        .find(value => value !== null)
+    },
+    [findCurveExtremity],
   )
 
   const getCurveAtPosition = useCallback(
@@ -396,7 +420,6 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
             const degree = curvePoints.length < 5 ? curvePoints.length : 5
             const newCurvePoints = [...curvePoints, point]
             curve.knots = uniformKnots(degree, newCurvePoints.length)
-            //console.log(curve.knots)
             curve.points = newCurvePoints
             break
           }
@@ -427,18 +450,20 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
 
               const delta = 0.1
               if (Math.abs(drawnCircleArc.startAngle - angle) < delta) {
+                const sin30 = 1 / 2
+                const cos30 = Math.sqrt(3) / 2
                 curve.closed = Closed.True
                 const p0 = {
-                  x: drawnCircleArc.xc - drawnCircleArc.r,
-                  y: drawnCircleArc.yc,
+                  x: drawnCircleArc.xc - cos30 * drawnCircleArc.r,
+                  y: drawnCircleArc.yc + sin30 * drawnCircleArc.r,
                 }
                 const p1 = {
                   x: drawnCircleArc.xc,
                   y: drawnCircleArc.yc - drawnCircleArc.r,
                 }
                 const p2 = {
-                  x: drawnCircleArc.xc + drawnCircleArc.r,
-                  y: drawnCircleArc.yc,
+                  x: drawnCircleArc.xc + cos30 * drawnCircleArc.r,
+                  y: drawnCircleArc.yc + sin30 * drawnCircleArc.r,
                 }
                 curve.points = [p0, p1, p2]
               } else {
@@ -652,7 +677,21 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
         case "moving curves":
         case "moving a control point":
           if (mouseMoveThreshold === "exceeded") {
-            dispatch(updateCurves({ curves: curves.slice() }))
+            const overAnEndPoint = getCurveExtremity(coordinates, curves, 15)
+            if (
+              overAnEndPoint &&
+              controlPolygonsDisplayed?.selectedControlPoint
+            ) {
+              dispatch(
+                joinCurves({
+                  selectedControlPoint:
+                    controlPolygonsDisplayed.selectedControlPoint,
+                  overAnEndPoint,
+                }),
+              )
+            } else {
+              dispatch(updateCurves({ curves: curves.slice() }))
+            }
           }
           break
         case "drawing":
@@ -670,8 +709,9 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
               }
               break
             case "line": {
-              if (currentlyDrawnCurve)
+              if (currentlyDrawnCurve) {
                 dispatch(updateThisCurve({ curve: currentlyDrawnCurve }))
+              }
               break
             }
             case "circleArc":
@@ -696,6 +736,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
       currentlyDrawnCurve,
       curves,
       dispatch,
+      getCurveExtremity,
       mouseMoveThreshold,
       zoom,
     ],

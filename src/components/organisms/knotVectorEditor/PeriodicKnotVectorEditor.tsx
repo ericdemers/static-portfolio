@@ -35,6 +35,7 @@ import {
   computeMultiplicityLeft,
   computeMultiplicityRight,
 } from "../../../sketchElements/curve"
+
 import { carg, cnorm } from "../../../mathVector/ComplexGrassmannSpace"
 
 type KnotEditorStateType =
@@ -46,7 +47,7 @@ type ActionType = "none" | "zooming" | "scrolling"
 type mouseMoveThresholdType = "not exceeded" | "just exceeded" | "exceeded"
 
 //const KnotVectorEditor: FunctionComponent<EditorProps> = props => {
-const KnotVectorEditor = () => {
+const PeriodicKnotVectorEditor = () => {
   //const { editorWidth, editorHeight, offsetX, offsetY } = props
   const [editorState, setEditorState] = useState<KnotEditorStateType>("idle")
   const [mouseMoveThreshold, setMouseMoveThreshold] =
@@ -814,4 +815,4 @@ function distribute(value: number, multiplicity: number, step: number = 0.01) {
   return result
 }
 
-export default KnotVectorEditor
+export default PeriodicKnotVectorEditor
