@@ -160,8 +160,8 @@ export function knotDistribution(cumulativeFeatureFunction: {xs: number[], ys: n
         }
     }
     // Remove last interior knot !!!!!!!!!!!!!!!!!!!!!
-    if (result.length > degree + 1)
-    result.splice(-1)
+    //if (result.length > degree + 1)
+    //result.splice(-1)
     result = result.concat(Array(degree + 1).fill(1))
     //console.log(result)
     return result

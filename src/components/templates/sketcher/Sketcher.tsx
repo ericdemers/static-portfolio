@@ -12,6 +12,7 @@ import { BottomMenu } from "../../organisms/bottomMenu/BottomMenu"
 import RightMenu from "../../organisms/rightMenu/RightMenu"
 import KnotVectorEditor from "../../organisms/knotVectorEditor/KnotVectorEditor"
 import { selectCurves } from "../../../sketchElements/sketchElementsSlice"
+import PeriodicKnotVectorEditor from "../../organisms/knotVectorEditor/PeriodicKnotVectorEditor"
 
 interface SketcherProps {
   sketcherWidth: number
@@ -56,7 +57,7 @@ function Sketcher(props: Readonly<SketcherProps>) {
           </div>
           {showKnotVectorEditor && singleCurveSelected ? (
             <div className="absolute top-2/3 left-1/3 right-[5%] bottom-[5%] pointer-events-none">
-              <KnotVectorEditor />
+              <PeriodicKnotVectorEditor />
             </div>
           ) : null}
           <BottomMenu />

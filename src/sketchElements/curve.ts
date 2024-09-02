@@ -338,23 +338,22 @@ export function reverseCurveDirection(curve: Curve): Curve {
 export function joinTwoCurves(firstCurve: Curve, secondCurve: Curve): Curve {
     let curve1 = JSON.parse(JSON.stringify(firstCurve))
     let curve2 = JSON.parse(JSON.stringify(secondCurve))
-    const points = [...curve1.points, ...curve2.points.slice(1)]
+    
     const degree1 = computeDegree(firstCurve)
     const degree2 = computeDegree(secondCurve)
-    let d = degree1
-    if (degree1 < degree2) {
-        for (let i = 0; i < degree2 - degree1; i += 1) {
-            curve1 = elevateDegree(curve1)
-        }
-        d = degree2
-    } else if (degree2 < degree1) {
-        for (let i = 0; i < degree2 - degree1; i += 1) {
-            curve2 = elevateDegree(curve2)
-        }
+    const d = Math.max(degree1, degree2)
+
+    for (let i = 0; i < degree2 - degree1; i += 1) {
+        curve1 = elevateDegree(curve1)
     }
+    for (let i = 0; i < degree1 - degree2; i += 1) {
+        curve2 = elevateDegree(curve2)
+    }
+
+    const points = [...curve1.points, ...curve2.points.slice(1)]
     const factor1 = curve1.knots.length - 2 * d - 1
     const factor2 = curve2.knots.length - 2 * d - 1
-    let knots = [...curve1.knots.slice(0, -1).map((v:number)=>v*factor1), ...curve2.knots.slice(degree2 + 1).map((v: number) => v*factor2+factor1)]
+    let knots = [...curve1.knots.slice(0, -1).map((v:number)=>v*factor1), ...curve2.knots.slice(d + 1).map((v: number) => v*factor2+factor1)]
     knots = knots.map(v => v/(factor1 + factor2))
     return ({...curve1, points, knots})
 }
