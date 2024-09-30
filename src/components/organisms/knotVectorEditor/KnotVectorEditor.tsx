@@ -36,6 +36,13 @@ import {
   computeMultiplicityRight,
 } from "../../../sketchElements/curve"
 import { carg, cnorm } from "../../../mathVector/ComplexGrassmannSpace"
+import {
+  clickWithoutMovingResolution,
+  leftMaximumSliderPosition,
+  maximumZoom,
+  reductionFactor,
+  rightMaximumSliderPosition,
+} from "./KnotEditorConstants"
 
 type KnotEditorStateType =
   | "idle"
@@ -69,11 +76,6 @@ const KnotVectorEditor = () => {
   const [action, setAction] = useState<ActionType>("none")
   const [scroll, setScroll] = useState(0)
   const [pixelRatio, setPixelRatio] = useState<number>(1)
-  const maximumZoom = 10
-  const leftMaximumSliderPosition = 0.35
-  const rightMaximumSliderPosition = 0.65
-  const reductionFactor = 0.9
-  const clickWithoutMovingResolution = 0.0005
 
   useLayoutEffect(() => {
     setPixelRatio(Math.ceil(window.devicePixelRatio))

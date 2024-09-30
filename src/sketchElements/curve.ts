@@ -1,6 +1,6 @@
 import { nanoid } from "@reduxjs/toolkit";
 import type { Curve } from "./curveTypes";
-import { CurveType, PythagoreanHodograph } from "./curveTypes";
+import { Closed, CurveType, PythagoreanHodograph } from "./curveTypes";
 import { middlePoint, movePoint, type Coordinates } from "./coordinates";
 import { BSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/BSplineR1toR2";
 import { Vector2d } from "../mathVector/Vector2d";
@@ -11,6 +11,7 @@ import { BSplineR1toC2 } from "../bSplineAlgorithms/R1toC2/BSplineR1toC2";
 import { Complex2d } from "../mathVector/Complex2d";
 import { RationalBSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/RationalBSplineR1toR2";
 import { Vector3d } from "../mathVector/Vector3d";
+import { PeriodicBSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/PeriodicBSplineR1toR2";
 
 export enum InitialCurve {
     Freehand,
@@ -39,14 +40,41 @@ export function duplicateCurve(curve: Curve, move: {x: number, y: number} = {x: 
     return {...curve, id, points}
 }
 
+export function curveToPeriodicBSpline(curve: Curve) {
+    const p0 = CoordinatesToVector2d(curve.points)
+    if (curve.degree === undefined || curve.period === undefined) return
+    const period = curve.period
+    const degree = curve.degree
+    const controlPoints = p0.concat(p0.slice(0, curve.degree))
+    let additionalKnots: number[] = []
+    const l = curve.knots.length
+    for (let i = 0; i < 2 * curve.degree; i += 1) {
+        additionalKnots.push(curve.knots[i % l] + period * Math.floor(i / l + 1))
+    }
+    const firstKnot = curve.knots[0] - (curve.period - curve.knots[curve.knots.length - 1])
+    const p = (additionalKnots[additionalKnots.length-degree-1] - curve.knots[degree -1]) // the first knot is not added yet
+    const knots = ([firstKnot].concat(curve.knots.concat(additionalKnots))).map(v => (v - curve.knots[degree - 1]) / p  )
+    return new PeriodicBSplineR1toR2(controlPoints, knots)
+}
+
 export function pointsOnCurve(curve: Curve, numberOfPoints: number = 1000) {
     switch(curve.type) {
         case CurveType.NonRational: {
-            const bspline: BSplineR1toR2 =  new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
-            return [...Array(numberOfPoints).keys()].map((u) => {
-                const p = bspline.evaluate(u / (numberOfPoints - 1))
-                return {x: p.x, y: p.y}
-            })  
+            if (curve.closed === Closed.True) {
+                const bspline = curveToPeriodicBSpline(curve)
+                if (bspline === undefined) return [{x: 0, y: 0}]
+                //console.log(bspline)
+                return [...Array(numberOfPoints).keys(), 0].map((u) => {
+                    const p = bspline.evaluate(u / (numberOfPoints - 1))
+                    return {x: p.x, y: p.y}
+                })  
+            } else {
+                const bspline: BSplineR1toR2 =  new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
+                return [...Array(numberOfPoints).keys()].map((u) => {
+                    const p = bspline.evaluate(u / (numberOfPoints - 1))
+                    return {x: p.x, y: p.y}
+                })  
+            }
         }
         case CurveType.Rational:
             return [{x: 0, y: 0}]
@@ -59,12 +87,23 @@ export function pointsOnCurve(curve: Curve, numberOfPoints: number = 1000) {
     }
 }
 
+export function mod(n: number, m: number) {
+    return ((n % m) + m) % m
+  }
+
 export function pointOnCurve(curve: Curve, u: number) {
     switch(curve.type) {
         case CurveType.NonRational : {
+            if (curve.closed === Closed.True) {
+                const bspline = curveToPeriodicBSpline(curve)
+                if (bspline === undefined) return
+                const p = bspline.evaluate(mod(u, 1))
+                return {x: p.x, y: p.y}
+            } else {
             const bspline: BSplineR1toR2 =  new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
             const p = bspline.evaluate(u)
             return {x: p.x, y: p.y}
+            }
         }
         case CurveType.Complex :
             break
@@ -212,6 +251,27 @@ export function computeMultiplicityLeft(knots: number[], index: number) {
     return multiplicity
 } 
 
+export function computePeriodicMultiplicityRight(knots: number[], index: number) {
+    let multiplicity = 0
+    let i = 0
+    while (i < knots.length && knots[index] > knots[i] + 1)  {
+        i += 1
+        multiplicity += 1
+    }
+    return multiplicity
+} 
+
+export function computePeriodicMultiplicityLeft(knots: number[], index: number) {
+    let multiplicity = 0
+    let i = knots.length - 1
+    while (i > 0 && knots[index] < knots[i] - 1)  {
+        i -= 1
+        multiplicity += 1
+    }
+    return multiplicity
+} 
+
+
 
 
 export function optimizedKnotPositions(curve: Curve, scale = 1, resolutionFactor = 0.3) {
@@ -253,7 +313,7 @@ export function removeAKnot(curve: Curve, knotIndex: number) {
         case CurveType.NonRational:
         {
             const bspline =  new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
-            const newBSpline = removeASingleKnot(bspline, knotIndex + bspline.degree + 1)
+            const newBSpline = (curve.closed) ? removeASingleKnot(bspline, knotIndex) : removeASingleKnot(bspline, knotIndex + bspline.degree + 1)
             return ({...curve, points: Vector2dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots})
         }
         case CurveType.Complex:

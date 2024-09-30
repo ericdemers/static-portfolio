@@ -1,7 +1,8 @@
 import { basisFunctions } from "../../../bSplineAlgorithms/Piegl_Tiller_NURBS_Book";
+import { splineRecomposition } from "../../../bSplineAlgorithms/R1toR1/BernsteinDecompositionR1toR1";
 import { cadd, cdiv, cmult, csub } from "../../../mathVector/ComplexGrassmannSpace";
 import type { Coordinates } from "../../../sketchElements/coordinates";
-import { computeDegree } from "../../../sketchElements/curve";
+import { computeDegree, curveToPeriodicBSpline } from "../../../sketchElements/curve";
 import type { Curve } from "../../../sketchElements/curveTypes";
 
 export function computeBasisFunction(curve: Curve, step: number = 0.001) {
@@ -19,6 +20,34 @@ export function computeBasisFunction(curve: Curve, step: number = 0.001) {
                     const basis = basisFunctions(knotIndex, u, curve.knots, degree)
                     basis.forEach((value, index) => {
                         result[knotIndex + index - degree].push({u, value})
+                    })
+                })
+            }
+        })
+    }
+    return result
+}
+
+export function computePeriodicBasisFunction(curve: Curve, step: number = 0.001) {
+    
+    let result: {u: number, value: number}[][] = []
+    const bspline = curveToPeriodicBSpline(curve)
+    if (bspline === undefined) return result
+    for (let i = 0; i < bspline.controlPoints.length; i += 1) {
+        result.push([])
+    }
+    const delta = curve.knots[bspline.degree - 1]
+    //const delta = curve.knots[1]
+
+    const degree = bspline.degree
+    if (degree > 0) {
+        bspline.knots.forEach((knotValue, knotIndex) => {
+            if (knotIndex > degree - 1  && knotIndex < bspline.knots.length - degree - 1) {
+                const range = rangeIncludingStopValue(knotValue, bspline.knots[knotIndex + 1], step)
+                range.forEach(u => {
+                    const basis = basisFunctions(knotIndex, u, bspline.knots, degree)
+                    basis.forEach((value, index) => {
+                        result[knotIndex + index - degree ].push({u: (u + delta), value})
                     })
                 })
             }

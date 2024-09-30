@@ -23,6 +23,7 @@ export type Curve = {
     pythagoreanHodograph?: PythagoreanHodograph
     closed?: Closed
     degree?: number
+    period?: number
     constraintIDs? : string[]
     masterCurveID?: string
 }

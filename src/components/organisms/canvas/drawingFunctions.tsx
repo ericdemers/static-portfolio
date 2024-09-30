@@ -65,6 +65,9 @@ export const useDrawingFunctions = () => {
         theme === "dark" ? "rgba(200, 200, 200, 1)" : "rgba(0, 0, 0, 1)"
       switch (curve.type) {
         case CurveType.NonRational:
+          //if (curve.closed) {
+          //  console.log("closed")
+          //} else
           {
             context.strokeStyle = lineColor
             context.lineJoin = "round"
@@ -230,6 +233,10 @@ export const useDrawingFunctions = () => {
           context.lineWidth = 1.2 / zoom
           context.moveTo(curve.points[0].x, curve.points[0].y)
           curve.points.forEach(point => context.lineTo(point.x, point.y))
+          if (curve.closed === Closed.True) {
+            const p = curve.points[0]
+            context.lineTo(p.x, p.y)
+          }
           context.stroke()
           break
         case CurveType.Complex: {

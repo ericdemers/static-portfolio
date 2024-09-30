@@ -22,6 +22,7 @@ import { CurveType, type Curve } from "../../../sketchElements/curveTypes"
 import {
   computeBasisFunction,
   computeComplexRationalBasisFunction,
+  computePeriodicBasisFunction,
 } from "./basisFunctions"
 import { createColorPaletteRGB } from "../../../utilities/color"
 import {
@@ -34,9 +35,19 @@ import {
   computeDegree,
   computeMultiplicityLeft,
   computeMultiplicityRight,
+  computePeriodicMultiplicityLeft,
+  computePeriodicMultiplicityRight,
+  mod,
 } from "../../../sketchElements/curve"
 
 import { carg, cnorm } from "../../../mathVector/ComplexGrassmannSpace"
+
+/**
+ * The knot period is 1
+ * The first knot can take a value v between -0.5 and 0.5
+ * The knot editor draw the 3 period:  (v - 1, v), (v,  v + 1), (v + 1, v + 2)
+ *    but only shows (-0.5, 1.5)
+ */
 
 type KnotEditorStateType =
   | "idle"
@@ -115,21 +126,21 @@ const PeriodicKnotVectorEditor = () => {
       switch (curve.type) {
         case CurveType.NonRational:
           {
-            const basisFunctions = computeBasisFunction(curve)
-            //context.save()
+            const basisFunctions = computePeriodicBasisFunction(curve)
             context.strokeStyle = colorPalette[0]
             context.lineJoin = "round"
             context.lineWidth = 1.6 / width
-            for (let i = -2; i < 3; i += 1) {
+            for (let i = -1; i < 2; i += 1) {
               basisFunctions.forEach((b, index) => {
                 if (b[0] !== undefined) {
                   context.beginPath()
-                  context.strokeStyle = colorPalette[index]
+                  context.strokeStyle =
+                    colorPalette[index % (basisFunctions.length - 1)]
                   context.moveTo(
                     (b[0].u + i) * scaleX + offsetLeft,
                     -b[0].value * ratio * scaleY + offsetTop,
                   )
-                  b.forEach((point, index) =>
+                  b.forEach(point =>
                     context.lineTo(
                       (point.u + i) * scaleX + offsetLeft,
                       -point.value * ratio * scaleY + offsetTop,
@@ -139,14 +150,13 @@ const PeriodicKnotVectorEditor = () => {
                 }
               })
             }
-            //context.restore()
           }
           break
         case CurveType.Complex:
           {
             const basisFunctions = computeComplexRationalBasisFunction(curve)
             context.lineWidth = 6 / width
-            for (let i = -2; i < 3; i += 1) {
+            for (let i = -1; i < 2; i += 1) {
               basisFunctions.forEach((b, bIndex) => {
                 if (b[0] !== undefined) {
                   context.beginPath()
@@ -187,11 +197,9 @@ const PeriodicKnotVectorEditor = () => {
                 }
               })
             }
-
-            //context.strokeStyle = colorPalette[0]
             context.lineJoin = "round"
             context.lineWidth = 1.8 / width
-            for (let i = -2; i < 3; i += 1) {
+            for (let i = -1; i < 2; i += 1) {
               basisFunctions.forEach((b, index) => {
                 if (b[0] !== undefined) {
                   context.beginPath()
@@ -246,15 +254,14 @@ const PeriodicKnotVectorEditor = () => {
           curve.knots.length - (curve.points.length / 2 + 0.5) - 1,
         )
       }
-      const ticks = multipleCopyOffPositionOfKnotsOnSlider(
+      const ticksMultipleCopies = multipleCopyOffPositionOfKnotsOnSlider(
         curve.knots,
         degree,
         scaleX,
         offsetLeft,
       )
 
-      //for (let i = -2; i < 3; i += 1) {
-      ticks.forEach(u => {
+      ticksMultipleCopies.forEach(u => {
         context.beginPath()
         context.moveTo(u, +0.025 * ratio + offsetTop)
         context.lineTo(u, -0.025 * ratio + offsetTop)
@@ -266,11 +273,18 @@ const PeriodicKnotVectorEditor = () => {
       })
 
       if (selectedKnot !== null) {
-        const u = ticks[selectedKnot]
-        //context.lineWidth = 6 / width
+        const index = selectedKnot % curve.knots.length
+        const u = [
+          ticksMultipleCopies[index],
+          ticksMultipleCopies[index + curve.knots.length],
+          ticksMultipleCopies[index + 2 * curve.knots.length],
+        ]
+
         context.beginPath()
-        context.moveTo(u, +0.025 * ratio + offsetTop)
-        context.lineTo(u, -0.025 * ratio + offsetTop)
+        for (let i = 0; i < 3; i += 1) {
+          context.moveTo(u[i], +0.025 * ratio + offsetTop)
+          context.lineTo(u[i], -0.025 * ratio + offsetTop)
+        }
         context.save()
         context.setTransform(1, 0, 0, 1, 0, 0)
         context.lineWidth = 11
@@ -278,18 +292,18 @@ const PeriodicKnotVectorEditor = () => {
         context.restore()
       }
       if (parametricPosition !== null) {
-        const u = parametricPosition * scaleX + offsetLeft
-        //context.lineWidth = 1.2 / width
         context.beginPath()
-        context.moveTo(u, +0.025 * ratio + offsetTop)
-        context.lineTo(u, -0.025 * ratio + offsetTop)
+        for (let i = -1; i < 2; i += 1) {
+          const u = (parametricPosition + i) * scaleX + offsetLeft
+          context.moveTo(u, +0.025 * ratio + offsetTop)
+          context.lineTo(u, -0.025 * ratio + offsetTop)
+        }
         context.save()
         context.setTransform(1, 0, 0, 1, 0, 0)
         context.lineWidth = 3
         context.stroke()
         context.restore()
       }
-      //}
     },
     [parametricPosition, scroll, selectedKnot, theme, width, zoom],
   )
@@ -310,7 +324,7 @@ const PeriodicKnotVectorEditor = () => {
       context.lineWidth = 1.2 / width
       const ticks = addSpaceBetweenTicks(curve.knots, 0.005 / zoom)
 
-      for (let i = -2; i < 3; i += 1)
+      for (let i = -1; i < 2; i += 1)
         ticks.forEach(u => {
           context.beginPath()
           context.moveTo(
@@ -516,10 +530,19 @@ const PeriodicKnotVectorEditor = () => {
         if (curve) {
           const scaleX = reductionFactor * zoom
           const offsetLeft = 0.05 + reductionFactor * scroll
-          let position =
-            positionToParameterOnKnotSlider(point.x, scaleX, offsetLeft) % 1
-          if (position < 0) position = 0
-          if (position > 1) position = 1
+          let parameter = positionToParameterOnKnotSlider(
+            point.x,
+            scaleX,
+            offsetLeft,
+          )
+          if (parameter - curve.knots[0] > 0.5) {
+            parameter = parameter - 1
+          }
+          if (parameter - curve.knots[0] < -0.5) {
+            parameter = parameter + 1
+          }
+          let position = curve.knots[0] + mod(parameter - curve.knots[0], 1)
+
           const knotIndex = getKnotAtPosition(position, curve.knots)
 
           if (knotIndex !== null) {
@@ -567,10 +590,8 @@ const PeriodicKnotVectorEditor = () => {
   const moveKnots = useCallback(
     (curve: Curve, index: number, newPosition: number) => {
       let newKnots = [...curve.knots]
-      //console.log(newKnots)
       const multiplicityRight = computeMultiplicityRight(curve.knots, index)
       const multiplicityLeft = computeMultiplicityLeft(curve.knots, index)
-
       for (
         let i = index - multiplicityLeft;
         i < index + multiplicityRight + 1;
@@ -578,10 +599,35 @@ const PeriodicKnotVectorEditor = () => {
       ) {
         newKnots[i] = newPosition
       }
-      //console.log(newKnots)
-      //newKnots[index] = newPosition
-      //console.log(index)
-      //console.log(newPosition)
+
+      const leftPeriodicMultiplicity = computePeriodicMultiplicityLeft(
+        newKnots,
+        index,
+      )
+
+      const rightPeriodicMultiplicity = computePeriodicMultiplicityRight(
+        newKnots,
+        index,
+      )
+      for (let i = 0; i < leftPeriodicMultiplicity; i += 1) {
+        newKnots[newKnots.length - i] = newPosition + 1
+      }
+      for (let i = 0; i < rightPeriodicMultiplicity; i += 1) {
+        newKnots[i] = newPosition - 1
+      }
+
+      /*
+      if (newKnots[0] < -0.5) {
+        newKnots = newKnots.map(v => v + 1)
+      }
+
+      if (newKnots[0] > 0.5) {
+        newKnots = newKnots.map(v => v - 1)
+      }
+        */
+
+      console.log(newKnots)
+
       dispatch(replaceCurve({ curve: { ...curve, knots: newKnots } }))
       dispatch(setParametricPosition({ value: newPosition }))
     },
@@ -593,9 +639,11 @@ const PeriodicKnotVectorEditor = () => {
       const p = viewportCoordsToSceneCoords(point)
       if (p === undefined) return
       const x = p.x
+      /*
       if (editorState !== "display position on abscissa") {
         //actionManager.renderAction("displayParametricPositionOnCurve", null)
       }
+        */
 
       if (action === "zooming") {
         let newZoom = zoomFromSliderPosition(x)
@@ -609,15 +657,14 @@ const PeriodicKnotVectorEditor = () => {
       }
       if (action === "scrolling" && initialMouseXPosition) {
         let newScroll = scroll + (x - initialMouseXPosition)
-        if (newScroll < -1 * zoom) newScroll = 0
-        if (newScroll > 1 * zoom) newScroll = 0
+        if (newScroll < -0.5 * zoom) newScroll = 0.5
+        if (newScroll > 0.5 * zoom) newScroll = -0.5
         setInitialMouseXPosition(x)
         setScroll(newScroll)
       }
       if (editorState === "moving a knot") {
         if (initialMouseXPosition === null) return
         if (mouseMoveThreshold === "just exceeded") {
-          //addAnEntryToTheHistory()
           setMouseMoveThreshold("exceeded")
         }
         if (mouseMoveThreshold === "not exceeded") {
@@ -628,10 +675,12 @@ const PeriodicKnotVectorEditor = () => {
         }
         if (!curve || selectedKnot === null) return
         const offsetLeft = 0.05 + reductionFactor * scroll
-        let newPosition = ((x - offsetLeft) / zoom / reductionFactor) % 1
-        if (newPosition < 0) newPosition = 0
-        if (newPosition > 1) newPosition = 1
+        //let newPosition = mod((x - offsetLeft) / zoom / reductionFactor, 1)
+        let newPosition = (x - offsetLeft) / zoom / reductionFactor
+        //if (newPosition < 0) newPosition = 0
+        //if (newPosition > 1) newPosition = 1
         //const index = selectedKnot + computeDegree(curve) + 1
+        //console.log(newPosition)
         const index = selectedKnot
         const cpd = controlPolygonsDisplayed
 
@@ -777,7 +826,7 @@ function multipleCopyOffPositionOfKnotsOnSlider(
 ) {
   //const ticks = knots
   let ticks: number[] = []
-  for (let i = -3; i < 2; i += 1) {
+  for (let i = -1; i < 2; i += 1) {
     knots.forEach(value => ticks.push(value + i))
   }
   return ticks.map(u => u * scaleX + offsetLeft)

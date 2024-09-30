@@ -45,6 +45,7 @@ import {
   duplicateCurves,
   moveControlPoint,
   joinCurves,
+  closeCurve,
 } from "../../../sketchElements/sketchElementsSlice"
 import {
   Closed,
@@ -107,7 +108,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     counterclockwise: boolean
   } | null>(null)
 
-  const clickWithoutMovingResolution = 1
+  const clickWithoutMovingResolution = 2
 
   const getMouseCoordinates = useCallback(
     (event: MouseEvent): Coordinates | null => {
@@ -330,7 +331,23 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     [zoom],
   )
 
-  const findCurveExtremity = useCallback(
+  const findSameCurveExtremity = useCallback(
+    (curve: Curve, maxDistance = 1) => {
+      if (curve.closed === Closed.True) return false
+
+      if (
+        distance(curve.points[0], curve.points[curve.points.length - 1]) <
+        maxDistance / zoom
+      ) {
+        return true
+      }
+
+      return false
+    },
+    [zoom],
+  )
+
+  const findAnotherCurveExtremity = useCallback(
     (point: Coordinates, curve: Curve, maxDistance = 1) => {
       if (curve.closed === Closed.True) return null
       if (curve.id === controlPolygonsDisplayed?.curveIDs[0]) return null
@@ -356,10 +373,10 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
   const getCurveExtremity = useCallback(
     (point: Coordinates, curves: readonly Curve[], maxDistance = 1) => {
       return curves
-        .map(curve => findCurveExtremity(point, curve, maxDistance))
+        .map(curve => findAnotherCurveExtremity(point, curve, maxDistance))
         .find(value => value !== null)
     },
-    [findCurveExtremity],
+    [findAnotherCurveExtremity],
   )
 
   const getCurveAtPosition = useCallback(
@@ -677,7 +694,14 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
         case "moving curves":
         case "moving a control point":
           if (mouseMoveThreshold === "exceeded") {
+            let closingACurve = false
+            const curve = curves.find(
+              curve => curve.id === controlPolygonsDisplayed?.curveIDs[0],
+            )
             const overAnEndPoint = getCurveExtremity(coordinates, curves, 15)
+            if (curve) {
+              closingACurve = findSameCurveExtremity(curve, 15)
+            }
             if (
               overAnEndPoint &&
               controlPolygonsDisplayed?.selectedControlPoint
@@ -687,6 +711,18 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
                   selectedControlPoint:
                     controlPolygonsDisplayed.selectedControlPoint,
                   overAnEndPoint,
+                }),
+              )
+            } else if (
+              closingACurve &&
+              controlPolygonsDisplayed?.selectedControlPoint
+            ) {
+              //console.log("closing this curve")
+
+              dispatch(
+                closeCurve({
+                  selectedControlPoint:
+                    controlPolygonsDisplayed.selectedControlPoint,
                 }),
               )
             } else {
@@ -733,6 +769,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     [
       action,
       activeTool,
+      controlPolygonsDisplayed?.selectedControlPoint,
       currentlyDrawnCurve,
       curves,
       dispatch,

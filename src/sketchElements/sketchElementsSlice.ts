@@ -1,10 +1,10 @@
 import type { PayloadAction} from '@reduxjs/toolkit';
 import { createSlice} from '@reduxjs/toolkit';
 import type { RootState} from "../app/store"
-import type { Curve } from './curveTypes';
+import { Closed, type Curve } from './curveTypes';
 import type { Constraint } from './constraintTypes';
 import { movePoint } from './coordinates';
-import { duplicateCurve, joinTwoCurves, reverseCurveDirection } from './curve';
+import { computeDegree, duplicateCurve, joinTwoCurves, reverseCurveDirection } from './curve';
 import type { ControlPolygonsDisplayed } from '../components/templates/sketcher/sketcherSlice';
 import type { WritableDraft } from 'immer';
 
@@ -85,6 +85,13 @@ const sketchElementsSlice = createSlice({
                    state.curves[index] = curve as WritableDraft<Curve>
                }
         },
+        closeCurve(state, action: PayloadAction<{selectedControlPoint: { curveID: string; controlPointIndex: number }}>) {
+            const curve = state.curves.find((c)=> (c.id === action.payload.selectedControlPoint.curveID))
+            if (curve === undefined) return
+            const index = state.curves.findIndex((c: Curve) => (c.id === curve.id))
+            const degree = computeDegree(curve)
+            state.curves[index] = {...curve, closed: Closed.True, degree: degree, points: curve.points.slice(0, -1), knots: curve.knots.slice(1, -(degree + 1)), period: curve.knots[curve.knots.length - 1] - curve.knots[0]}
+        },
         /*
         moveKnot(state, action: PayloadAction<{index: number, newPosition: number, controlPolygonsDisplayed: ControlPolygonsDisplayed}>){
             if (!action.payload.controlPolygonsDisplayed) return
@@ -107,7 +114,7 @@ const sketchElementsSlice = createSlice({
       },
 })
 
-export const { addNewCurve, replaceCurve, clearCurves, updateThisCurve, moveCurves, moveControlPoint, joinCurves, updateCurves, deleteCurves, duplicateCurves } = sketchElementsSlice.actions
+export const { addNewCurve, replaceCurve, clearCurves, updateThisCurve, moveCurves, moveControlPoint, joinCurves, closeCurve, updateCurves, deleteCurves, duplicateCurves } = sketchElementsSlice.actions
 export const selectCurves = (state: RootState) => state.sketchElements.present.curves
 export const selectShowUndoArrow = (state: RootState) => state.sketchElements.past.length !== 0
 export const selectShowRedoArrow = (state: RootState) => state.sketchElements.future.length !== 0

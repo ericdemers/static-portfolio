@@ -13,6 +13,8 @@ import RightMenu from "../../organisms/rightMenu/RightMenu"
 import KnotVectorEditor from "../../organisms/knotVectorEditor/KnotVectorEditor"
 import { selectCurves } from "../../../sketchElements/sketchElementsSlice"
 import PeriodicKnotVectorEditor from "../../organisms/knotVectorEditor/PeriodicKnotVectorEditor"
+import { Closed } from "../../../sketchElements/curveTypes"
+import PeriodicKnotVectorEditor2 from "../../organisms/knotVectorEditor/PeriodicKnotVectorEditor2"
 
 interface SketcherProps {
   sketcherWidth: number
@@ -31,6 +33,11 @@ function Sketcher(props: Readonly<SketcherProps>) {
     controlPolygonsDisplayed !== null &&
     curves.find(curve => curve.id === controlPolygonsDisplayed.curveIDs[0]) &&
     controlPolygonsDisplayed.curveIDs.length === 1
+
+  const closedCurve =
+    controlPolygonsDisplayed !== null &&
+    curves.find(curve => curve.id === controlPolygonsDisplayed.curveIDs[0])
+      ?.closed === Closed.True
 
   useEffect(() => {
     dispatch(setSketcherSize({ width: sketcherWidth, height: sketcherHeight }))
@@ -55,9 +62,14 @@ function Sketcher(props: Readonly<SketcherProps>) {
               </div>
             ) : null}
           </div>
-          {showKnotVectorEditor && singleCurveSelected ? (
+          {showKnotVectorEditor && singleCurveSelected && !closedCurve ? (
             <div className="absolute top-2/3 left-1/3 right-[5%] bottom-[5%] pointer-events-none">
-              <PeriodicKnotVectorEditor />
+              <KnotVectorEditor />
+            </div>
+          ) : null}
+          {showKnotVectorEditor && singleCurveSelected && closedCurve ? (
+            <div className="absolute top-2/3 left-1/3 right-[5%] bottom-[5%] pointer-events-none">
+              <PeriodicKnotVectorEditor2 />
             </div>
           ) : null}
           <BottomMenu />

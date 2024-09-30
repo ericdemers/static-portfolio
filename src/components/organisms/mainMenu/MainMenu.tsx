@@ -19,7 +19,9 @@ import {
 import {
   resetCanvas,
   selectTheme,
+  setInitialView,
   toggleTheme,
+  unselectCurvesAndCreationTool,
 } from "../../templates/sketcher/sketcherSlice"
 import {
   clearCurves,
@@ -40,6 +42,8 @@ function MainMenu() {
     (fileContent: string) => {
       const curves = JSON.parse(fileContent)
       dispatch(updateCurves({ curves }))
+      dispatch(setInitialView({ show: false }))
+      dispatch(unselectCurvesAndCreationTool())
     },
     [dispatch],
   )
