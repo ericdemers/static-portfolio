@@ -18,7 +18,7 @@ import {
   updateThisCurve,
 } from "../../../sketchElements/sketchElementsSlice"
 import {
-  selectControlPolygonsDispayed,
+  selectControlPolygonsDisplayed,
   selectParametricPosition,
   selectSelectedKnot,
   selectShowKnotVectorEditor,
@@ -33,7 +33,9 @@ function RightMenu() {
   const dispatch = useAppDispatch()
   const showKnotVectorEditor = useAppSelector(selectShowKnotVectorEditor)
   const curves = useAppSelector(selectCurves)
-  const controlPolygonsDisplayed = useAppSelector(selectControlPolygonsDispayed)
+  const controlPolygonsDisplayed = useAppSelector(
+    selectControlPolygonsDisplayed,
+  )
   const zoom = useAppSelector(selectZoom)
   const parametricPosition = useAppSelector(selectParametricPosition)
   const selectedKnot = useAppSelector(selectSelectedKnot)

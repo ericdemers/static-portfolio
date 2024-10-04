@@ -3,7 +3,7 @@ import { useAppSelector } from "../../../app/hooks"
 
 import { useEventHandlers } from "./eventHandlers"
 import {
-  selectControlPolygonsDispayed,
+  selectControlPolygonsDisplayed,
   selectParametricPosition,
   selectScrollX,
   selectScrollY,
@@ -33,7 +33,9 @@ function Canvas(props: Readonly<CanvasProps>) {
     drawPositionOnCurve,
   } = useDrawingFunctions()
   const curves = useAppSelector(selectCurves)
-  const controlPolygonsDisplayed = useAppSelector(selectControlPolygonsDispayed)
+  const controlPolygonsDisplayed = useAppSelector(
+    selectControlPolygonsDisplayed,
+  )
   const parametricPosition = useAppSelector(selectParametricPosition)
 
   useLayoutEffect(() => {

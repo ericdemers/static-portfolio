@@ -16,7 +16,7 @@ import {
   activateFreeDrawFromInitialView,
   setControlPolygonsDisplayed,
   unselectCurvesAndCreationTool,
-  selectControlPolygonsDispayed,
+  selectControlPolygonsDisplayed,
   selectASingleCurve,
   zoomWithTwoFingers,
   zoomOut,
@@ -98,7 +98,9 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     null,
   )
   const curves = useAppSelector(selectCurves)
-  const controlPolygonsDisplayed = useAppSelector(selectControlPolygonsDispayed)
+  const controlPolygonsDisplayed = useAppSelector(
+    selectControlPolygonsDisplayed,
+  )
   const [drawnCircleArc, setDrawnCircleArc] = useState<{
     xc: number
     yc: number

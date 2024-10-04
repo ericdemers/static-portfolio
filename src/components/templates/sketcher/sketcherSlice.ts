@@ -191,7 +191,7 @@ const sketcherSlice = createSlice({
         selectActiveTool: sketcher => sketcher.activeTool,
         selectInitialView: sketcher => sketcher.initialView,
         selectTheme: sketcher => sketcher.theme,
-        selectControlPolygonsDispayed: sketcher => sketcher.controlPolygonsDisplayed,
+        selectControlPolygonsDisplayed: sketcher => sketcher.controlPolygonsDisplayed,
         selectShowKnotVectorEditor: sketcher => sketcher.showKnotVectorEditor,
         selectSelectedKnot: sketcher => sketcher.selectedKnot,
         selectParametricPosition: sketcher => sketcher.parametricPosition
@@ -200,7 +200,7 @@ const sketcherSlice = createSlice({
 })
 
 export const { selectZoom, selectScrollX, selectScrollY, selectActiveTool, 
-    selectInitialView, selectTheme, selectControlPolygonsDispayed, selectShowKnotVectorEditor,
+    selectInitialView, selectTheme, selectControlPolygonsDisplayed, selectShowKnotVectorEditor,
     selectSelectedKnot, selectParametricPosition } = sketcherSlice.selectors
 
 export const { setSketcherSize, zoomIn, zoomOut, zoomWithTwoFingers, scroll, setInitialView, 

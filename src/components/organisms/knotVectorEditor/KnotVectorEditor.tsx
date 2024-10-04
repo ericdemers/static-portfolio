@@ -11,7 +11,7 @@ import {
 } from "react"
 import { useAppDispatch, useAppSelector } from "../../../app/hooks"
 import {
-  selectControlPolygonsDispayed,
+  selectControlPolygonsDisplayed,
   selectParametricPosition,
   selectSelectedKnot,
   selectTheme,
@@ -65,7 +65,9 @@ const KnotVectorEditor = () => {
   const dispatch = useAppDispatch()
   const [curve, setCurve] = useState<Curve | null>(null)
   const curves = useAppSelector(selectCurves)
-  const controlPolygonsDisplayed = useAppSelector(selectControlPolygonsDispayed)
+  const controlPolygonsDisplayed = useAppSelector(
+    selectControlPolygonsDisplayed,
+  )
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [width, setWidth] = useState(0)
   const [height, setHeight] = useState(0)

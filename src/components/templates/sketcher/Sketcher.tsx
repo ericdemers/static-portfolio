@@ -4,7 +4,7 @@ import Canvas from "../../organisms/canvas/Canvas"
 import CreationToolbar from "../../organisms/creationToolbar/CreationToolbar"
 import MainMenu from "../../organisms/mainMenu/MainMenu"
 import {
-  selectControlPolygonsDispayed,
+  selectControlPolygonsDisplayed,
   selectShowKnotVectorEditor,
   setSketcherSize,
 } from "./sketcherSlice"
@@ -25,7 +25,9 @@ function Sketcher(props: Readonly<SketcherProps>) {
   const { sketcherWidth, sketcherHeight } = props
   const dispatch = useAppDispatch()
   const showKnotVectorEditor = useAppSelector(selectShowKnotVectorEditor)
-  const controlPolygonsDisplayed = useAppSelector(selectControlPolygonsDispayed)
+  const controlPolygonsDisplayed = useAppSelector(
+    selectControlPolygonsDisplayed,
+  )
 
   const curves = useAppSelector(selectCurves)
 

@@ -1,13 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { useAppSelector } from "../../../app/hooks"
 import {
-  selectControlPolygonsDispayed,
+  selectControlPolygonsDisplayed,
   selectTheme,
 } from "../../templates/sketcher/sketcherSlice"
 import type { Curve } from "../../../sketchElements/curveTypes"
 import { selectCurves } from "../../../sketchElements/sketchElementsSlice"
-import { usePeriodicEventHandlers } from "./PeriodicEventHandler"
 import { useKnotEditorDrawingFunctions } from "./knotEditorDrawingFunctions"
+import { usePeriodicEventHandlers } from "./periodicEventHandler"
 
 const PeriodicKnotVectorEditor2 = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -17,16 +17,17 @@ const PeriodicKnotVectorEditor2 = () => {
   const [curve, setCurve] = useState<Curve | null>(null)
   const curves = useAppSelector(selectCurves)
   const theme = useAppSelector(selectTheme)
-  const controlPolygonsDisplayed = useAppSelector(selectControlPolygonsDispayed)
+  const controlPolygonsDisplayed = useAppSelector(
+    selectControlPolygonsDisplayed,
+  )
   const [zoom, setZoom] = useState(1)
   const leftMaximumSliderPosition = 0.35
   const rightMaximumSliderPosition = 0.65
   const maximumZoom = 10
+  const [scroll, setScroll] = useState(0)
 
-  const { drawZoomSlider } = useKnotEditorDrawingFunctions(
-    zoom,
-    sliderPosition(zoom),
-  )
+  const { drawLines, drawZoomSlider, drawPeriodicKnotSlider } =
+    useKnotEditorDrawingFunctions(zoom, sliderPosition(zoom), scroll, width)
 
   usePeriodicEventHandlers(
     canvasRef.current,
@@ -38,6 +39,9 @@ const PeriodicKnotVectorEditor2 = () => {
     rightMaximumSliderPosition,
     maximumZoom,
     sliderPosition(zoom),
+    curve,
+    scroll,
+    setScroll,
   )
 
   useLayoutEffect(() => {
@@ -85,39 +89,22 @@ const PeriodicKnotVectorEditor2 = () => {
     drawZoomSlider(context, ratio)
     if (curve) {
       //drawBasisFunctions(context, curve, ratio)
-      //drawKnotSlider(context, curve, ratio)
+      drawPeriodicKnotSlider(context, curve, ratio)
       //drawKnotTicks(context, curve, ratio)
     }
 
-    const lineColor =
-      theme === "dark" ? "rgba(250, 250, 250, 1)" : "rgba(0, 0, 0, 1)"
-
-    context.beginPath()
-    context.moveTo(0.03, 0.7 * ratio)
-    context.lineTo(0.97, 0.7 * ratio)
-
-    context.save()
-    context.setTransform(1, 0, 0, 1, 0, 0)
-    context.lineWidth = 3
-    context.strokeStyle = lineColor
-    context.stroke()
-    context.restore()
-
-    context.beginPath()
-    context.moveTo(0.03, 0.85 * ratio)
-    context.lineTo(0.97, 0.85 * ratio)
-
-    //context.save()
-    context.setTransform(1, 0, 0, 1, 0, 0)
-    let lineColorA =
-      theme === "dark" ? "rgba(250, 250, 250, 0.5)" : "rgba(0, 0, 0, 0.5)"
-    context.lineWidth = 3
-    context.strokeStyle = lineColorA
-    context.stroke()
-    //context.restore()
-
-    context.restore()
-  }, [canvasRef, curve, drawZoomSlider, height, pixelRatio, theme, width])
+    drawLines(context, ratio)
+  }, [
+    canvasRef,
+    curve,
+    drawLines,
+    drawPeriodicKnotSlider,
+    drawZoomSlider,
+    height,
+    pixelRatio,
+    theme,
+    width,
+  ])
 
   return (
     <div className="shadow-lg rounded-lg bg-white dark:bg-neutral-800 h-full w-full">

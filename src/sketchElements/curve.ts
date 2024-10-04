@@ -45,15 +45,21 @@ export function curveToPeriodicBSpline(curve: Curve) {
     if (curve.degree === undefined || curve.period === undefined) return
     const period = curve.period
     const degree = curve.degree
+    //console.log(degree)
     const controlPoints = p0.concat(p0.slice(0, curve.degree))
     let additionalKnots: number[] = []
     const l = curve.knots.length
     for (let i = 0; i < 2 * curve.degree; i += 1) {
         additionalKnots.push(curve.knots[i % l] + period * Math.floor(i / l + 1))
     }
+    //console.log(additionalKnots)
     const firstKnot = curve.knots[0] - (curve.period - curve.knots[curve.knots.length - 1])
     const p = (additionalKnots[additionalKnots.length-degree-1] - curve.knots[degree -1]) // the first knot is not added yet
     const knots = ([firstKnot].concat(curve.knots.concat(additionalKnots))).map(v => (v - curve.knots[degree - 1]) / p  )
+    //const junk = new PeriodicBSplineR1toR2(controlPoints, knots)
+    //console.log(junk.degree)
+    //console.log(junk.controlPoints.length)
+    //console.log(junk.knots.length)
     return new PeriodicBSplineR1toR2(controlPoints, knots)
 }
 
@@ -89,7 +95,7 @@ export function pointsOnCurve(curve: Curve, numberOfPoints: number = 1000) {
 
 export function mod(n: number, m: number) {
     return ((n % m) + m) % m
-  }
+}
 
 export function pointOnCurve(curve: Curve, u: number) {
     switch(curve.type) {
@@ -244,7 +250,7 @@ export function computeMultiplicityRight(knots: number[], index: number) {
 export function computeMultiplicityLeft(knots: number[], index: number) {
     let multiplicity = 0
     let i = index - 1
-    while (i > 0 && knots[index] < knots[i])  {
+    while (i >= 0 && knots[index] < knots[i])  {
         i -= 1
         multiplicity += 1
     }
@@ -270,6 +276,14 @@ export function computePeriodicMultiplicityLeft(knots: number[], index: number) 
     }
     return multiplicity
 } 
+
+export function computeCyclicNewPosition 
+    (knotPosition: number, newPosition: number) {
+      const distanceFromKnot = newPosition - knotPosition
+      let modulo = mod(distanceFromKnot, 1)
+      if (modulo > 0.5) modulo -= 1
+      return modulo + knotPosition
+    }
 
 
 

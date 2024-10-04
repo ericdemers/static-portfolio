@@ -15,7 +15,7 @@ import { useAppDispatch, useAppSelector } from "../../../app/hooks"
 import { useCallback } from "react"
 import {
   selectActiveTool,
-  selectControlPolygonsDispayed,
+  selectControlPolygonsDisplayed,
   selectInitialView,
   selectZoom,
   setInitialView,
@@ -33,7 +33,9 @@ function CreationToolbar() {
   const initialView = useAppSelector(selectInitialView)
   const activeTool = useAppSelector(selectActiveTool)
   const dispatch = useAppDispatch()
-  const controlPolygonsDisplayed = useAppSelector(selectControlPolygonsDispayed)
+  const controlPolygonsDisplayed = useAppSelector(
+    selectControlPolygonsDisplayed,
+  )
   const zoom = useAppSelector(selectZoom)
 
   const handlePushPencil = useCallback(() => {
