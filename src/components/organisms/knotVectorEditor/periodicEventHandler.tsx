@@ -127,8 +127,6 @@ export const usePeriodicEventHandlers = (
     (curve: Curve, index: number, position: number) => {
       const newPosition = computeCyclicNewPosition(curve.knots[index], position)
       let newKnots = [...curve.knots]
-      //console.log(curve.knots)
-      //console.log(newKnots)
       const multiplicityRight = computeMultiplicityRight(curve.knots, index)
       const multiplicityLeft = computeMultiplicityLeft(curve.knots, index)
       for (
@@ -143,34 +141,16 @@ export const usePeriodicEventHandlers = (
         newKnots,
         index,
       )
-
       const rightPeriodicMultiplicity = computePeriodicMultiplicityRight(
         newKnots,
         index,
       )
-
-      //console.log(newKnots)
-
       for (let i = 0; i < leftPeriodicMultiplicity; i += 1) {
-        newKnots[(newKnots.length - i) % newKnots.length] = newPosition + 1
+        newKnots[newKnots.length - i - 1] = newPosition + 1
       }
-      //console.log(newKnots)
       for (let i = 0; i < rightPeriodicMultiplicity; i += 1) {
-        newKnots[i % newKnots.length] = newPosition - 1
+        newKnots[i] = newPosition - 1
       }
-      //console.log(newKnots)
-
-      /*
-      if (newKnots[0] < -0.5) {
-        newKnots = newKnots.map(v => v + 1)
-      }
-
-      if (newKnots[0] > 0.5) {
-        newKnots = newKnots.map(v => v - 1)
-      }
-        */
-
-      //console.log(newKnots)
 
       dispatch(replaceCurve({ curve: { ...curve, knots: newKnots } }))
       dispatch(setParametricPosition({ value: newPosition }))
