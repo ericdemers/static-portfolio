@@ -26,8 +26,13 @@ const PeriodicKnotVectorEditor2 = () => {
   const maximumZoom = 10
   const [scroll, setScroll] = useState(0)
 
-  const { drawLines, drawZoomSlider, drawPeriodicKnotSlider } =
-    useKnotEditorDrawingFunctions(zoom, sliderPosition(zoom), scroll, width)
+  const {
+    drawLines,
+    drawZoomSlider,
+    drawPeriodicKnotSlider,
+    drawPeriodicBasisFunctions,
+    drawPeriodicKnotTicks,
+  } = useKnotEditorDrawingFunctions(zoom, sliderPosition(zoom), scroll, width)
 
   usePeriodicEventHandlers(
     canvasRef.current,
@@ -88,9 +93,9 @@ const PeriodicKnotVectorEditor2 = () => {
 
     drawZoomSlider(context, ratio)
     if (curve) {
-      //drawBasisFunctions(context, curve, ratio)
+      drawPeriodicBasisFunctions(context, curve, ratio)
       drawPeriodicKnotSlider(context, curve, ratio)
-      //drawKnotTicks(context, curve, ratio)
+      drawPeriodicKnotTicks(context, curve, ratio)
     }
 
     drawLines(context, ratio)
@@ -98,7 +103,9 @@ const PeriodicKnotVectorEditor2 = () => {
     canvasRef,
     curve,
     drawLines,
+    drawPeriodicBasisFunctions,
     drawPeriodicKnotSlider,
+    drawPeriodicKnotTicks,
     drawZoomSlider,
     height,
     pixelRatio,
