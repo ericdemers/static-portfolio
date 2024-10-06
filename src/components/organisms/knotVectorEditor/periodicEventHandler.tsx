@@ -115,9 +115,18 @@ export const usePeriodicEventHandlers = (
     knots: number[],
     delta: number = 0.015,
   ) {
+    /*
     const result = knots.findIndex(
       u => Math.abs(u - position) < delta || Math.abs(1 - u - position) < delta,
     )
+    */
+
+    const result = knots.findIndex(
+      u =>
+        Math.abs(u - position) < delta ||
+        Math.abs(knots[0] - position + 1) < delta,
+    )
+
     if (result === -1) {
       return null
     } else return result

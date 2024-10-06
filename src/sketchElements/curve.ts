@@ -102,8 +102,8 @@ export function pointOnCurve(curve: Curve, u: number) {
         case CurveType.NonRational : {
             if (curve.closed === Closed.True) {
                 const bspline = curveToPeriodicBSpline(curve)
-                if (bspline === undefined) return
-                const p = bspline.evaluate(mod(u, 1))
+                if (bspline === undefined || curve.degree === undefined) return
+                const p = bspline.evaluate(mod(u - curve.knots[curve.degree - 1], 1))
                 return {x: p.x, y: p.y}
             } else {
             const bspline: BSplineR1toR2 =  new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
