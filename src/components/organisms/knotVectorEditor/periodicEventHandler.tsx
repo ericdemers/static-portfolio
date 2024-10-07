@@ -234,8 +234,6 @@ export const usePeriodicEventHandlers = (
         if (newZoom < 1) newZoom = 1
         if (newZoom > maximumZoom) newZoom = maximumZoom
         let newScroll = ((scroll - 0.5) * newZoom) / zoom + 0.5
-        if (newScroll > 0) newScroll = 0
-        if (newScroll < 1 - zoom) newScroll = 1 - zoom
         setZoom(newZoom)
         setScroll(newScroll)
       }
