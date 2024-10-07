@@ -256,6 +256,7 @@ export abstract class BaseBSplineR1toR3 implements BSplineR1toR3Interface {
             multiplicity += 1
             index += 1
         }
+        return this.factory(controlPoints, knots) as this
 
     }
 

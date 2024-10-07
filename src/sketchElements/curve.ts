@@ -12,6 +12,7 @@ import { Complex2d } from "../mathVector/Complex2d";
 import { RationalBSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/RationalBSplineR1toR2";
 import { Vector3d } from "../mathVector/Vector3d";
 import { PeriodicBSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/PeriodicBSplineR1toR2";
+import { PeriodicRationalBSplineR1toC1 } from "../bSplineAlgorithms/R1toC1/PeriodicRationalBSplineR1toC1";
 
 export enum InitialCurve {
     Freehand,
@@ -45,22 +46,33 @@ export function curveToPeriodicBSpline(curve: Curve) {
     if (curve.degree === undefined || curve.period === undefined) return
     const period = curve.period
     const degree = curve.degree
-    //console.log(degree)
     const controlPoints = p0.concat(p0.slice(0, curve.degree))
     let additionalKnots: number[] = []
     const l = curve.knots.length
     for (let i = 0; i < 2 * curve.degree; i += 1) {
         additionalKnots.push(curve.knots[i % l] + period * Math.floor(i / l + 1))
     }
-    //console.log(additionalKnots)
     const firstKnot = curve.knots[0] - (curve.period - curve.knots[curve.knots.length - 1])
     const p = (additionalKnots[additionalKnots.length-degree-1] - curve.knots[degree -1]) // the first knot is not added yet
     const knots = ([firstKnot].concat(curve.knots.concat(additionalKnots))).map(v => (v - curve.knots[degree - 1]) / p  )
-    //const junk = new PeriodicBSplineR1toR2(controlPoints, knots)
-    //console.log(junk.degree)
-    //console.log(junk.controlPoints.length)
-    //console.log(junk.knots.length)
     return new PeriodicBSplineR1toR2(controlPoints, knots)
+}
+
+export function curveToComplexPeriodicBSpline(curve: Curve) {
+    const p0 = CoordinatesToComplex2d(curve.points)
+    if (curve.degree === undefined || curve.period === undefined) return
+    const period = curve.period
+    const degree = curve.degree
+    const controlPoints = p0.concat(p0.slice(0, 2 * curve.degree - 1))
+    let additionalKnots: number[] = []
+    const l = curve.knots.length
+    for (let i = 0; i < 2 * curve.degree; i += 1) {
+        additionalKnots.push(curve.knots[i % l] + period * Math.floor(i / l + 1))
+    }
+    const firstKnot = curve.knots[0] - (curve.period - curve.knots[curve.knots.length - 1])
+    const p = (additionalKnots[additionalKnots.length-degree-1] - curve.knots[degree -1]) // the first knot is not added yet
+    const knots = ([firstKnot].concat(curve.knots.concat(additionalKnots))).map(v => (v - curve.knots[degree - 1]) / p  )
+    return new PeriodicRationalBSplineR1toC1(controlPoints, knots)
 }
 
 export function pointsOnCurve(curve: Curve, numberOfPoints: number = 1000) {
@@ -85,11 +97,20 @@ export function pointsOnCurve(curve: Curve, numberOfPoints: number = 1000) {
         case CurveType.Rational:
             return [{x: 0, y: 0}]
         case CurveType.Complex:
+            if (curve.closed === Closed.True) {
+                return [...Array(numberOfPoints).keys()].map((u) => {
+                    const bspline = curveToComplexPeriodicBSpline(curve)
+                    if (bspline === undefined) return [{x: 0, y: 0}]
+                    const p = bspline.evaluate(u / (numberOfPoints - 1))
+                    return {x: p.x, y: p.y}
+                })
+            } else {
             return [...Array(numberOfPoints).keys()].map((u) => {
                 const bspline = new BSplineR1toC2(CoordinatesToComplex2d(curve.points), curve.knots)
                 const p = bspline.evaluate(u / (numberOfPoints - 1)).toComplexNumber()
                 return {x: p.x, y: p.y}
             })
+        }
     }
 }
 

@@ -1,7 +1,7 @@
 import type { PayloadAction} from '@reduxjs/toolkit';
 import { createSlice} from '@reduxjs/toolkit';
 import type { RootState} from "../app/store"
-import { Closed, type Curve } from './curveTypes';
+import { Closed, CurveType, type Curve } from './curveTypes';
 import type { Constraint } from './constraintTypes';
 import { movePoint } from './coordinates';
 import { computeDegree, duplicateCurve, joinTwoCurves, reverseCurveDirection } from './curve';
@@ -91,16 +91,8 @@ const sketchElementsSlice = createSlice({
             const index = state.curves.findIndex((c: Curve) => (c.id === curve.id))
             const degree = computeDegree(curve)
             state.curves[index] = {...curve, closed: Closed.True, degree: degree, points: curve.points.slice(0, -1), knots: curve.knots.slice(1, -(degree + 1)), period: curve.knots[curve.knots.length - 1] - curve.knots[0]}
+
         },
-        /*
-        moveKnot(state, action: PayloadAction<{index: number, newPosition: number, controlPolygonsDisplayed: ControlPolygonsDisplayed}>){
-            if (!action.payload.controlPolygonsDisplayed) return
-            const curveID = action.payload.controlPolygonsDisplayed.curveIDs[0]
-            const curve = state.curves.find((c)=> (c.id === curveID))
-            if (!curve) return
-            curve.knots[action.payload.index] = action.payload.newPosition
-        },
-        */
         deleteCurves(state, action: PayloadAction<{curveIDs: string[]}>) {
             state.curves = state.curves.filter((curve) => !action.payload.curveIDs.includes(curve.id))
         },
