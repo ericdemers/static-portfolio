@@ -237,7 +237,7 @@ export const usePeriodicEventHandlers = (
         setZoom(newZoom)
         setScroll(newScroll)
       }
-      if (action === "scrolling" && initialMouseXPosition) {
+      if (action === "scrolling" && initialMouseXPosition && curve !== null) {
         let newScroll = scroll + (x - initialMouseXPosition)
         if (newScroll < -0.5 * zoom) newScroll = 0.5
         if (newScroll > 0.5 * zoom) newScroll = -0.5
@@ -345,11 +345,16 @@ export const usePeriodicEventHandlers = (
       event.preventDefault()
       const { deltaX, deltaY } = event
       let newScroll = scroll - deltaX / 800
-      if (newScroll < -1 * zoom) newScroll = 0
-      if (newScroll > 1 * zoom) newScroll = 0
+      if (curve === null) return
+      //console.log("newScroll - first knot")
+      //console.log(newScroll - curve.knots[0])
+      //console.log("first knot")
+      //console.log(curve.knots[0])
+      if (newScroll + curve.knots[0] < -1 * zoom) newScroll = -curve.knots[0]
+      if (newScroll + curve.knots[0] > 1 * zoom) newScroll = -curve.knots[0]
       setScroll(newScroll)
     },
-    [scroll, setScroll, zoom],
+    [curve, scroll, setScroll, zoom],
   )
 
   const handleMouseUp = useCallback(
