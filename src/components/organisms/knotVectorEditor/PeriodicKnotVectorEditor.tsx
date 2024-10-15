@@ -49,6 +49,20 @@ const PeriodicKnotVectorEditor = () => {
     setScroll,
   )
 
+  useEffect(
+    () => {
+      if (controlPolygonsDisplayed === null) {
+        setCurve(null)
+        return
+      }
+      const selectedCurves = curves.filter(curve =>
+        controlPolygonsDisplayed.curveIDs.includes(curve.id),
+      )
+      setScroll(-selectedCurves[0].knots[0])
+    },
+    [], // only once at load time !
+  )
+
   useLayoutEffect(() => {
     setPixelRatio(Math.ceil(window.devicePixelRatio))
   }, [])
