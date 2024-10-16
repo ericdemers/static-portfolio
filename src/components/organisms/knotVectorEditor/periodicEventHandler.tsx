@@ -243,10 +243,10 @@ export const usePeriodicEventHandlers = (
         //if (newScroll + curve.knots[0] > 1 * zoom) newScroll = -curve.knots[0]
         const index = curve.degree
         if (index === undefined) return
-        if (newScroll + curve.knots[index - 1] < -1 * zoom)
-          newScroll = -curve.knots[index - 1]
-        if (newScroll + curve.knots[index - 1] > 1 * zoom)
-          newScroll = -curve.knots[index - 1]
+        if (newScroll / zoom + curve.knots[index - 1] < -1)
+          newScroll = -curve.knots[index - 1] * zoom
+        if (newScroll / zoom + curve.knots[index - 1] > 1)
+          newScroll = -curve.knots[index - 1] * zoom
 
         setInitialMouseXPosition(x)
         setScroll(newScroll)
@@ -355,10 +355,10 @@ export const usePeriodicEventHandlers = (
       if (curve === null) return
       const index = curve.degree
       if (index === undefined) return
-      if (newScroll + curve.knots[index - 1] < -1 * zoom)
-        newScroll = -curve.knots[index - 1]
-      if (newScroll + curve.knots[index - 1] > 1 * zoom)
-        newScroll = -curve.knots[index - 1]
+      if (newScroll / zoom + curve.knots[index - 1] < -1)
+        newScroll = -curve.knots[index - 1] * zoom
+      if (newScroll / zoom + curve.knots[index - 1] > 1)
+        newScroll = -curve.knots[index - 1] * zoom
       setScroll(newScroll)
     },
     [curve, scroll, setScroll, zoom],
