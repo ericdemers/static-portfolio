@@ -719,8 +719,6 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
               closingACurve &&
               controlPolygonsDisplayed?.selectedControlPoint
             ) {
-              //console.log("closing this curve")
-
               dispatch(
                 closeCurve({
                   selectedControlPoint:

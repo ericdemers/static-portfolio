@@ -13,6 +13,7 @@ import { RationalBSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/RationalBSpli
 import { Vector3d } from "../mathVector/Vector3d";
 import { PeriodicBSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/PeriodicBSplineR1toR2";
 import { PeriodicRationalBSplineR1toC1 } from "../bSplineAlgorithms/R1toC1/PeriodicRationalBSplineR1toC1";
+import { Complex } from "../bSplineAlgorithms/R1toR1/FFT";
 
 export enum InitialCurve {
     Freehand,
@@ -59,11 +60,13 @@ export function curveToPeriodicBSpline(curve: Curve) {
 }
 
 export function curveToComplexPeriodicBSpline(curve: Curve) {
-    const p0 = CoordinatesToComplex2d(curve.points)
+    const points = curve.points.concat(curve.points[0])
+    const p0 = CoordinatesToComplex2d(points)
     if (curve.degree === undefined || curve.period === undefined) return
     const period = curve.period
     const degree = curve.degree
-    const controlPoints = p0.concat(p0.slice(0, 2 * curve.degree - 1))
+    const additionalControlPoints = p0.slice(1, curve.degree).map(u => u.add(new Complex2d({x: 0, y: 0}, p0[p0.length -1].c1)))
+    const controlPoints = p0.concat(additionalControlPoints)
     let additionalKnots: number[] = []
     const l = curve.knots.length
     for (let i = 0; i < 2 * curve.degree; i += 1) {
@@ -96,21 +99,25 @@ export function pointsOnCurve(curve: Curve, numberOfPoints: number = 1000) {
         }
         case CurveType.Rational:
             return [{x: 0, y: 0}]
+            
         case CurveType.Complex:
             if (curve.closed === Closed.True) {
+                const bspline = curveToComplexPeriodicBSpline(curve)
+                if (bspline === undefined) return [{x: 0, y: 0}]
                 return [...Array(numberOfPoints).keys()].map((u) => {
-                    const bspline = curveToComplexPeriodicBSpline(curve)
-                    if (bspline === undefined) return [{x: 0, y: 0}]
                     const p = bspline.evaluate(u / (numberOfPoints - 1))
                     return {x: p.x, y: p.y}
                 })
-            } else {
+            }
+             else {
             return [...Array(numberOfPoints).keys()].map((u) => {
                 const bspline = new BSplineR1toC2(CoordinatesToComplex2d(curve.points), curve.knots)
                 const p = bspline.evaluate(u / (numberOfPoints - 1)).toComplexNumber()
                 return {x: p.x, y: p.y}
             })
-        }
+               
+        } 
+            
     }
 }
 

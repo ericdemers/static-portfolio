@@ -59,6 +59,44 @@ export const useDrawingFunctions = () => {
     [],
   )
 
+  const drawPeriodicComplexSplineOfDegreeOne = useCallback(
+    (context: CanvasRenderingContext2D, curve: Curve) => {
+      if (curve.points.length === 3) {
+        const circle = circleArcFromThreePoints(
+          curve.points[0],
+          curve.points[1],
+          curve.points[2],
+        )
+        if (!circle) return
+        const { xc, yc, r, startAngle, endAngle, counterclockwise } = circle
+        context.beginPath()
+        context.arc(xc, yc, r, 0, 2 * Math.PI, counterclockwise)
+        context.stroke()
+      } else {
+        const points = curve.points.concat(curve.points[0])
+        for (let i = 0; i < points.length - 2; i += 2) {
+          context.beginPath()
+          const circle = circleArcFromThreePoints(
+            points[i],
+            points[i + 1],
+            points[i + 2],
+          )
+          if (!circle) {
+            context.moveTo(points[i].x, points[i].y)
+            context.lineTo(points[i + 2].x, points[i + 2].y)
+            context.stroke()
+          } else {
+            context.moveTo(points[i].x, points[i].y)
+            const { xc, yc, r, startAngle, endAngle, counterclockwise } = circle
+            context.arc(xc, yc, r, startAngle, endAngle, counterclockwise)
+            context.stroke()
+          }
+        }
+      }
+    },
+    [],
+  )
+
   const drawCurve = useCallback(
     (context: CanvasRenderingContext2D, curve: Curve) => {
       const lineColor =
@@ -243,12 +281,21 @@ export const useDrawingFunctions = () => {
           context.strokeStyle = color
           context.lineJoin = "round"
           context.lineWidth = 1.5 / zoom
-          drawComplexSplineOfDegreeOne(context, curve)
+          if (curve.closed === Closed.True) {
+            drawPeriodicComplexSplineOfDegreeOne(context, curve)
+          } else {
+            drawComplexSplineOfDegreeOne(context, curve)
+          }
           break
         }
       }
     },
-    [drawComplexSplineOfDegreeOne, theme, zoom],
+    [
+      drawComplexSplineOfDegreeOne,
+      drawPeriodicComplexSplineOfDegreeOne,
+      theme,
+      zoom,
+    ],
   )
 
   const drawPoint = useCallback(
