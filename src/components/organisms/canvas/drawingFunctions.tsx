@@ -178,20 +178,21 @@ export const useDrawingFunctions = () => {
     ) => {
       const innerCircleRadius = 3.5 / zoom
       const outerCircleRadius = 6 / zoom
-      const colorPalette1 =
-        theme === "light"
-          ? createColorPaletteRGB(curve.points.length, 0.2)
-          : createColorPaletteRGB(curve.points.length, 0.5)
-      const colorPalette2 =
-        theme === "light"
-          ? createColorPaletteRGB(curve.points.length, 0.4)
-          : createColorPaletteRGB(curve.points.length, 0.7)
-      const colorPalette3 =
-        theme === "light"
-          ? createColorPaletteRGB(curve.points.length, 0.7)
-          : createColorPaletteRGB(curve.points.length, 0.9)
+
       switch (curve.type) {
         case CurveType.NonRational: {
+          const colorPalette1 =
+            theme === "light"
+              ? createColorPaletteRGB(curve.points.length, 0.2)
+              : createColorPaletteRGB(curve.points.length, 0.5)
+          const colorPalette2 =
+            theme === "light"
+              ? createColorPaletteRGB(curve.points.length, 0.4)
+              : createColorPaletteRGB(curve.points.length, 0.7)
+          const colorPalette3 =
+            theme === "light"
+              ? createColorPaletteRGB(curve.points.length, 0.7)
+              : createColorPaletteRGB(curve.points.length, 0.9)
           context.lineJoin = "round"
           context.lineWidth = 0
           curve.points.forEach((p, index) => {
@@ -215,6 +216,23 @@ export const useDrawingFunctions = () => {
         }
         case CurveType.Rational:
         case CurveType.Complex: {
+          const numberOfControlPoints =
+            curve.closed === Closed.True
+              ? curve.points.length / 2
+              : (curve.points.length + 1) / 2
+          //console.log(numberOfControlPoints)
+          const colorPalette1 =
+            theme === "light"
+              ? createColorPaletteRGB(numberOfControlPoints, 0.2)
+              : createColorPaletteRGB(numberOfControlPoints, 0.5)
+          const colorPalette2 =
+            theme === "light"
+              ? createColorPaletteRGB(numberOfControlPoints, 0.4)
+              : createColorPaletteRGB(numberOfControlPoints, 0.7)
+          const colorPalette3 =
+            theme === "light"
+              ? createColorPaletteRGB(numberOfControlPoints, 0.7)
+              : createColorPaletteRGB(numberOfControlPoints, 0.9)
           const s1 =
             theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"
           const s2 =

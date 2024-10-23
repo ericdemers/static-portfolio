@@ -10,9 +10,14 @@ import {
   periodicReductionFactor,
   rightMaximumSliderPosition,
 } from "./KnotEditorConstants"
-import { CurveType, type Curve } from "../../../sketchElements/curveTypes"
+import {
+  Closed,
+  CurveType,
+  type Curve,
+} from "../../../sketchElements/curveTypes"
 import { createColorPaletteRGB } from "../../../utilities/color"
 import {
+  computeComplexPeriodicRationalBasisFunction,
   computeComplexRationalBasisFunction,
   computePeriodicBasisFunction,
 } from "./basisFunctions"
@@ -215,7 +220,7 @@ export const useKnotEditorDrawingFunctions = (
       const scaleY = 0.5
       const offsetLeft = 0.05 + periodicReductionFactor * scroll
       const offsetTop = 0.7 * ratio
-      const colorPalette = createColorPaletteRGB(curve.points.length, 1)
+
       const colorPaletteAngle = createColorPaletteRGB(360, 0.2)
 
       context.rect(0.03, 0, 0.94, 1)
@@ -224,6 +229,8 @@ export const useKnotEditorDrawingFunctions = (
       switch (curve.type) {
         case CurveType.NonRational:
           {
+            const numberOfControlPoints = curve.points.length
+            const colorPalette = createColorPaletteRGB(numberOfControlPoints, 1)
             const basisFunctions = computePeriodicBasisFunction(curve)
             context.strokeStyle = colorPalette[0]
             context.lineJoin = "round"
@@ -252,11 +259,19 @@ export const useKnotEditorDrawingFunctions = (
           break
         case CurveType.Complex:
           {
-            const basisFunctions = computeComplexRationalBasisFunction(curve)
+            const numberOfControlPoints =
+              curve.closed === Closed.True
+                ? curve.points.length / 2
+                : (curve.points.length + 1) / 2
+            const colorPalette = createColorPaletteRGB(numberOfControlPoints, 1)
+            const basisFunctions =
+              computeComplexPeriodicRationalBasisFunction(curve)
+            //console.log(basisFunctions)
             context.lineWidth = 6 / width
             for (let i = -1; i < 2; i += 1) {
               basisFunctions.forEach((b, bIndex) => {
                 if (b[0] !== undefined) {
+                  /*
                   context.beginPath()
                   context.moveTo(
                     (b[0].u + i) * scaleX + offsetLeft,
@@ -265,11 +280,13 @@ export const useKnotEditorDrawingFunctions = (
                       ratio *
                       scaleY +
                       offsetTop,
+
                   )
+                      */
                   const grad = context.createLinearGradient(0, 0, 1, 0)
                   for (let i = 0; i < b.length; i += 1) {
                     const arg = carg(b[i].value)
-                    grad.addColorStop(
+                    /*=grad.addColorStop(
                       i / b.length,
                       colorPaletteAngle[
                         Math.round(
@@ -277,10 +294,11 @@ export const useKnotEditorDrawingFunctions = (
                             (bIndex / basisFunctions.length) * 360,
                         ) % 360
                       ],
-                    )
+                    )*/
                   }
                   context.strokeStyle = grad
                   b.forEach((point, index) => {
+                    /*
                     if (index === 0) return
                     context.lineTo(
                       (point.u + i) * scaleX + offsetLeft,
@@ -290,6 +308,7 @@ export const useKnotEditorDrawingFunctions = (
                         scaleY +
                         offsetTop,
                     )
+                        */
                   })
                   context.stroke()
                 }
@@ -301,7 +320,12 @@ export const useKnotEditorDrawingFunctions = (
               basisFunctions.forEach((b, index) => {
                 if (b[0] !== undefined) {
                   context.beginPath()
-                  context.strokeStyle = colorPalette[index]
+                  const numberOfControlPoints =
+                    curve.closed === Closed.True
+                      ? curve.points.length / 2
+                      : (curve.points.length + 1) / 2
+                  context.strokeStyle =
+                    colorPalette[index % numberOfControlPoints]
                   context.moveTo(
                     (b[0].u + i) * scaleX + offsetLeft,
                     (-Math.atan(cnorm(b[0].value)) / Math.PI) *
