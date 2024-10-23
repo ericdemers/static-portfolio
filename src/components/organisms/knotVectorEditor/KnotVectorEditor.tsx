@@ -111,7 +111,7 @@ const KnotVectorEditor = () => {
       const scaleY = 0.5
       const offsetLeft = 0.05 + reductionFactor * scroll
       const offsetTop = 0.7 * ratio
-      const colorPalette = createColorPaletteRGB(curve.points.length, 1)
+
       const colorPaletteAngle = createColorPaletteRGB(360, 0.2)
 
       context.rect(0.03, 0, 0.94, 1)
@@ -120,6 +120,8 @@ const KnotVectorEditor = () => {
       switch (curve.type) {
         case CurveType.NonRational:
           {
+            const numberOfControlPoints = curve.points.length
+            const colorPalette = createColorPaletteRGB(numberOfControlPoints, 1)
             const basisFunctions = computeBasisFunction(curve)
             //context.save()
             context.strokeStyle = colorPalette[0]
@@ -147,6 +149,8 @@ const KnotVectorEditor = () => {
           break
         case CurveType.Complex:
           {
+            const numberOfControlPoints = (curve.points.length + 1) / 2
+            const colorPalette = createColorPaletteRGB(numberOfControlPoints, 1)
             const basisFunctions = computeComplexRationalBasisFunction(curve)
             context.lineWidth = 6 / width
             basisFunctions.forEach((b, bIndex) => {

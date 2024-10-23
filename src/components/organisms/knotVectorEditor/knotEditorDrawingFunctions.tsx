@@ -264,8 +264,10 @@ export const useKnotEditorDrawingFunctions = (
                 ? curve.points.length / 2
                 : (curve.points.length + 1) / 2
             const colorPalette = createColorPaletteRGB(numberOfControlPoints, 1)
-            const basisFunctions =
-              computeComplexPeriodicRationalBasisFunction(curve)
+            const basisFunctions = computeComplexPeriodicRationalBasisFunction(
+              curve,
+              0.01,
+            )
             //console.log(basisFunctions)
             context.lineWidth = 6 / width
             for (let i = -1; i < 2; i += 1) {
@@ -291,6 +293,19 @@ export const useKnotEditorDrawingFunctions = (
                           Math.round(
                             (arg * 180) / Math.PI +
                               (bIndex / basisFunctions.length) * 360,
+                          ) % 360
+                        ],
+                      )
+
+                      grad.addColorStop(
+                        i / b.length,
+                        colorPaletteAngle[
+                          Math.round(
+                            (arg * 180) / Math.PI +
+                              ((bIndex % numberOfControlPoints) /
+                                numberOfControlPoints) *
+                                360 *
+                                0,
                           ) % 360
                         ],
                       )

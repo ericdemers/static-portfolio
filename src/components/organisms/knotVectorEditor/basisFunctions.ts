@@ -148,7 +148,7 @@ export function computeComplexRationalBasisFunction(curve: Curve, step: number =
     if (bspline === undefined) return result
     //console.log(bspline.knots)
     //console.log(bspline.controlPoints)
-    for (let i = 0; i < bspline.controlPoints.length; i += 1) {
+    for (const element of bspline.controlPoints) {
         result.push([])
     }
     
