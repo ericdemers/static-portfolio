@@ -271,7 +271,6 @@ export const useKnotEditorDrawingFunctions = (
             for (let i = -1; i < 2; i += 1) {
               basisFunctions.forEach((b, bIndex) => {
                 if (b[0] !== undefined) {
-                  /*
                   context.beginPath()
                   context.moveTo(
                     (b[0].u + i) * scaleX + offsetLeft,
@@ -280,25 +279,25 @@ export const useKnotEditorDrawingFunctions = (
                       ratio *
                       scaleY +
                       offsetTop,
-
                   )
-                      */
+
                   const grad = context.createLinearGradient(0, 0, 1, 0)
                   for (let i = 0; i < b.length; i += 1) {
                     const arg = carg(b[i].value)
-                    /*=grad.addColorStop(
-                      i / b.length,
-                      colorPaletteAngle[
-                        Math.round(
-                          (arg * 180) / Math.PI +
-                            (bIndex / basisFunctions.length) * 360,
-                        ) % 360
-                      ],
-                    )*/
+                    if (arg) {
+                      grad.addColorStop(
+                        i / b.length,
+                        colorPaletteAngle[
+                          Math.round(
+                            (arg * 180) / Math.PI +
+                              (bIndex / basisFunctions.length) * 360,
+                          ) % 360
+                        ],
+                      )
+                    }
                   }
                   context.strokeStyle = grad
                   b.forEach((point, index) => {
-                    /*
                     if (index === 0) return
                     context.lineTo(
                       (point.u + i) * scaleX + offsetLeft,
@@ -308,7 +307,6 @@ export const useKnotEditorDrawingFunctions = (
                         scaleY +
                         offsetTop,
                     )
-                        */
                   })
                   context.stroke()
                 }
