@@ -1,8 +1,12 @@
 import { useCallback } from "react"
 import { useAppDispatch, useAppSelector } from "../../../app/hooks"
+import { Icon } from "@iconify/react"
 import {
+  ComplexRationalBSpline,
   DeleteKnotIcon,
   InsertKnotIcon,
+  NonRationalBSpline,
+  RationalBSpline,
   SimplifyIcon,
   UpArrowIcon,
 } from "../../../icons"
@@ -50,6 +54,8 @@ function RightMenu() {
     dispatch(setSelectedKnot({ value: null }))
     dispatch(setParametricPosition({ value: null }))
   }
+
+  const handleToggleBSplineTypeMenu = () => {}
 
   const handleSimplifyCurve = () => {
     if (!selectedCurve) return
@@ -129,6 +135,41 @@ function RightMenu() {
             </button>
           </li>
         ) : null}
+        <li>
+          <div className="inline-block  w-8 h-0.5 self-stretch bg-neutral-200 dark:bg-white/10 m-1"></div>
+        </li>
+        <li>
+          <button
+            onClick={handleToggleBSplineTypeMenu}
+            className={` hover:bg-neutral-100 dark:hover:bg-neutral-700 w-10 h-10 p-2 rounded-lg outline-none font-medium text-center`}
+          >
+            <div className="size-6">{NonRationalBSpline}</div>
+          </button>
+        </li>
+        <li>
+          <button
+            onClick={handleToggleBSplineTypeMenu}
+            className={` hover:bg-neutral-100 dark:hover:bg-neutral-700 w-10 h-10 p-2 rounded-lg outline-none font-medium text-center fill-inherit`}
+          >
+            <div className="size-6">{RationalBSpline}</div>
+          </button>
+        </li>
+        <li>
+          <button
+            onClick={handleToggleBSplineTypeMenu}
+            className={` hover:bg-neutral-100 dark:hover:bg-neutral-700 w-10 h-10 p-2 rounded-lg outline-none font-medium text-center fill-inherit`}
+          >
+            <div className="size-6">{ComplexRationalBSpline}</div>
+          </button>
+        </li>
+        <li>
+          <button
+            onClick={handleToggleBSplineTypeMenu}
+            className={` hover:bg-neutral-100 dark:hover:bg-neutral-700 w-10 h-10 p-2 rounded-lg outline-none text-center fill-inherit`}
+          >
+            <Icon icon="typcn:pi" className="size-7" />
+          </button>
+        </li>
       </ul>
     </div>
   )

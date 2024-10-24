@@ -4,7 +4,7 @@
 
 ### Purpose
 
-The purpose of this document is to provide an accurate specification of Sketcher<sup><span style="color:rgb(190,190,190); font-weight:normal; font-size:0.7em">BSpline</span></sup> application user inteface. This specification defines the observable external behavior of the program. These are therefore the elements that allow you to interact with the application.
+The purpose of this document is to provide an accurate specification of Sketcher<sup><span style="color:rgb(190,190,190); font-weight:normal; font-size:0.7em">BSpline</span></sup> application user inteface. This specification defines the observable external behavior of the program.
 
 ### Overview
 
@@ -12,17 +12,17 @@ The Sketcher<sup><span style="color:rgb(190,190,190); font-weight:normal; font-s
 
 ### Basic goals
 
-The application aims not only to be easy to use but as transparent as possible in terms of its mathematical models. A primary goal is to show the elegance of b-spline theory.
+The application aims not only to be easy to use but alsoe to be as transparent as possible in terms of its mathematical models. A primary goal is to show the elegance of b-spline theory.
 
 ### Projects
 
-You can edit a curve while controlling the geometric properties of that curve. You can also deform several selected curves at once using general transformations of the plane. The combination of these two types of deformations, local and global, in a fluid manner, constitutes the main asset of the software.
+You can edit a curve while controlling the geometric properties of that curve. You can also manipulate several selected curves at once using general transformations of the plane. The combination of these two types of deformations, local and global, in a fluid manner, constitutes the main asset of the software.
 
 Geometric properties include symmetries, continuity and basic geometric contraints including the number of inflections and curvature extrema.
 
 ## Presentation of the mathematical core
 
-The mathematical core of the application rests on the shoulders of giants. Let us think for example of Felix Klein (1849-1925), Sophius Lie (1842-1899) and Jean Gaston Darboux (1842-1917) for the groups of transformations of the plane or Sergei Bernstein (1880-1968) for the Bernstein polynomials and Isaac Jacob Schoenberg (1903-1990) for the splines. These works are at the origin of the rich current literature from which we draw.
+The mathematical core of the application rests on the shoulders of giants. Let us think for example of Felix Klein (1849-1925), Sophius Lie (1842-1899) and Jean Gaston Darboux (1842-1917) for the groups of transformations of the plane or Sergei Bernstein (1880-1968) for the Bernstein polynomials and Isaac Jacob Schoenberg (1903-1990) for the splines. These fundamental works are at the origin of the rich current literature from which we draw.
 
 The “b-spline-algorithms” package that we plan to publish on npm aims for the analytical processing of b-splines. A trust region interior point optimizer and a library to assist optimization problem formulation are also key ingredients.
 
@@ -34,9 +34,9 @@ Without pressing any icon, it is then possible to draw a freehand curve. Pressin
 
 Clicking on the canvas without moving deselects the drawing icon. No toolbar icon is then selected.
 
-When no design tool is selected, it is possible to select curves. Clicking on a curve allows you to move it. The control polygon is displayed when the curve is released. After selecting a curve the "b" icon for basis function, appear on the right menu.
+When no design tool is selected, it is possible to select curves. Clicking on a curve allows you to move it. The control polygon is displayed when the curve is released. After selecting a curve the "B" icon for basis function, appear on the right menu.
 
-When the "b" icon is selected then the basis functions editing window is displayed. A zoom-scrolling button allows you to enlarge and thus better see a particular section of the basis functions in its parametric domain. Touching and moving the basis functions display area allows you to move the function horizontally. The position of the knots is displayed on a bar below. It is possible to move them. Selecting a knot or touching the parametric line first displays a position on the parametric line as well as on the curve. It then becomes possible to insert a knot at this position or to delete a selected knot. The multiplicity of knots is shown using multiple vertical lines under the basis functions.
+When the "B" icon is selected then the basis functions editing window is displayed. A zoom-scrolling button allows you to enlarge and thus better see a particular section of the basis functions in its parametric domain. Touching and moving the basis functions display area allows you to move the function horizontally. The position of the knots is displayed on a bar below. It is possible to move them. Selecting a knot or touching the parametric line first displays a position on the parametric line as well as on the curve. It then becomes possible to insert a knot at this position or to delete a selected knot. The multiplicity of knots is shown using multiple vertical lines under the basis functions.
 
 When one or more curve are drawn on the canvas, the selection rectangle icon become visible on the top creation toolbar. Once selected, it becomes possible to select multiple curves by drawing a rectangle. Every curve that has a control point inside the light gray rectangle is selected. After the first selection, a shift button appear on the top toolbar. Pressing the shift button allows you to select add or remove curve from the selection. The selection is shown with a blue box that surround all curves control points. It is possible to translate or scale the selected curves. More options can also appear on the right menu to apply group transformations compatible with the selected curves.
 
