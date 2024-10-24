@@ -201,19 +201,19 @@ export const DownArrowIcon = createIcon(
 
 export const NonRationalBSpline = createIcon(
   <g>
-    <path d="M 3 17 L 17 3" strokeWidth="1" />
-    <circle cx="3" cy="17" r="1.5" fill="currentColor" />
-    <circle cx="17" cy="3" r="1.5" fill="currentColor" />
+    <path d="M 4 16 L 16 4" strokeWidth="1" />
+    <circle cx="4" cy="16" r="1.5" fill="currentColor" />
+    <circle cx="16" cy="4" r="1.5" fill="currentColor" />
   </g>,
   modifiedTablerIconProps,
 )
 
 export const RationalBSpline = createIcon(
   <g>
-    <path d="M 3 17 L 17 3" strokeWidth="1" />
-    <path d="M 8.5 8.5 L 11.5 11.5" strokeWidth="1" />
-    <circle cx="3" cy="17" r="1.5" fill="currentColor" />
-    <circle cx="17" cy="3" r="1.5" fill="currentColor" />
+    <path d="M 4 16 L 16 4" strokeWidth="1" />
+    <path d="M 8.5 8.5 L 11.5 11.5" strokeWidth="1.7" />
+    <circle cx="4" cy="16" r="1.5" fill="currentColor" />
+    <circle cx="16" cy="4" r="1.5" fill="currentColor" />
   </g>,
   modifiedTablerIconProps,
 )
@@ -223,10 +223,10 @@ export const RationalBSpline = createIcon(
  */
 export const ComplexRationalBSpline = createIcon(
   <g>
-    <path d="M 3 17 A 10 10 0 0 1 17 4 " strokeWidth="1" />
-    <circle cx="3" cy="17" r="1.5" fill="currentColor" />
-    <circle cx="5" cy="5.5" r="1.5" fill="currentColor" />
-    <circle cx="17" cy="4" r="1.5" fill="currentColor" />
+    <path d="M 4 16 A 8 8 0 0 1 16 4 " strokeWidth="1" />
+    <circle cx="4" cy="16" r="1.5" fill="currentColor" />
+    <circle cx="4" cy="4.2" r="1.5" fill="currentColor" />
+    <circle cx="16" cy="4" r="1.5" fill="currentColor" />
   </g>,
   modifiedTablerIconProps,
 )
