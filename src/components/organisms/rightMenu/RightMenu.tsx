@@ -16,6 +16,7 @@ import {
   interiorKnot,
   optimizedKnotPositions,
   removeAKnot,
+  toRationalBSpline,
 } from "../../../sketchElements/curve"
 import {
   selectCurves,
@@ -56,6 +57,13 @@ function RightMenu() {
   }
 
   const handleToggleBSplineTypeMenu = () => {}
+
+  const handleToRationalBSpline = () => {
+    if (!selectedCurve) return
+    const newCurve = toRationalBSpline(selectedCurve)
+    if (!newCurve) return
+    dispatch(updateThisCurve({ curve: newCurve }))
+  }
 
   const handleSimplifyCurve = () => {
     if (!selectedCurve) return
@@ -148,7 +156,7 @@ function RightMenu() {
         </li>
         <li>
           <button
-            onClick={handleToggleBSplineTypeMenu}
+            onClick={handleToRationalBSpline}
             className={` hover:bg-neutral-100 dark:hover:bg-neutral-700 w-10 h-10 p-2 rounded-lg outline-none font-medium text-center fill-inherit`}
           >
             <div className="size-6">{RationalBSpline}</div>

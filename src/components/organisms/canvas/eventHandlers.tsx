@@ -14,7 +14,6 @@ import {
   scroll,
   selectInitialView,
   activateFreeDrawFromInitialView,
-  setControlPolygonsDisplayed,
   unselectCurvesAndCreationTool,
   selectControlPolygonsDisplayed,
   selectASingleCurve,
@@ -22,12 +21,12 @@ import {
   zoomOut,
   zoomIn,
   selectControlPoint,
-  setSelectedKnot,
   zoomReset,
 } from "../../templates/sketcher/sketcherSlice"
 import {
   createCurve,
   InitialCurve,
+  moveSelectedControlPoint,
   normalizeCircle,
   optimizedKnotPositions,
   pointsOnCurve,
@@ -54,11 +53,7 @@ import {
 } from "../../../sketchElements/curveTypes"
 import { ActionCreators } from "redux-undo"
 import { uniformKnots } from "../../../bSplineAlgorithms/knotPlacement/automaticFitting"
-import {
-  circleArcFromThreePoints,
-  complexMassPointsFromCircleArc,
-  q0FromPhi,
-} from "../../../sketchElements/circleArc"
+import { circleArcFromThreePoints } from "../../../sketchElements/circleArc"
 import {
   cmult,
   conjugate,
@@ -610,6 +605,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
 
   const handleMove = useCallback(
     (newCoordinates: Coordinates) => {
+      //flushSync(() => {
       if (!initialMousePosition) return
       handleMouseMoveTreshold(initialMousePosition, newCoordinates)
       //if (mouseMoveThreshold !== "exceeded") return
@@ -659,8 +655,17 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
               break
             case "moving a control point":
               dispatch(
-                moveControlPoint({ displacement: v, controlPolygonsDisplayed }),
+                moveControlPoint({
+                  displacement: v,
+                  controlPolygonsDisplayed,
+                }),
               )
+              /*
+              if (controlPolygonsDisplayed && controlPolygonsDisplayed.selectedControlPoint !== null) {
+                const newCurve = moveSelectedControlPoint(selectedCurve, newCoordinates, controlPolygonsDisplayed.selectedControlPoint, 1)
+                dispatch(updateThisCurve(newCurve))
+              }
+              */
               setInitialMousePosition(newCoordinates)
               break
             case "none":
@@ -669,6 +674,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
           }
           break
       }
+      //})
     },
     [
       action,
@@ -769,10 +775,12 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
     [
       action,
       activeTool,
+      controlPolygonsDisplayed?.curveIDs,
       controlPolygonsDisplayed?.selectedControlPoint,
       currentlyDrawnCurve,
       curves,
       dispatch,
+      findSameCurveExtremity,
       getCurveExtremity,
       mouseMoveThreshold,
       zoom,

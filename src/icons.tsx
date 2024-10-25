@@ -202,10 +202,10 @@ export const DownArrowIcon = createIcon(
 export const NonRationalBSpline = createIcon(
   <g>
     <path d="M 6 14 L 14 6" strokeWidth="0.7" />
-    <circle cx="4" cy="16" r="1.6" fill="currentColor" stroke-width="0" />
-    <circle cx="4" cy="16" r="2.4" stroke-width="0.3" />
-    <circle cx="16" cy="4" r="1.6" fill="currentColor" stroke-width="0" />
-    <circle cx="16" cy="4" r="2.4" stroke-width="0.3" />
+    <circle cx="4" cy="16" r="1.6" fill="currentColor" strokeWidth="0" />
+    <circle cx="4" cy="16" r="2.4" strokeWidth="0.3" />
+    <circle cx="16" cy="4" r="1.6" fill="currentColor" strokeWidth="0" />
+    <circle cx="16" cy="4" r="2.4" strokeWidth="0.3" />
   </g>,
   modifiedTablerIconProps,
 )
@@ -214,10 +214,10 @@ export const RationalBSpline = createIcon(
   <g>
     <path d="M 6 14 L 14 6" strokeWidth="0.7" />
     <path d="M 8.5 8.5 L 11.5 11.5" strokeWidth="0.7" />
-    <circle cx="4" cy="16" r="1.6" fill="currentColor" stroke-width="0" />
-    <circle cx="4" cy="16" r="2.4" stroke-width="0.3" />
-    <circle cx="16" cy="4" r="1.6" fill="currentColor" stroke-width="0" />
-    <circle cx="16" cy="4" r="2.4" stroke-width="0.3" />
+    <circle cx="4" cy="16" r="1.6" fill="currentColor" strokeWidth="0" />
+    <circle cx="4" cy="16" r="2.4" strokeWidth="0.3" />
+    <circle cx="16" cy="4" r="1.6" fill="currentColor" strokeWidth="0" />
+    <circle cx="16" cy="4" r="2.4" strokeWidth="0.3" />
   </g>,
   modifiedTablerIconProps,
 )
@@ -230,12 +230,12 @@ export const ComplexRationalBSpline = createIcon(
     <path d="M 2.5 14 A 8 8 0 0 1 2 7 " strokeWidth="0.7" />
     <path d="M 6 2.5 A 8 8 0 0 1 14 2.5 " strokeWidth="0.7" />
 
-    <circle cx="4" cy="16" r="1.6" fill="currentColor" stroke-width="0" />
-    <circle cx="4" cy="16" r="2.4" stroke-width="0.3" />
-    <circle cx="17" cy="4" r="1.6" fill="currentColor" stroke-width="0" />
-    <circle cx="17" cy="4" r="2.4" stroke-width="0.3" />
-    <circle cx="3.8" cy="4.2" r="1.6" fill="currentColor" stroke-width="0" />
-    <circle cx="3.8" cy="4.2" r="2.4" stroke-width="0.3" />
+    <circle cx="4" cy="16" r="1.6" fill="currentColor" strokeWidth="0" />
+    <circle cx="4" cy="16" r="2.4" strokeWidth="0.3" />
+    <circle cx="17" cy="4" r="1.6" fill="currentColor" strokeWidth="0" />
+    <circle cx="17" cy="4" r="2.4" strokeWidth="0.3" />
+    <circle cx="3.8" cy="4.2" r="1.6" fill="currentColor" strokeWidth="0" />
+    <circle cx="3.8" cy="4.2" r="2.4" strokeWidth="0.3" />
   </g>,
   modifiedTablerIconProps,
 )

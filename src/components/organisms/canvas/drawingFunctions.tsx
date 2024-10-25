@@ -5,17 +5,16 @@ import {
   type Curve,
 } from "../../../sketchElements/curveTypes"
 import { useAppSelector } from "../../../app/hooks"
-//import { selectTheme } from "../mainMenu/mainMenuSlice"
 
 import {
   threeArcPointsFromNoisyPoints,
-  InitialCurve,
   pointOnCurve,
   pointsOnCurve,
 } from "../../../sketchElements/curve"
 import { selectTheme, selectZoom } from "../../templates/sketcher/sketcherSlice"
 import { createColorPaletteRGB } from "../../../utilities/color"
 import { circleArcFromThreePoints } from "../../../sketchElements/circleArc"
+import { Vector2d } from "../../../mathVector/Vector2d"
 
 export const useDrawingFunctions = () => {
   const theme = useAppSelector(selectTheme)
@@ -119,15 +118,14 @@ export const useDrawingFunctions = () => {
           break
         case CurveType.Rational:
           {
-            /*
             context.strokeStyle = lineColor
             context.lineJoin = "round"
-            context.lineWidth = 1.5 / sketcherState.zoom
+            context.lineWidth = 1.5 / zoom
             context.beginPath()
             const points = pointsOnCurve(curve, 1000)
             context.moveTo(points[0].x, points[0].y)
             points.forEach(point => context.lineTo(point.x, point.y))
-            context.stroke() */
+            context.stroke()
           }
           break
         case CurveType.Complex:
@@ -214,7 +212,77 @@ export const useDrawingFunctions = () => {
           })
           break
         }
-        case CurveType.Rational:
+        case CurveType.Rational: {
+          const numberOfControlPoints =
+            curve.closed === Closed.True
+              ? curve.points.length / 2
+              : (curve.points.length + 1) / 2
+          //console.log(numberOfControlPoints)
+          const colorPalette1 =
+            theme === "light"
+              ? createColorPaletteRGB(numberOfControlPoints, 0.2)
+              : createColorPaletteRGB(numberOfControlPoints, 0.5)
+          const colorPalette2 =
+            theme === "light"
+              ? createColorPaletteRGB(numberOfControlPoints, 0.4)
+              : createColorPaletteRGB(numberOfControlPoints, 0.7)
+          const colorPalette3 =
+            theme === "light"
+              ? createColorPaletteRGB(numberOfControlPoints, 0.7)
+              : createColorPaletteRGB(numberOfControlPoints, 0.9)
+          const s1 =
+            theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"
+          const s2 =
+            theme === "dark" ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.2)"
+          const s3 =
+            theme === "dark" ? "rgba(255, 255, 255, 0.5)" : "rgba(0, 0, 0, 0.5)"
+          context.lineJoin = "round"
+          context.lineWidth = 0
+          curve.points.forEach((p, index) => {
+            let fillStyle1: string
+            let fillStyle2: string
+            let fillStyle3: string
+            if (index % 2 === 0) {
+              fillStyle1 = colorPalette1[index / 2]
+              fillStyle2 = colorPalette2[index / 2]
+              fillStyle3 = colorPalette3[index / 2]
+              const { x, y } = p
+              context.beginPath()
+              context.fillStyle = fillStyle3
+              context.arc(x, y, innerCircleRadius, 0, 2 * Math.PI, false)
+              context.fill()
+              context.arc(x, y, outerCircleRadius, 0, 2 * Math.PI, false)
+              if (index === selectedControlPoint) {
+                context.fillStyle = fillStyle2
+              } else {
+                context.fillStyle = fillStyle1
+              }
+              context.fill()
+            } else {
+              fillStyle1 = s1
+              fillStyle2 = s2
+              fillStyle3 = s3
+              const { x, y } = p
+              const { x: x0, y: y0 } = curve.points[index - 1]
+              const { x: x1, y: y1 } = curve.points[index + 1]
+              const vector = new Vector2d(x1 - x0, y1 - y0)
+                .normalize()
+                .rotate90degrees()
+              const l = outerCircleRadius * 0.5
+              context.beginPath()
+              context.lineCap = "round"
+              context.moveTo(x + vector.x * l, y + vector.y * l)
+              context.lineTo(x - vector.x * 2 * l, y - vector.y * 2 * l)
+              if (index === selectedControlPoint) {
+                context.lineWidth = 4.2 / zoom
+              } else {
+                context.lineWidth = 3.2 / zoom
+              }
+              context.stroke()
+            }
+          })
+          break
+        }
         case CurveType.Complex: {
           const numberOfControlPoints =
             curve.closed === Closed.True
@@ -295,6 +363,18 @@ export const useDrawingFunctions = () => {
           }
           context.stroke()
           break
+        case CurveType.Rational: {
+          context.lineJoin = "round"
+          context.lineWidth = 0
+          context.beginPath()
+          context.strokeStyle = color
+          context.lineWidth = 1.2 / zoom
+          context.moveTo(curve.points[0].x, curve.points[0].y)
+          const points = curve.points.filter((_, i) => i % 2 === 0)
+          points.forEach(point => context.lineTo(point.x, point.y))
+          context.stroke()
+          break
+        }
         case CurveType.Complex: {
           context.strokeStyle = color
           context.lineJoin = "round"

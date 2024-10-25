@@ -118,7 +118,22 @@ export function pointsOnCurve(curve: Curve, numberOfPoints: number = 1000) {
             }
         }
         case CurveType.Rational:
-            return [{x: 0, y: 0}]
+            if (curve.closed === Closed.True) {
+                /*
+                const bspline = curveToPeriodicBSpline(curve)
+                if (bspline === undefined) return [{x: 0, y: 0}]
+                //console.log(bspline)
+                return [...Array(numberOfPoints).keys(), 0].map((u) => {
+                    const p = bspline.evaluate(u / (numberOfPoints - 1))
+                    return {x: p.x, y: p.y}
+                })  */
+            } else {
+                const bspline: RationalBSplineR1toR2 =  new RationalBSplineR1toR2(CoordinatesToVector3d(curve.points), curve.knots)
+                return [...Array(numberOfPoints).keys()].map((u) => {
+                    const p = bspline.evaluate(u / (numberOfPoints - 1))
+                    return {x: p.x, y: p.y}
+                })  
+            }
             
         case CurveType.Complex:
             if (curve.closed === Closed.True) {
@@ -478,4 +493,65 @@ export function joinTwoCurves(firstCurve: Curve, secondCurve: Curve): Curve {
     let knots = [...curve1.knots.slice(0, -1).map((v:number)=>v*factor1), ...curve2.knots.slice(d + 1).map((v: number) => v*factor2+factor1)]
     knots = knots.map(v => v/(factor1 + factor2))
     return ({...curve1, points, knots})
+}
+
+export function toRationalBSpline(curve: Curve) {
+    switch (curve.type) {
+        case CurveType.NonRational: {
+            const bspline =  new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
+            const newBSpline = bspline.toRationalBSPlineR1toR2()
+            return {...curve, type: CurveType.Rational, points: Vector3dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots}
+
+        }
+    }
+}
+
+export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index: number, zoom: number) {
+    const newCurve = {...curve}
+    if (!curve) return
+    switch (curve.type) {
+        case CurveType.NonRational :
+            newCurve.points[index] = point
+            break
+        case CurveType.Rational :
+            if (index%2 === 0) {
+                const cpIndex = index / 2 
+                let s =  new RationalBSplineR1toR2(CoordinatesToVector3d(curve.points), curve.knots)
+                const w = s.getControlPointWeight(cpIndex)
+                s = s.setControlPointPosition(cpIndex, new Vector3d (point.x * w , point.y * w, w))
+                newCurve.points = Vector3dToCoordinates(s.controlPoints)
+            } else {
+                //https://stackoverflow.com/questions/64330618/finding-the-projection-of-a-point-onto-a-line
+                const p1 = newCurve.points[index - 1]
+                const p2 = newCurve.points[index + 1]
+                const abx = p2.x - p1.x
+                const aby = p2.y - p1.y
+                const acx = point.x - p1.x
+                const acy = point.y - p1.y
+                const lengthSquare = (abx * abx + aby * aby)
+                const length = Math.sqrt(lengthSquare)
+                let coeff = (abx * acx + aby * acy) / lengthSquare
+                const epsilon = 15 / length / zoom
+                if (coeff > 1 - epsilon  ) coeff = 1 - epsilon
+                if (coeff < epsilon) coeff = epsilon
+                const x = p1.x + abx * coeff
+                const y = p1.y + aby * coeff
+                newCurve.points[index] = {x, y}
+            }
+            break
+        case CurveType.Complex :
+            // if (index%2 === 0) {
+            //     const cpIndex = index / 2 
+            //     let s =  new RationalBSplineR1toC1(CoordinatesToComplex2d(curve.points), curve.knots)
+            //     const w = s.getControlPointWeight(cpIndex)
+            //     s = s.setControlPointPosition(cpIndex, new Complex2d (cmult(point, w), w))
+            //     curve.points = Complex2dToCoordinates(s.controlPoints)
+            // } else {
+            //     curve.points[index] = point
+            // }
+            newCurve.points[index] = point
+            break
+    }
+    return newCurve
+
 }
