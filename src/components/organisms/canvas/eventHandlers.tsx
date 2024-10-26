@@ -653,21 +653,39 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
                 setInitialMousePosition(newCoordinates)
               }
               break
-            case "moving a control point":
+            case "moving a control point": {
+              /*
               dispatch(
                 moveControlPoint({
                   displacement: v,
                   controlPolygonsDisplayed,
                 }),
               )
-              /*
-              if (controlPolygonsDisplayed && controlPolygonsDisplayed.selectedControlPoint !== null) {
-                const newCurve = moveSelectedControlPoint(selectedCurve, newCoordinates, controlPolygonsDisplayed.selectedControlPoint, 1)
-                dispatch(updateThisCurve(newCurve))
-              }
               */
+              const selectedCurves = curves.filter(curve =>
+                controlPolygonsDisplayed?.curveIDs.includes(curve.id),
+              )
+              const curve = selectedCurves[0]
+              if (
+                curve &&
+                controlPolygonsDisplayed &&
+                controlPolygonsDisplayed.selectedControlPoint
+              ) {
+                const newCurve = moveSelectedControlPoint(
+                  curve,
+                  newCoordinates,
+                  controlPolygonsDisplayed.selectedControlPoint
+                    .controlPointIndex,
+                  1,
+                )
+                if (newCurve) {
+                  dispatch(updateThisCurve({ curve: newCurve }))
+                }
+              }
+
               setInitialMousePosition(newCoordinates)
               break
+            }
             case "none":
               dispatch(scroll({ deltaX: v.x, deltaY: v.y }))
               break

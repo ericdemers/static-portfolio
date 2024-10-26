@@ -98,7 +98,7 @@ function RightMenu() {
         <li>
           <button
             onClick={handleToggleShowKnotVectorEditor}
-            className={`${showKnotVectorEditor ? "bg-blue-50" + " dark:bg-gray-600" : ""} hover:bg-neutral-100 dark:hover:bg-neutral-700 w-10 h-10 rounded-lg outline-none font-medium text-center`}
+            className={`${showKnotVectorEditor ? "bg-blue-50" + " dark:bg-gray-600" : ""} hover:bg-neutral-100 dark:hover:bg-neutral-700 w-10 h-10 rounded-lg outline-none font-medium text-center  text-neutral-500 dark:text-neutral-400`}
           >
             B
           </button>
@@ -106,7 +106,7 @@ function RightMenu() {
         <li>
           <button
             onClick={handleElevateDegree}
-            className={` hover:bg-neutral-100 dark:hover:bg-neutral-700 p-2 rounded-lg outline-none`}
+            className={` hover:bg-neutral-100 dark:hover:bg-neutral-700 p-2 rounded-lg outline-none  text-neutral-500 dark:text-neutral-400`}
           >
             <div className="size-6">{UpArrowIcon}</div>
           </button>
@@ -175,7 +175,10 @@ function RightMenu() {
             onClick={handleToggleBSplineTypeMenu}
             className={` hover:bg-neutral-100 dark:hover:bg-neutral-700 w-10 h-10 p-2 rounded-lg outline-none text-center fill-inherit`}
           >
-            <Icon icon="typcn:pi" className="size-7" />
+            <Icon
+              icon="typcn:pi"
+              className="size-7 text-neutral-500 dark:text-neutral-400"
+            />
           </button>
         </li>
       </ul>

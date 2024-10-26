@@ -507,14 +507,17 @@ export function toRationalBSpline(curve: Curve) {
 }
 
 export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index: number, zoom: number) {
-    const newCurve = {...curve}
-    if (!curve) return
-    switch (curve.type) {
-        case CurveType.NonRational :
-            newCurve.points[index] = point
+    let  newCurve = {...curve}
+    //if (!curve) return
+    switch (newCurve.type) {
+        case CurveType.NonRational : {
+            const newPoints = newCurve.points.map(p => {return {x: p.x, y: p.y}})
+            newPoints[index] = point
+            newCurve.points = newPoints
             break
+        }
         case CurveType.Rational :
-            if (index%2 === 0) {
+            if (index % 2 === 0) {
                 const cpIndex = index / 2 
                 let s =  new RationalBSplineR1toR2(CoordinatesToVector3d(curve.points), curve.knots)
                 const w = s.getControlPointWeight(cpIndex)
@@ -536,7 +539,12 @@ export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index
                 if (coeff < epsilon) coeff = epsilon
                 const x = p1.x + abx * coeff
                 const y = p1.y + aby * coeff
-                newCurve.points[index] = {x, y}
+
+                const newPoints = newCurve.points.map(p => {return {x: p.x, y: p.y}})
+                newPoints[index] = {x, y}
+                newCurve.points = newPoints
+
+                //newCurve.points[index] = {x, y}
             }
             break
         case CurveType.Complex :
@@ -548,9 +556,13 @@ export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index
             //     curve.points = Complex2dToCoordinates(s.controlPoints)
             // } else {
             //     curve.points[index] = point
-            // }
-            newCurve.points[index] = point
-            break
+            // } 
+            {
+                const newPoints = newCurve.points.map(p => {return {x: p.x, y: p.y}})
+                newPoints[index] = point
+                newCurve.points = newPoints
+                break
+            }
     }
     return newCurve
 

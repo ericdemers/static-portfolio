@@ -268,15 +268,16 @@ export const useDrawingFunctions = () => {
               const vector = new Vector2d(x1 - x0, y1 - y0)
                 .normalize()
                 .rotate90degrees()
-              const l = outerCircleRadius * 0.5
+              const l = outerCircleRadius * 0.6
               context.beginPath()
               context.lineCap = "round"
+              context.strokeStyle = fillStyle3
               context.moveTo(x + vector.x * l, y + vector.y * l)
-              context.lineTo(x - vector.x * 2 * l, y - vector.y * 2 * l)
+              context.lineTo(x - vector.x * l, y - vector.y * l)
               if (index === selectedControlPoint) {
-                context.lineWidth = 4.2 / zoom
-              } else {
                 context.lineWidth = 3.2 / zoom
+              } else {
+                context.lineWidth = 2.2 / zoom
               }
               context.stroke()
             }
