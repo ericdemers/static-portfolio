@@ -264,22 +264,65 @@ export const useDrawingFunctions = () => {
               fillStyle3 = s3
               const { x, y } = p
               const { x: x0, y: y0 } = curve.points[index - 1]
-              const { x: x1, y: y1 } = curve.points[index + 1]
+              const { x: x1, y: y1 } =
+                index < curve.points.length - 1
+                  ? curve.points[index + 1]
+                  : curve.points[0]
               const vector = new Vector2d(x1 - x0, y1 - y0)
                 .normalize()
                 .rotate90degrees()
-              const l = outerCircleRadius * 0.6
+              const l = outerCircleRadius * 0.5
+              const l2 = outerCircleRadius * 0.5
+
+              context.beginPath()
+              context.lineCap = "round"
+              context.strokeStyle = fillStyle2
+              context.moveTo(x + vector.x * l2, y + vector.y * l2)
+              context.lineTo(x - vector.x * l2, y - vector.y * l2)
+              if (index === selectedControlPoint) {
+                context.lineWidth = 4.2 / zoom
+              } else {
+                context.lineWidth = 3.2 / zoom
+              }
+              context.stroke()
+
               context.beginPath()
               context.lineCap = "round"
               context.strokeStyle = fillStyle3
               context.moveTo(x + vector.x * l, y + vector.y * l)
               context.lineTo(x - vector.x * l, y - vector.y * l)
               if (index === selectedControlPoint) {
-                context.lineWidth = 3.2 / zoom
+                context.lineWidth = 2.7 / zoom
               } else {
-                context.lineWidth = 2.2 / zoom
+                context.lineWidth = 1.2 / zoom
               }
               context.stroke()
+              /*
+              context.beginPath()
+              context.fillStyle = fillStyle1
+              context.ellipse(
+                x,
+                y,
+                1.2 * l,
+                2 / zoom,
+                Math.atan2(vector.y, vector.x),
+                0,
+                2 * Math.PI,
+              )
+              context.fill()
+              context.beginPath()
+              context.fillStyle = fillStyle3
+              context.ellipse(
+                x,
+                y,
+                1 * l,
+                1 / zoom,
+                Math.atan2(vector.y, vector.x),
+                0,
+                2 * Math.PI,
+              )
+              context.fill()
+              */
             }
           })
           break

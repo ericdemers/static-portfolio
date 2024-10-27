@@ -698,6 +698,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
       action,
       activeTool,
       controlPolygonsDisplayed,
+      curves,
       dispatch,
       draw,
       handleMouseMoveTreshold,

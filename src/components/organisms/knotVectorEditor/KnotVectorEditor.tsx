@@ -22,6 +22,7 @@ import { CurveType, type Curve } from "../../../sketchElements/curveTypes"
 import {
   computeBasisFunction,
   computeComplexRationalBasisFunction,
+  computeRationalBasisFunction,
 } from "./basisFunctions"
 import { createColorPaletteRGB } from "../../../utilities/color"
 import {
@@ -145,6 +146,32 @@ const KnotVectorEditor = () => {
               }
             })
             //context.restore()
+          }
+          break
+        case CurveType.Rational:
+          {
+            const numberOfControlPoints = curve.points.length
+            const colorPalette = createColorPaletteRGB(numberOfControlPoints, 1)
+            const basisFunctions = computeRationalBasisFunction(curve)
+            context.lineJoin = "round"
+            context.lineWidth = 1.6 / width
+            basisFunctions.forEach((b, index) => {
+              if (b[0] !== undefined) {
+                context.beginPath()
+                context.strokeStyle = colorPalette[index]
+                context.moveTo(
+                  b[0].u * scaleX + offsetLeft,
+                  -b[0].value * ratio * scaleY + offsetTop,
+                )
+                b.forEach((point, index) =>
+                  context.lineTo(
+                    point.u * scaleX + offsetLeft,
+                    -point.value * ratio * scaleY + offsetTop,
+                  ),
+                )
+                context.stroke()
+              }
+            })
           }
           break
         case CurveType.Complex:
