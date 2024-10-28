@@ -1,19 +1,33 @@
-import { configureStore} from '@reduxjs/toolkit';
+import { configureStore } from '@reduxjs/toolkit';
 import sketcherReducer from '../components/templates/sketcher/sketcherSlice';
 import sketchElementReducer from '../sketchElements/sketchElementsSlice';
-
-
 import undoable, { excludeAction } from 'redux-undo';
 
+/**
+ * Configure and create the Redux store
+ */
 export const store = configureStore({
   reducer: { 
-        sketcher: sketcherReducer,
-        //note: "sketcher/setParametricPosition" added to the filter otherwise simultanuous dispatch with replace curve cause problem with undo"
-        sketchElements: undoable(sketchElementReducer, {filter: excludeAction(["sketchElements/addNewCurve", "sketchElements/replaceCurve", "sketchElements/moveCurves", "sketchElements/moveControlPoint", "sketcher/setParametricPosition"])}),
-    }  
-})
+    sketcher: sketcherReducer,
+    sketchElements: undoable(sketchElementReducer, {
+      filter: excludeAction([
+        "sketchElements/addNewCurve",
+        "sketchElements/replaceCurve",
+        "sketchElements/moveCurves",
+        "sketchElements/moveControlPoint",
+        "sketcher/setParametricPosition"
+      ])
+    }),
+  }  
+});
 
-export type AppDispatch = typeof store.dispatch
-export type RootState = ReturnType<typeof store.getState>
+/**
+ * Type definition for the dispatch function of the store
+ */
+export type AppDispatch = typeof store.dispatch;
 
+/**
+ * Type definition for the root state of the store
+ */
+export type RootState = ReturnType<typeof store.getState>;
 

@@ -31,3 +31,49 @@ export function memoizedBinomialCoefficient() {
     }
 
 }
+
+
+
+/**
+ * Calculates the binomial coefficient (n choose k).
+ * @param n Total number of items
+ * @param k Number of items to choose
+ * @returns The binomial coefficient or 0 if inputs are invalid
+ */
+export function binomialCoefficient2(n: number, k: number): number {
+    if (!Number.isInteger(n) || !Number.isInteger(k)) {
+        throw new Error("Inputs must be integers");
+    }
+    if (n < k || k < 0) {
+        return 0;
+    }
+    // Take advantage of symmetry
+    if (k > n - k) {
+        k = n - k;
+    }
+    let result = 1;
+    for (let i = 0; i < k; i++) {
+        result *= (n - i) / (i + 1);
+    }
+    return Math.round(result); // Ensure integer result
+}
+
+
+/**
+ * Creates a memoized version of the binomial coefficient function.
+ * @returns A memoized function to calculate binomial coefficients
+ */
+export function memoizedBinomialCoefficient2(): (n: number, k: number) => number {
+    const cache: Map<string, number> = new Map();
+    
+    return (n: number, k: number): number => {
+        const key = `${n},${k}`;
+        if (cache.has(key)) {
+            return cache.get(key)!;
+        } else {
+            const result = binomialCoefficient2(n, k);
+            cache.set(key, result);
+            return result;
+        }
+    };
+}

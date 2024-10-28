@@ -5,7 +5,7 @@ import { middlePoint, movePoint, type Coordinates } from "./coordinates";
 import { BSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/BSplineR1toR2";
 import { Vector2d } from "../mathVector/Vector2d";
 import { automaticFitting, removeASingleKnot } from "../bSplineAlgorithms/knotPlacement/automaticFitting";
-import { averagePhi, cadd, cdiv, cmult, csub, weigthedAveragePhi } from "../mathVector/ComplexGrassmannSpace";
+import { averagePhi, cadd, cdiv, cmult, csub, weightedAveragePhi } from "../mathVector/ComplexGrassmannSpace";
 import { arcPoints, arrayRange, complexMassPointsFromCircleArc, q0FromPhi } from "./circleArc";
 import { BSplineR1toC2 } from "../bSplineAlgorithms/R1toC2/BSplineR1toC2";
 import { Complex2d } from "../mathVector/Complex2d";
@@ -58,6 +58,8 @@ export function curveToPeriodicBSpline(curve: Curve) {
     const knots = ([firstKnot].concat(curve.knots.concat(additionalKnots))).map(v => (v - curve.knots[degree - 1]) / p  )
     return new PeriodicBSplineR1toR2(controlPoints, knots)
 }
+
+
 
 export function curveToComplexPeriodicBSpline(curve: Curve) {
     /*
@@ -437,7 +439,7 @@ export function arcPointsFrom3Points(points: Coordinates[]) {
 }
 
 export function threeArcPointsFromNoisyPoints(points: Coordinates[]) {
-    const phi = weigthedAveragePhi(points)
+    const phi = weightedAveragePhi(points)
     const z0 = points[0]
     const z1 = points[points.length - 1]
     const q0 = q0FromPhi(phi, z0, z1)
@@ -457,7 +459,7 @@ export function normalizeCircle(c: Curve): Curve {
         const z0 = c.points[0]
         const z1 = c.points[c.points.length - 1]
         //const phi = averagePhi(c.points)
-        const phi = weigthedAveragePhi(c.points)
+        const phi = weightedAveragePhi(c.points)
         const q0 = q0FromPhi(phi, z0, z1)
         curveCopy.points = [z0, q0, z1]
         curveCopy.knots = [0, 0, 1, 1]
@@ -519,10 +521,16 @@ export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index
         case CurveType.Rational :
             if (index % 2 === 0) {
                 const cpIndex = index / 2 
-                let s =  new RationalBSplineR1toR2(CoordinatesToVector3d(curve.points), curve.knots)
-                const w = s.getControlPointWeight(cpIndex)
-                s = s.setControlPointPosition(cpIndex, new Vector3d (point.x * w , point.y * w, w))
-                newCurve.points = Vector3dToCoordinates(s.controlPoints)
+                if (curve.closed === Closed.True) {
+                    throw new Error("Not implemented")
+                } else {
+                    let s =  new RationalBSplineR1toR2(CoordinatesToVector3d(curve.points), curve.knots)
+                    const w = s.getControlPointWeight(cpIndex)
+                    s = s.setControlPointPosition(cpIndex, new Vector3d (point.x * w , point.y * w, w))
+                    newCurve.points = Vector3dToCoordinates(s.controlPoints)
+                }
+
+                
             } else {
                 //https://stackoverflow.com/questions/64330618/finding-the-projection-of-a-point-onto-a-line
                 const p1 = newCurve.points[index - 1]

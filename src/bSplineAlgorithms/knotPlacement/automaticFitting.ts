@@ -1,14 +1,14 @@
 // Reference : Fast Automatic Knot Placement Method for Accurate B-spline curve Fitting, by Raine Yeh, Youssef S. G. Nashed, Tom Peterka, Xavier Tricoche, Computer-aided design 128 (2020)
 
-import { KMS_REDUCE_CROSS_ACCOUNT_REGION_POLICY_SCOPE } from "aws-cdk-lib/cx-api"
 import { CholeskyDecomposition } from "../../linearAlgebra/CholeskyDecomposition"
 import { DenseMatrix } from "../../linearAlgebra/DenseMatrix"
 import { zeroVector } from "../../linearAlgebra/MathVectorBasicOperations"
 import { SymmetricMatrix } from "../../linearAlgebra/SymmetricMatrix"
-import { Vector2d } from "../mathVector/Vector2d"
+
 import { basisFunctions, findSpan } from "../Piegl_Tiller_NURBS_Book"
 import { BSplineR1toR1 } from "../R1toR1/BSplineR1toR1"
 import { BSplineR1toR2 } from "../R1toR2/BSplineR1toR2"
+import { Vector2d } from "../../mathVector/Vector2d"
 
 
 

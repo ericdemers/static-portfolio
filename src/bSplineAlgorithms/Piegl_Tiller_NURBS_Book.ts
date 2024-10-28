@@ -156,3 +156,5 @@ export function decomposeFunction(spline: BSplineR1toR1) {
     }
     return result;
 }
+
+

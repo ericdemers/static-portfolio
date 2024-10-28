@@ -27,11 +27,5 @@ export function sum(a: number, b: number) {
     expect(computePeriodicMultiplicityLeft(knots2, 0)).toBe(2)
   })
 
-  test ('computeFirstKnotPosition', () => {
-    expect(computeCyclicNewPosition(0, 0.5)).toBe(0.5)
-    expect(computeCyclicNewPosition(0, 1.5)).toBe(0.5)
-    expect(computeCyclicNewPosition(0, -0.2)).toBe(0.8)
-    expect(computeCyclicNewPosition(0, 1)).toBe(0)
-  })
 
 

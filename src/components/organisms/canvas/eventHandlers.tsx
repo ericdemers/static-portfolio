@@ -58,7 +58,7 @@ import {
   cmult,
   conjugate,
   positiveAtan2,
-  weigthedAveragePhi,
+  weightedAveragePhi,
 } from "../../../mathVector/ComplexGrassmannSpace"
 
 type ActionType =
@@ -446,7 +446,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
               return
             }
             if (curve.points.length >= 3 && curve.knots.length === 0) {
-              const phi = weigthedAveragePhi(curve.points)
+              const phi = weightedAveragePhi(curve.points)
               if (phi > Math.PI / 2 || phi < -Math.PI / 2) {
                 const points = threeArcPointsFromNoisyPoints(curve.points)
                 curve.points = points

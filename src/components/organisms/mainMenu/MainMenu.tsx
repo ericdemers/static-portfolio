@@ -32,7 +32,14 @@ import { ActionCreators } from "redux-undo"
 import { saveCurves } from "../../../renderer/SaveAndOpen"
 import { useCallback } from "react"
 
-function MainMenu() {
+/**
+ * MainMenu component
+ *
+ * This component renders the main menu of the application, including
+ * options to reset the canvas, toggle the theme, and access the language dialog.
+ */
+
+const MainMenu: React.FC = () => {
   const dispatch = useAppDispatch()
   const t = useTranslation()
   const theme = useAppSelector(selectTheme)
