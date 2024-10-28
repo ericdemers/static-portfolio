@@ -679,7 +679,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
                   1,
                 )
                 if (newCurve) {
-                  dispatch(updateThisCurve({ curve: newCurve }))
+                  dispatch(replaceCurve({ curve: newCurve }))
                 }
               }
 

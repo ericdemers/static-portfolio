@@ -58,6 +58,20 @@ export class PeriodicBSplineR1toR3 extends BaseBSplineR1toR3 {
     }
 
 
+    setControlPointPosition(i: number, value: Vector3d) {
+        const n = this.periodicControlPointsLength
+        if (i < 0 || i >= n) {
+            throw new Error("Control point indentifier is out of range")
+        }
+        let controlPoints = this.controlPoints
+        controlPoints[i] = value.clone()
+        if (i < this.degree) {
+            controlPoints[n + i] = controlPoints[i]
+        }
+        return new PeriodicBSplineR1toR3(controlPoints, this._knots) as this
+    }
+
+
     /*
     optimizerStep(step: number[]) {
         for (let i = 0; i < this._controlPoints.length; i += 1) {
@@ -67,6 +81,8 @@ export class PeriodicBSplineR1toR3 extends BaseBSplineR1toR3 {
         }
     }
     */
+
+
 
 
 

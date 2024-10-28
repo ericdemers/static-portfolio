@@ -217,7 +217,6 @@ export const useDrawingFunctions = () => {
             curve.closed === Closed.True
               ? curve.points.length / 2
               : (curve.points.length + 1) / 2
-          //console.log(numberOfControlPoints)
           const colorPalette1 =
             theme === "light"
               ? createColorPaletteRGB(numberOfControlPoints, 0.2)
@@ -416,6 +415,10 @@ export const useDrawingFunctions = () => {
           context.moveTo(curve.points[0].x, curve.points[0].y)
           const points = curve.points.filter((_, i) => i % 2 === 0)
           points.forEach(point => context.lineTo(point.x, point.y))
+          if (curve.closed === Closed.True) {
+            const p = curve.points[0]
+            context.lineTo(p.x, p.y)
+          }
           context.stroke()
           break
         }

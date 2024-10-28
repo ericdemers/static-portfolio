@@ -1,9 +1,9 @@
 import { basisFunctions } from "../../../bSplineAlgorithms/Piegl_Tiller_NURBS_Book";
 import type { PeriodicRationalBSplineR1toC1 } from "../../../bSplineAlgorithms/R1toC1/PeriodicRationalBSplineR1toC1";
-import { splineRecomposition } from "../../../bSplineAlgorithms/R1toR1/BernsteinDecompositionR1toR1";
+import type { PeriodicRationalBSplineR1toR2 } from "../../../bSplineAlgorithms/R1toR2/PeriodicRationalBSplineR1toR2";
 import { cadd, cdiv, cmult, csub } from "../../../mathVector/ComplexGrassmannSpace";
 import type { Coordinates } from "../../../sketchElements/coordinates";
-import { computeDegree, curveToComplexPeriodicBSpline, curveToPeriodicBSpline } from "../../../sketchElements/curve";
+import { computeDegree, curveToComplexPeriodicBSpline, curveToPeriodicBSpline, curveToPeriodicRationalBSpline } from "../../../sketchElements/curve";
 import type { Curve } from "../../../sketchElements/curveTypes";
 
 export function computeBasisFunction(curve: Curve, step: number = 0.001) {
@@ -140,7 +140,56 @@ export function computeComplexRationalBasisFunction(curve: Curve, step: number =
     
  }
 
- export function computeComplexPeriodicRationalBasisFunction(curve: Curve, step: number = 0.001) {
+ export function computePeriodicRationalBasisFunction(curve: Curve, step: number = 0.001) {
+    //console.log(curve.knots)
+    //console.log(curve.points)
+    let result: {u: number, value: number}[][] = []
+    const bspline = curveToPeriodicRationalBSpline(curve)
+    if (bspline === undefined) return result
+    //console.log(bspline.knots)
+    //console.log(bspline.controlPoints)
+    for (const element of bspline.controlPoints) {
+        result.push([])
+    }
+    
+
+    const degree = bspline.degree
+    if (degree > 0) {
+        const delta = curve.knots[bspline.degree - 1]
+        bspline.knots.forEach((knotValue, knotIndex) => {
+            if (knotIndex > degree - 1  && knotIndex < bspline.knots.length - degree - 1) {
+                const weights = relativeWeightPeriodicRationalBSpline( bspline, knotIndex, degree)
+                //console.log("weights")
+                //console.log(weights)
+                const range = rangeIncludingStopValue(knotValue, bspline.knots[knotIndex + 1], step)
+                //console.log("bspline control points")
+                //console.log(bspline.controlPoints)
+                range.forEach(u => {
+                    let denominator = 0
+                    const basis = basisFunctions(knotIndex, u, bspline.knots, degree)
+                    //console.log(bspline.knots)
+                    //console.log(u)
+                    //console.log("basis")
+                    //console.log(basis)
+                    for (let i = 0; i < weights.length; i += 1) {
+                        denominator = denominator + basis[i] *  weights[i]
+                        //denominator = {x: 1, y: 0}
+                     }
+                    basis.forEach((value, index) => {
+                        //result[knotIndex + index - degree ].push({u: (u + delta), value})
+                        const v = value * weights[index] / denominator
+                        result[knotIndex + index - degree].push({u: u + delta,  value: v})
+                       //result[knotIndex + index - degree].push({u,  value: {x: 1 , y: 0}})
+                    })
+                })
+            }
+        })
+    }
+    //console.log(result)
+    return result
+}
+
+ export function computePeriodicComplexBasisFunction(curve: Curve, step: number = 0.001) {
     //console.log(curve.knots)
     //console.log(curve.points)
     let result: {u: number, value: {x: number, y: number}}[][] = []
@@ -199,6 +248,19 @@ export function computeComplexRationalBasisFunction(curve: Curve, step: number =
         weights.push( cmult( weights[i], cdiv( csub(q0, z0), csub(z1, q0)) ) )
     }
     return weights
+ }
+
+ function relativeWeightPeriodicRationalBSpline(curve: PeriodicRationalBSplineR1toR2, knotIndex: number, degree: number) {
+    const firstControlPointIndex = knotIndex - degree
+    /*
+    let weights = [{x: 1, y: 0}]
+    for (let i = 1; i < degree + 1; i += 1) {
+        weights.push( cdiv( curve.controlPoints[firstControlPointIndex + i].c1,  curve.controlPoints[firstControlPointIndex].c1 ) )
+    }
+        return weights
+    */
+    return curve.controlPoints.slice(firstControlPointIndex, firstControlPointIndex + degree + 1).map(cp => cp.z)
+    
  }
 
  function relativeComplexWeightPeriodicBSpline(curve: PeriodicRationalBSplineR1toC1, knotIndex: number, degree: number) {

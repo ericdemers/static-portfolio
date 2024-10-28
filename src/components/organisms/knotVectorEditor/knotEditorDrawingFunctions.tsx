@@ -17,9 +17,9 @@ import {
 } from "../../../sketchElements/curveTypes"
 import { createColorPaletteRGB } from "../../../utilities/color"
 import {
-  computeComplexPeriodicRationalBasisFunction,
-  computeComplexRationalBasisFunction,
+  computePeriodicComplexBasisFunction,
   computePeriodicBasisFunction,
+  computePeriodicRationalBasisFunction,
 } from "./basisFunctions"
 import { carg, cnorm } from "../../../mathVector/ComplexGrassmannSpace"
 
@@ -257,6 +257,35 @@ export const useKnotEditorDrawingFunctions = (
             }
           }
           break
+        case CurveType.Rational: {
+          const numberOfControlPoints = curve.points.length / 2
+          const colorPalette = createColorPaletteRGB(numberOfControlPoints, 1)
+          const basisFunctions = computePeriodicRationalBasisFunction(curve)
+          context.lineJoin = "round"
+          context.lineWidth = 1.6 / width
+          for (let i = -1; i < 2; i += 1) {
+            basisFunctions.forEach((b, index) => {
+              if (b[0] !== undefined) {
+                context.beginPath()
+                context.strokeStyle = colorPalette[index % curve.points.length]
+                context.moveTo(
+                  b[0].u * scaleX + offsetLeft,
+                  -b[0].value * ratio * scaleY + offsetTop,
+                )
+                b.forEach(point => {
+                  context.lineTo(
+                    point.u * scaleX + offsetLeft,
+                    -point.value * ratio * scaleY + offsetTop,
+                  )
+                })
+                context.stroke()
+              }
+            })
+          }
+
+          break
+        }
+
         case CurveType.Complex:
           {
             const numberOfControlPoints =
@@ -264,7 +293,7 @@ export const useKnotEditorDrawingFunctions = (
                 ? curve.points.length / 2
                 : (curve.points.length + 1) / 2
             const colorPalette = createColorPaletteRGB(numberOfControlPoints, 1)
-            const basisFunctions = computeComplexPeriodicRationalBasisFunction(
+            const basisFunctions = computePeriodicComplexBasisFunction(
               curve,
               0.01,
             )

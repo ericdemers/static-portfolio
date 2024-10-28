@@ -14,6 +14,7 @@ import { Vector3d } from "../mathVector/Vector3d";
 import { PeriodicBSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/PeriodicBSplineR1toR2";
 import { PeriodicRationalBSplineR1toC1 } from "../bSplineAlgorithms/R1toC1/PeriodicRationalBSplineR1toC1";
 import { Complex } from "../bSplineAlgorithms/R1toR1/FFT";
+import { PeriodicRationalBSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/PeriodicRationalBSplineR1toR2";
 
 export enum InitialCurve {
     Freehand,
@@ -58,6 +59,23 @@ export function curveToPeriodicBSpline(curve: Curve) {
     const knots = ([firstKnot].concat(curve.knots.concat(additionalKnots))).map(v => (v - curve.knots[degree - 1]) / p  )
     return new PeriodicBSplineR1toR2(controlPoints, knots)
 }
+
+export function curveToPeriodicRationalBSpline(curve: Curve) {
+    if (curve.degree === undefined || curve.period === undefined) return
+    const newPoints = curve.points.concat(curve.points.slice(0, curve.degree * 2  - 1))
+    const controlPoints = CoordinatesToVector3d(newPoints)
+    const period = curve.period
+    const degree = curve.degree
+    
+    let additionalKnots: number[] = []
+    const l = curve.knots.length
+    for (let i = 0; i < 2 * curve.degree; i += 1) {
+        additionalKnots.push(curve.knots[i % l] + period * Math.floor(i / l + 1))
+    }
+    const firstKnot = curve.knots[0] - (curve.period - curve.knots[curve.knots.length - 1])
+    const p = (additionalKnots[additionalKnots.length-degree-1] - curve.knots[degree -1]) // the first knot is not added yet
+    const knots = ([firstKnot].concat(curve.knots.concat(additionalKnots))).map(v => (v - curve.knots[degree - 1]) / p  )
+    return new PeriodicRationalBSplineR1toR2(controlPoints, knots)}
 
 
 
@@ -121,14 +139,14 @@ export function pointsOnCurve(curve: Curve, numberOfPoints: number = 1000) {
         }
         case CurveType.Rational:
             if (curve.closed === Closed.True) {
-                /*
-                const bspline = curveToPeriodicBSpline(curve)
+                //console.log(curve)
+                const bspline = curveToPeriodicRationalBSpline(curve)
                 if (bspline === undefined) return [{x: 0, y: 0}]
                 //console.log(bspline)
                 return [...Array(numberOfPoints).keys(), 0].map((u) => {
                     const p = bspline.evaluate(u / (numberOfPoints - 1))
                     return {x: p.x, y: p.y}
-                })  */
+                })  
             } else {
                 const bspline: RationalBSplineR1toR2 =  new RationalBSplineR1toR2(CoordinatesToVector3d(curve.points), curve.knots)
                 return [...Array(numberOfPoints).keys()].map((u) => {
@@ -522,7 +540,13 @@ export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index
             if (index % 2 === 0) {
                 const cpIndex = index / 2 
                 if (curve.closed === Closed.True) {
-                    throw new Error("Not implemented")
+                    //let s =  new PeriodicRationalBSplineR1toR2(CoordinatesToVector3d(curve.points), curve.knots)
+                    let s =  curveToPeriodicRationalBSpline(curve)
+                    //console.log(s)
+                    if (s === undefined) return
+                    const w = s.getControlPointWeight(cpIndex)
+                    s = s.setControlPointPosition(cpIndex, new Vector3d (point.x * w , point.y * w, w))
+                    newCurve.points = Vector3dToCoordinates(s.controlPoints).slice(0, curve.points.length)
                 } else {
                     let s =  new RationalBSplineR1toR2(CoordinatesToVector3d(curve.points), curve.knots)
                     const w = s.getControlPointWeight(cpIndex)
@@ -534,7 +558,7 @@ export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index
             } else {
                 //https://stackoverflow.com/questions/64330618/finding-the-projection-of-a-point-onto-a-line
                 const p1 = newCurve.points[index - 1]
-                const p2 = newCurve.points[index + 1]
+                const p2 = (index + 1 < newCurve.points.length - 1) ? newCurve.points[index + 1] : newCurve.points[0]
                 const abx = p2.x - p1.x
                 const aby = p2.y - p1.y
                 const acx = point.x - p1.x
