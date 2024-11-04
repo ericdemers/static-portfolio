@@ -90,6 +90,7 @@ const sketchElementsSlice = createSlice({
             if (curve === undefined) return
             const index = state.curves.findIndex((c: Curve) => (c.id === curve.id))
             const degree = computeDegree(curve)
+            //console.log(degree)
             state.curves[index] = {...curve, closed: Closed.True, degree: degree, points: curve.points.slice(0, -1), knots: curve.knots.slice(1, -(degree + 1)), period: curve.knots[curve.knots.length - 1] - curve.knots[0]}
 
         },

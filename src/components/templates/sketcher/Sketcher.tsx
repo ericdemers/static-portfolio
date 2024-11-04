@@ -69,7 +69,7 @@ function SketcherOverlay({
   showRightMenu,
   showKnotVectorEditor,
   closedCurve,
-}: SketcherOverlayProps) {
+}: Readonly<SketcherOverlayProps>) {
   return (
     <div className="absolute left-4 right-4 bottom-6 top-6 pointer-events-none">
       <div className="flex flex-col h-full justify-between">
@@ -81,7 +81,7 @@ function SketcherOverlay({
             <CreationToolbar />
           </div>
           {showRightMenu && (
-            <div className="flex col-start-3 row-start-2 justify-end pointer-events-auto">
+            <div className="flex col-start-3 row-start-2 justify-end pointer-events-none">
               <RightMenu />
             </div>
           )}

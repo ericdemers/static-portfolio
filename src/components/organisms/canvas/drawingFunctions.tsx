@@ -262,6 +262,7 @@ export const useDrawingFunctions = () => {
               fillStyle2 = s2
               fillStyle3 = s3
               const { x, y } = p
+              //console.log(p)
               const { x: x0, y: y0 } = curve.points[index - 1]
               const { x: x1, y: y1 } =
                 index < curve.points.length - 1

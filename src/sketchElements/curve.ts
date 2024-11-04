@@ -541,12 +541,16 @@ export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index
                 const cpIndex = index / 2 
                 if (curve.closed === Closed.True) {
                     //let s =  new PeriodicRationalBSplineR1toR2(CoordinatesToVector3d(curve.points), curve.knots)
-                    let s =  curveToPeriodicRationalBSpline(curve)
+                    const s =  curveToPeriodicRationalBSpline(curve)
                     //console.log(s)
                     if (s === undefined) return
                     const w = s.getControlPointWeight(cpIndex)
-                    s = s.setControlPointPosition(cpIndex, new Vector3d (point.x * w , point.y * w, w))
-                    newCurve.points = Vector3dToCoordinates(s.controlPoints).slice(0, curve.points.length)
+                    //console.log(cpIndex)
+                    //console.log(w)
+                    const s1 = s.setControlPointPosition(cpIndex, new Vector3d (point.x * w , point.y * w, w))
+                    //console.log(s)
+                    newCurve.points = Vector3dToCoordinates(s1.controlPoints).slice(0, curve.points.length)
+                    //console.log(newCurve.points)
                 } else {
                     let s =  new RationalBSplineR1toR2(CoordinatesToVector3d(curve.points), curve.knots)
                     const w = s.getControlPointWeight(cpIndex)
@@ -558,7 +562,9 @@ export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index
             } else {
                 //https://stackoverflow.com/questions/64330618/finding-the-projection-of-a-point-onto-a-line
                 const p1 = newCurve.points[index - 1]
-                const p2 = (index + 1 < newCurve.points.length - 1) ? newCurve.points[index + 1] : newCurve.points[0]
+                //const p2 = (index + 1 < newCurve.points.length - 1) ? newCurve.points[index + 1] : newCurve.points[0]
+                const p2 = (index + 1 > newCurve.points.length - 1) ? newCurve.points[0]: newCurve.points[index + 1]
+                //const p2 =  newCurve.points[index + 1] 
                 const abx = p2.x - p1.x
                 const aby = p2.y - p1.y
                 const acx = point.x - p1.x
@@ -575,6 +581,7 @@ export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index
                 const newPoints = newCurve.points.map(p => {return {x: p.x, y: p.y}})
                 newPoints[index] = {x, y}
                 newCurve.points = newPoints
+                //console.log(newCurve.points)
 
                 //newCurve.points[index] = {x, y}
             }

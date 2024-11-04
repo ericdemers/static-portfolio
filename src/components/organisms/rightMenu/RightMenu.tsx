@@ -93,7 +93,7 @@ function RightMenu() {
   }
 
   return (
-    <div className="w-12 flex flex-col  place-content-around bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-400 p-1 shadow rounded-lg select-none">
+    <div className="w-12 flex flex-col  place-content-around bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-400 p-1 shadow rounded-lg select-none pointer-events-auto">
       <ul>
         <li>
           <button
