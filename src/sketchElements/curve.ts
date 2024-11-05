@@ -61,9 +61,12 @@ export function curveToPeriodicBSpline(curve: Curve) {
 }
 
 export function curveToPeriodicRationalBSpline(curve: Curve) {
-    if (curve.degree === undefined || curve.period === undefined) return
+    //if (curve.degree === undefined || curve.period === undefined) return
+    if (curve.degree === undefined || curve.period === undefined) throw new Error("curveToPeriodicRationalBSpline: curve.degree or curve.period is undefined")
     const newPoints = curve.points.concat(curve.points.slice(0, curve.degree * 2  - 1))
+    //console.log(newPoints)
     const controlPoints = CoordinatesToVector3d(newPoints)
+    //console.log(controlPoints)
     const period = curve.period
     const degree = curve.degree
     
@@ -216,12 +219,15 @@ export function CoordinatesToVector2d(list: readonly Coordinates[]) {
     return list.map(point => new Vector2d(point.x, point.y))
 }
 
+
 export function CoordinatesToVector3d(list: Coordinates[]) {
     const cps = CoordinatesToComplex2d(list)
     const result = cps.map(p => new Vector3d(p.c0.x, p.c0.y, p.c1.x))
     return result
 
 }
+
+
 
 export function Vector2dToCoordinates(list: Vector2d[]) {
     return list.map(point => {return {x: point.x, y: point.y}} )
@@ -543,7 +549,7 @@ export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index
                     //let s =  new PeriodicRationalBSplineR1toR2(CoordinatesToVector3d(curve.points), curve.knots)
                     const s =  curveToPeriodicRationalBSpline(curve)
                     //console.log(s)
-                    if (s === undefined) return
+                    //if (s === undefined) return
                     const w = s.getControlPointWeight(cpIndex)
                     //console.log(cpIndex)
                     //console.log(w)
@@ -557,13 +563,11 @@ export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index
                     s = s.setControlPointPosition(cpIndex, new Vector3d (point.x * w , point.y * w, w))
                     newCurve.points = Vector3dToCoordinates(s.controlPoints)
                 }
-
-                
             } else {
                 //https://stackoverflow.com/questions/64330618/finding-the-projection-of-a-point-onto-a-line
                 const p1 = newCurve.points[index - 1]
                 //const p2 = (index + 1 < newCurve.points.length - 1) ? newCurve.points[index + 1] : newCurve.points[0]
-                const p2 = (index + 1 > newCurve.points.length - 1) ? newCurve.points[0]: newCurve.points[index + 1]
+                const p2 = (index + 1 === newCurve.points.length) ? newCurve.points[0]: newCurve.points[index + 1]
                 //const p2 =  newCurve.points[index + 1] 
                 const abx = p2.x - p1.x
                 const aby = p2.y - p1.y
@@ -605,4 +609,32 @@ export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index
     }
     return newCurve
 
+}
+
+export function closeCurveMovingControlPoints(curve: Curve) {
+    switch(curve.type) {
+        case CurveType.NonRational :
+        case CurveType.Complex :
+            {
+                const degree = computeDegree(curve)
+                const firstPoint = curve.points[0]
+                const lastPoint = curve.points[curve.points.length - 1]
+                const firstLastPoint = {x: (firstPoint.x + lastPoint.x) / 2, y: (firstPoint.y + lastPoint.y) / 2}
+                const points = [firstLastPoint].concat(curve.points.slice(1, -1))
+                const newCurve = {...curve, closed: Closed.True, degree: degree, points: points, knots: curve.knots.slice(1, -(degree + 1)), period: 1}
+                return newCurve
+            }
+        case CurveType.Rational :
+            {
+                const degree = computeDegree(curve)
+                const firstPoint = curve.points[0]
+                const lastPoint = curve.points[curve.points.length - 1]
+                const firstLastPoint = {x: (firstPoint.x + lastPoint.x) / 2, y: (firstPoint.y + lastPoint.y) / 2}
+                const newCurve1 = moveSelectedControlPoint(curve, firstLastPoint, 0, 1)
+                const newCurve2 = moveSelectedControlPoint(newCurve1, firstLastPoint, curve.points.length - 1, 1)
+                const points = newCurve2.points.slice(0, -1)
+                const newCurve = {...curve, closed: Closed.True, degree: degree, points: points, knots: curve.knots.slice(1, -(degree + 1)), period: 1}
+                return newCurve
+            }
+    }
 }

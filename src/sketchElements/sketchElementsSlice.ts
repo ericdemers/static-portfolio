@@ -85,13 +85,18 @@ const sketchElementsSlice = createSlice({
                    state.curves[index] = curve as WritableDraft<Curve>
                }
         },
-        closeCurve(state, action: PayloadAction<{selectedControlPoint: { curveID: string; controlPointIndex: number }}>) {
-            const curve = state.curves.find((c)=> (c.id === action.payload.selectedControlPoint.curveID))
-            if (curve === undefined) return
+        closeCurve(state, action: PayloadAction<{curve: Curve}>) {
+            //const curve = state.curves.find((c)=> (c.id === action.payload.selectedControlPoint.curveID))
+            //if (curve === undefined) return
+            const curve = action.payload.curve
             const index = state.curves.findIndex((c: Curve) => (c.id === curve.id))
             const degree = computeDegree(curve)
             //console.log(degree)
-            state.curves[index] = {...curve, closed: Closed.True, degree: degree, points: curve.points.slice(0, -1), knots: curve.knots.slice(1, -(degree + 1)), period: curve.knots[curve.knots.length - 1] - curve.knots[0]}
+            //state.curves[index] = {...curve, closed: Closed.True, degree: degree, points: curve.points.slice(0, -1), knots: curve.knots.slice(1, -(degree + 1)), period: curve.knots[curve.knots.length - 1] - curve.knots[0]}
+            state.curves[index] = {...curve, closed: Closed.True, degree: degree, points: curve.points.slice(0, -1), knots: curve.knots.slice(1, -(degree + 1)), period: 1}
+
+            //state.curves[index] = {...curve}
+
 
         },
         deleteCurves(state, action: PayloadAction<{curveIDs: string[]}>) {

@@ -24,6 +24,7 @@ import {
   zoomReset,
 } from "../../templates/sketcher/sketcherSlice"
 import {
+  closeCurveMovingControlPoints,
   createCurve,
   InitialCurve,
   moveSelectedControlPoint,
@@ -744,12 +745,11 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
               closingACurve &&
               controlPolygonsDisplayed?.selectedControlPoint
             ) {
-              dispatch(
-                closeCurve({
-                  selectedControlPoint:
-                    controlPolygonsDisplayed.selectedControlPoint,
-                }),
-              )
+              if (curve) {
+                //dispatch(closeCurve({ curve }))
+                const newCurve = closeCurveMovingControlPoints(curve)
+                dispatch(updateThisCurve({ curve: newCurve }))
+              }
             } else {
               dispatch(updateCurves({ curves: curves.slice() }))
             }
