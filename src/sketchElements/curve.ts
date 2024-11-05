@@ -545,14 +545,24 @@ function linearInterpolation(p0: Coordinates, p1: Coordinates, u: number) {
 }
 
 /**
- * Move a control point of a rational b-spline curve 
- * keeping the ratio of the Farin point constant
- * @param curve 
+ * Move a control point of a rational B-spline curve 
+ * This function adjusts the position of a specified control point and its adjacent Farin's (weight) points
+ * so that the weight themselves doesn't change
+ * 
+ * @param curve - The original curve object containing points and other properties.
+ * @param index - The index of the control point to be moved.
+ * @param newPosition - The new coordinates for the selected control point.
+ * @returns A new curve object with updated control points.
  */
-function moveControlPointOfPeriodicRationalCurve(curve: Curve, index: number, newPosition: Coordinates) {
+function moveControlPointOfPeriodicRationalCurve(curve: Curve, index: number, newPosition: Coordinates): Curve {
     const points = structuredClone(curve.points);
     const n = points.length;
 
+    /**
+     * Retrieves the adjacent points for a given index in the periodic curve.
+     * @param idx - The index of the current point.
+     * @returns An object containing the adjacent control points and Farin's points (weights).
+     */
     const getAdjacentPoints = (idx: number) => {
         const mod = (x: number) => ((x % n) + n) % n;
         return {
@@ -566,6 +576,14 @@ function moveControlPointOfPeriodicRationalCurve(curve: Curve, index: number, ne
 
     const { rightPoint, rightWeight, currentPoint, leftWeight, leftPoint } = getAdjacentPoints(index);
 
+    /**
+     * Calculates the new positions of the Farin's points based on the moved control point.
+     * @param current - The current position of the control point being moved.
+     * @param left - The left adjacent control point.
+     * @param right - The right adjacent control point.
+     * @param newPos - The new position for the control point being moved.
+     * @returns An object containing the new positions for the left and right Farin's (weight) points.
+     */
     const calculateFarinPoints = (current: Coordinates, left: Coordinates, right: Coordinates, newPos: Coordinates) => {
         const u1 = distance(current, leftWeight) / distance(current, left);
         const u2 = distance(right, rightWeight) / distance(current, right);
@@ -577,9 +595,12 @@ function moveControlPointOfPeriodicRationalCurve(curve: Curve, index: number, ne
 
     const { leftInterpolation, rightInterpolation } = calculateFarinPoints(currentPoint, leftPoint, rightPoint, newPosition);
 
+    // Update the points array with new positions
     points[index] = newPosition;
     points[(index + 1) % n] = leftInterpolation;
     points[(index - 1 + n) % n] = rightInterpolation;
+
+    // Return a new curve object with updated points
     return { ...curve, points };
 }
 
