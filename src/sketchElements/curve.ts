@@ -1,7 +1,7 @@
 import { nanoid } from "@reduxjs/toolkit";
 import type { Curve } from "./curveTypes";
 import { Closed, CurveType, PythagoreanHodograph } from "./curveTypes";
-import { middlePoint, movePoint, type Coordinates } from "./coordinates";
+import { distance, middlePoint, movePoint, type Coordinates } from "./coordinates";
 import { BSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/BSplineR1toR2";
 import { Vector2d } from "../mathVector/Vector2d";
 import { automaticFitting, removeASingleKnot } from "../bSplineAlgorithms/knotPlacement/automaticFitting";
@@ -221,7 +221,9 @@ export function CoordinatesToVector2d(list: readonly Coordinates[]) {
 
 
 export function CoordinatesToVector3d(list: Coordinates[]) {
+    //console.log(list)
     const cps = CoordinatesToComplex2d(list)
+    //console.log(cps)
     const result = cps.map(p => new Vector3d(p.c0.x, p.c0.y, p.c1.x))
     return result
 
@@ -532,6 +534,56 @@ export function toRationalBSpline(curve: Curve) {
     }
 }
 
+/**
+ * Linear interpolation between two Coordinates
+ */
+function linearInterpolation(p0: Coordinates, p1: Coordinates, u: number) {
+    return {
+        x: (1 - u) * p0.x + u * p1.x,
+        y: (1 - u) * p0.y + u * p1.y,
+    }
+}
+
+/**
+ * Move a control point of a rational b-spline curve 
+ * keeping the ratio of the Farin point constant
+ * @param curve 
+ */
+function moveControlPointOfPeriodicRationalCurve(curve: Curve, index: number, newPosition: Coordinates) {
+    const points = structuredClone(curve.points);
+    const n = points.length;
+
+    const getAdjacentPoints = (idx: number) => {
+        const mod = (x: number) => ((x % n) + n) % n;
+        return {
+            rightPoint: points[mod(idx - 2)],
+            rightWeight: points[mod(idx - 1)],
+            currentPoint: points[idx],
+            leftWeight: points[mod(idx + 1)],
+            leftPoint: points[mod(idx + 2)]
+        };
+    };
+
+    const { rightPoint, rightWeight, currentPoint, leftWeight, leftPoint } = getAdjacentPoints(index);
+
+    const calculateFarinPoints = (current: Coordinates, left: Coordinates, right: Coordinates, newPos: Coordinates) => {
+        const u1 = distance(current, leftWeight) / distance(current, left);
+        const u2 = distance(right, rightWeight) / distance(current, right);
+        return {
+            leftInterpolation: linearInterpolation(left, newPos, 1 - u1),
+            rightInterpolation: linearInterpolation(newPos, right, 1 - u2)
+        };
+    };
+
+    const { leftInterpolation, rightInterpolation } = calculateFarinPoints(currentPoint, leftPoint, rightPoint, newPosition);
+
+    points[index] = newPosition;
+    points[(index + 1) % n] = leftInterpolation;
+    points[(index - 1 + n) % n] = rightInterpolation;
+    return { ...curve, points };
+}
+
+
 export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index: number, zoom: number) {
     let  newCurve = {...curve}
     //if (!curve) return
@@ -546,6 +598,7 @@ export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index
             if (index % 2 === 0) {
                 const cpIndex = index / 2 
                 if (curve.closed === Closed.True) {
+                    /*
                     //let s =  new PeriodicRationalBSplineR1toR2(CoordinatesToVector3d(curve.points), curve.knots)
                     const s =  curveToPeriodicRationalBSpline(curve)
                     //console.log(s)
@@ -557,6 +610,8 @@ export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index
                     //console.log(s)
                     newCurve.points = Vector3dToCoordinates(s1.controlPoints).slice(0, curve.points.length)
                     //console.log(newCurve.points)
+                    */
+                    newCurve = moveControlPointOfPeriodicRationalCurve(curve, index, point)
                 } else {
                     let s =  new RationalBSplineR1toR2(CoordinatesToVector3d(curve.points), curve.knots)
                     const w = s.getControlPointWeight(cpIndex)

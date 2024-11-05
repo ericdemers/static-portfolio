@@ -22,4 +22,17 @@ describe("curveToPeriodicRationalBSpline", () => {
 
 })
 
+/*
+// unit test for the CoordinatesToComplex2d function
+describe("CoordinatesToComplex2d", () => {
+  it("should return correct values", () => {
+    const list = [{x: 827, y: 257}, 
+      {x: 812, y: 194.5}, {x: 797, y: 132},
+    {x: 628.5, y: 144},
+  {x: 460, y: 156}, {x: }]
+  })
+
+})
+  */
+
 
