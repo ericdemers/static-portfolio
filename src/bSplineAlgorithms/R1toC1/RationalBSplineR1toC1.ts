@@ -127,7 +127,7 @@ export class RationalBSplineR1toC1 {
         return new RationalBSplineR1toC1(s.controlPoints, s.knots)
     }
 
-    toRationalBSPlineR1toR2() {
+    toRationalBSplineR1toR2() {
         const distinctKnots = this.distinctKnots()
         const multiplicities = countAdjacentBy((a, b) => a === b, this.knots)
         const nx = new BSplineR1toR1(this.getControlPointsNumeratorX(), this.knots).bernsteinDecomposition()

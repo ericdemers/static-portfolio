@@ -1,5 +1,7 @@
+import { Complex2d } from "../../mathVector/Complex2d";
 import { Vector2d } from "../../mathVector/Vector2d";
 import { Vector3d } from "../../mathVector/Vector3d";
+import { PeriodicRationalBSplineR1toC1 } from "../R1toC1/PeriodicRationalBSplineR1toC1";
 import { PeriodicBSplineR1toR3 } from "../R1toR3/PeriodicBSplineR1toR3";
 
 
@@ -27,6 +29,10 @@ export class PeriodicRationalBSplineR1toR2 {
     get knots() : number[] {
         return this.spline.knots
     }
+
+    get periodicControlPointsLength() {
+        return this.spline.controlPoints.length - this.spline.degree
+    }
     
     evaluate(u: number) : Vector2d {
         let result = this.spline.evaluate(u)
@@ -48,6 +54,16 @@ export class PeriodicRationalBSplineR1toR2 {
 
     getControlPointWeight(controlPointIndex: number) {
         return this.controlPoints[controlPointIndex].z
+    }
+
+    toPeriodicRationalBSplineR1toC1() {
+        let cp: Complex2d[] = []
+        for (let i = 0; i < this.controlPoints.length; i += 1) {
+            const c0 = {x: this.controlPoints[i].x, y: this.controlPoints[i].y}
+            const c1 = {x: this.controlPoints[i].z, y: 0}
+            cp.push(new Complex2d(c0, c1 ))
+        }
+        return new PeriodicRationalBSplineR1toC1(cp, this.knots)
     }
 
 

@@ -44,12 +44,14 @@ export class BSplineR1toR2 extends BaseBSplineR1toR2 {
     
 
 
+    /*
     optimizerStep(step: number[]) {
         for (let i = 0; i < this._controlPoints.length; i += 1) {
             this._controlPoints[i].x += step[i]
             this._controlPoints[i].y += step[i + this._controlPoints.length]
         }
     }
+    */
 
 
 
@@ -145,13 +147,12 @@ export class BSplineR1toR2 extends BaseBSplineR1toR2 {
         }
     }
 
-    toRationalBSPlineR1toR2() {
+    toRationalBSplineR1toR2() {
         let cp: Vector3d[] = []
         for (let i = 0; i < this.controlPoints.length; i += 1) {
             cp.push(new Vector3d(this.controlPoints[i].x, this.controlPoints[i].y, 1))
         }
         return new RationalBSplineR1toR2(cp, this.knots)
-
     }
     
     

@@ -16,6 +16,8 @@ import {
   interiorKnot,
   optimizedKnotPositions,
   removeAKnot,
+  toComplexBSpline,
+  toNonRationalBSpline,
   toRationalBSpline,
 } from "../../../sketchElements/curve"
 import {
@@ -56,11 +58,25 @@ function RightMenu() {
     dispatch(setParametricPosition({ value: null }))
   }
 
-  const handleToggleBSplineTypeMenu = () => {}
+  //const handleToggleBSplineTypeMenu = () => {}
+
+  const handleToNonRationalBSpline = () => {
+    if (!selectedCurve) return
+    const newCurve = toNonRationalBSpline(selectedCurve)
+    if (!newCurve) return
+    dispatch(updateThisCurve({ curve: newCurve }))
+  }
 
   const handleToRationalBSpline = () => {
     if (!selectedCurve) return
     const newCurve = toRationalBSpline(selectedCurve)
+    if (!newCurve) return
+    dispatch(updateThisCurve({ curve: newCurve }))
+  }
+
+  const handleToComplexBSpline = () => {
+    if (!selectedCurve) return
+    const newCurve = toComplexBSpline(selectedCurve)
     if (!newCurve) return
     dispatch(updateThisCurve({ curve: newCurve }))
   }
@@ -148,7 +164,7 @@ function RightMenu() {
         </li>
         <li>
           <button
-            onClick={handleToggleBSplineTypeMenu}
+            onClick={handleToNonRationalBSpline}
             className={` hover:bg-neutral-100 dark:hover:bg-neutral-700 w-10 h-10 p-2 rounded-lg outline-none font-medium text-center`}
           >
             <div className="size-6">{NonRationalBSpline}</div>
@@ -164,13 +180,13 @@ function RightMenu() {
         </li>
         <li>
           <button
-            onClick={handleToggleBSplineTypeMenu}
+            onClick={handleToComplexBSpline}
             className={` hover:bg-neutral-100 dark:hover:bg-neutral-700 w-10 h-10 p-2 rounded-lg outline-none font-medium text-center fill-inherit`}
           >
             <div className="size-6">{ComplexRationalBSpline}</div>
           </button>
         </li>
-        <li>
+        {/*         <li>
           <button
             onClick={handleToggleBSplineTypeMenu}
             className={` hover:bg-neutral-100 dark:hover:bg-neutral-700 w-10 h-10 p-2 rounded-lg outline-none text-center fill-inherit`}
@@ -180,7 +196,7 @@ function RightMenu() {
               className="size-7 text-neutral-500 dark:text-neutral-400"
             />
           </button>
-        </li>
+        </li> */}
       </ul>
     </div>
   )

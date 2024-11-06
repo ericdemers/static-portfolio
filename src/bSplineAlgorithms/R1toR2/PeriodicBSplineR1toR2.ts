@@ -3,6 +3,8 @@ import { BaseBSplineR1toR2, deepCopyControlPoints } from "./BaseBSplineR1toR2"
 import { BSplineR1toR2 } from "./BSplineR1toR2"
 import { clampingFindSpan } from "../Piegl_Tiller_NURBS_Book"
 import { PeriodicBSplineR1toR2DifferentialProperties } from "./PeriodicBSplineR1toR2DifferentialProperties"
+import { Vector3d } from "../../mathVector/Vector3d"
+import { PeriodicRationalBSplineR1toR2 } from "./PeriodicRationalBSplineR1toR2"
 
 
 /**
@@ -201,6 +203,14 @@ export class PeriodicBSplineR1toR2 extends BaseBSplineR1toR2  {
 
     getDifferentialProperties(): PeriodicBSplineR1toR2DifferentialProperties {
         return new PeriodicBSplineR1toR2DifferentialProperties(this)
+    }
+
+    toPeriodicRationalBSplineR1toR2() {
+        let cp: Vector3d[] = []
+        for (let i = 0; i < this.controlPoints.length; i += 1) {
+            cp.push(new Vector3d(this.controlPoints[i].x, this.controlPoints[i].y, 1))
+        }
+        return new PeriodicRationalBSplineR1toR2(cp, this.knots)
     }
 
 }

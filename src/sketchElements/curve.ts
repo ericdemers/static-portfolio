@@ -15,6 +15,7 @@ import { PeriodicBSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/PeriodicBSpli
 import { PeriodicRationalBSplineR1toC1 } from "../bSplineAlgorithms/R1toC1/PeriodicRationalBSplineR1toC1";
 import { Complex } from "../bSplineAlgorithms/R1toR1/FFT";
 import { PeriodicRationalBSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/PeriodicRationalBSplineR1toR2";
+import { RationalBSplineR1toC1 } from "../bSplineAlgorithms/R1toC1/RationalBSplineR1toC1";
 
 export enum InitialCurve {
     Freehand,
@@ -60,6 +61,15 @@ export function curveToPeriodicBSpline(curve: Curve) {
     return new PeriodicBSplineR1toR2(controlPoints, knots)
 }
 
+export function PeriodicBSplineToCurve(spline: PeriodicBSplineR1toR2) : Curve {
+    const id = nanoid()
+    const degree = spline.degree
+    const numberOfControlPoints = spline.periodicControlPointsLength
+    const points = Vector2dToCoordinates(spline.controlPoints).slice(0, numberOfControlPoints)
+    const knots = spline.knots.slice(1, -(degree + 1))
+    return {id, type: CurveType.NonRational, points, knots, closed: Closed.True, degree, period: 1}
+}
+
 export function curveToPeriodicRationalBSpline(curve: Curve) {
     //if (curve.degree === undefined || curve.period === undefined) return
     if (curve.degree === undefined || curve.period === undefined) throw new Error("curveToPeriodicRationalBSpline: curve.degree or curve.period is undefined")
@@ -80,6 +90,14 @@ export function curveToPeriodicRationalBSpline(curve: Curve) {
     const knots = ([firstKnot].concat(curve.knots.concat(additionalKnots))).map(v => (v - curve.knots[degree - 1]) / p  )
     return new PeriodicRationalBSplineR1toR2(controlPoints, knots)}
 
+export function PeriodicRationalBSplineToCurve(spline: PeriodicRationalBSplineR1toR2) : Curve {
+    const id = nanoid()
+    const degree = spline.degree
+    const numberOfControlPoints = spline.periodicControlPointsLength
+    const points = Vector3dToCoordinates(spline.controlPoints).slice(0, numberOfControlPoints * 2)
+    const knots = spline.knots.slice(1, -(degree + 1))
+    return {id, type: CurveType.Rational, points, knots, closed: Closed.True, degree, period: 1}
+}
 
 
 export function curveToComplexPeriodicBSpline(curve: Curve) {
@@ -119,6 +137,15 @@ export function curveToComplexPeriodicBSpline(curve: Curve) {
     const knots = ([firstKnot].concat(curve.knots.concat(additionalKnots))).map(v => (v - curve.knots[degree - 1]) / p  )
 
     return new PeriodicRationalBSplineR1toC1(controlPoints, knots)
+}
+
+export function PeriodicComplexBSplineToCurve(spline: PeriodicRationalBSplineR1toC1) : Curve {
+    const id = nanoid()
+    const degree = spline.degree
+    const numberOfControlPoints = spline.periodicControlPointsLength
+    const points = Complex2dToCoordinates(spline.controlPoints).slice(0, numberOfControlPoints * 2)
+    const knots = spline.knots.slice(1, -(degree + 1))
+    return {id, type: CurveType.Complex, points, knots, closed: Closed.True, degree, period: 1}
 }
 
 export function pointsOnCurve(curve: Curve, numberOfPoints: number = 1000) {
@@ -523,13 +550,99 @@ export function joinTwoCurves(firstCurve: Curve, secondCurve: Curve): Curve {
     return ({...curve1, points, knots})
 }
 
+export function toNonRationalBSpline(curve: Curve) {
+    const keepEvenIndex = (points: Coordinates[]) => {
+        let newPoints: Coordinates[] = []
+        for (let i = 0; i < points.length; i += 2) {
+            newPoints.push({x: points[i].x, y: points[i].y})
+        }
+        return newPoints
+    }
+    switch (curve.type) {
+        case CurveType.Rational: {
+            return {...curve, type: CurveType.NonRational, points: keepEvenIndex(curve.points)}
+        }
+        case CurveType.Complex: {
+            const bspline =  new RationalBSplineR1toC1(CoordinatesToComplex2d(curve.points), curve.knots)
+            const newBSpline = bspline.toRationalBSplineR1toR2()
+            //return {...curve, type: CurveType.Rational, points: Vector3dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots}
+            return {...curve, type: CurveType.NonRational, points: keepEvenIndex(Vector3dToCoordinates(newBSpline.controlPoints)), knots: newBSpline.knots}
+        }
+    }
+}
+
 export function toRationalBSpline(curve: Curve) {
     switch (curve.type) {
         case CurveType.NonRational: {
-            const bspline =  new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
-            const newBSpline = bspline.toRationalBSPlineR1toR2()
-            return {...curve, type: CurveType.Rational, points: Vector3dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots}
+            if (curve.closed === Closed.True) {
+                //const bspline =  new PeriodicBSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
+                const bspline = curveToPeriodicBSpline(curve)
+                if (!bspline) return
+                const newBSpline = bspline.toPeriodicRationalBSplineR1toR2()
+                const newCurve = PeriodicRationalBSplineToCurve(newBSpline)
+                return {...curve, type: CurveType.Rational, points: newCurve.points}
+            }
+            else {
+                const bspline =  new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
+                const newBSpline = bspline.toRationalBSplineR1toR2()
+                return {...curve, type: CurveType.Rational, points: Vector3dToCoordinates(newBSpline.controlPoints)}
+            }
 
+        }
+        case CurveType.Complex: {
+            if (curve.closed === Closed.True) {
+                /*
+                const bspline =  curveToComplexPeriodicBSpline(curve)
+                console.log(bspline)
+                if(!bspline) return
+                const newBSpline = bspline.toPeriodicRationalBSplineR1toR2()
+                console.log(newBSpline)
+                const newCurve = PeriodicRationalBSplineToCurve(newBSpline)
+                console.log(newCurve)
+                return {...curve, type: CurveType.Rational, points: newCurve.points}
+                */
+            }
+            else {
+                const bspline =  new RationalBSplineR1toC1(CoordinatesToComplex2d(curve.points), curve.knots)
+                const newBSpline = bspline.toRationalBSplineR1toR2()
+                return {...curve, type: CurveType.Rational, points: Vector3dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots}
+            }
+        }
+    }
+}
+
+export function toComplexBSpline(curve: Curve) {
+    switch (curve.type) {
+        case CurveType.NonRational: {
+            if (curve.closed === Closed.True) {
+                const bspline = curveToPeriodicBSpline(curve)
+                if (!bspline) return
+                const newBSpline = bspline.toPeriodicRationalBSplineR1toR2()
+                const newCurve = PeriodicRationalBSplineToCurve(newBSpline)
+                return {...curve, type: CurveType.Complex, points: newCurve.points}
+            }
+            else {
+                const bspline =  new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
+                const newBSpline0 = bspline.toRationalBSplineR1toR2()
+                const newBSpline = newBSpline0.toRationalBSplineR1toC1()
+                return {...curve, type: CurveType.Complex, points: Complex2dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots}
+            }
+        }
+        case CurveType.Rational: {
+            if (curve.closed === Closed.True) {
+                /*
+                const bspline =  curveToPeriodicRationalBSpline(curve)
+                const newBSpline = bspline.toPeriodicRationalBSplineR1toC1()
+                const newCurve = PeriodicComplexBSplineToCurve(newBSpline)
+                return {...curve, type: CurveType.Complex, points: newCurve.points}
+                */
+                return {...curve, type: CurveType.Complex}
+            }
+            else {
+                const bspline =  new RationalBSplineR1toR2(CoordinatesToVector3d(curve.points), curve.knots)
+                const newBSpline = bspline.toRationalBSplineR1toC1()
+                return {...curve, type: CurveType.Complex, points: Complex2dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots}
+            }
         }
     }
 }

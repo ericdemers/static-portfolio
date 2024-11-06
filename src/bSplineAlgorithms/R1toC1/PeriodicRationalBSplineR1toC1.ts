@@ -6,6 +6,7 @@ import { countAdjacentBy } from "../../utilities/arrayFunctions";
 import { findSpan } from "../Piegl_Tiller_NURBS_Book"
 import { PeriodicBSplineR1toC2 } from "../R1toC2/PeriodicBSplineR1toC2";
 import { BSplineR1toR1 } from "../R1toR1/BSplineR1toR1"
+import { PeriodicRationalBSplineR1toR2 } from "../R1toR2/PeriodicRationalBSplineR1toR2";
 import { RationalBSplineR1toR2 } from "../R1toR2/RationalBSplineR1toR2"
 
 export class PeriodicRationalBSplineR1toC1 {
@@ -32,6 +33,10 @@ export class PeriodicRationalBSplineR1toC1 {
 
     get controlPoints(): Complex2d[] {
         return this.spline.controlPoints
+    }
+
+    get periodicControlPointsLength() {
+        return this.spline.controlPoints.length - this.spline.degree
     }
 
 
@@ -127,7 +132,8 @@ export class PeriodicRationalBSplineR1toC1 {
         return new PeriodicRationalBSplineR1toC1(s.controlPoints, s.knots)
     }
 
-    toRationalBSPlineR1toR2() {
+    toPeriodicRationalBSplineR1toR2() {
+        /*
         const distinctKnots = this.distinctKnots()
         const multiplicities = countAdjacentBy((a, b) => a === b, this.knots)
         const nx = new BSplineR1toR1(this.getControlPointsNumeratorX(), this.knots).bernsteinDecomposition()
@@ -159,8 +165,8 @@ export class PeriodicRationalBSplineR1toC1 {
         for (let i = 0; i < x.controlPoints.length; i += 1) {
             cp.push(new Vector3d(x.controlPoints[i], y.controlPoints[i], w.controlPoints[i]))
         }
-        return new RationalBSplineR1toR2(cp, x.knots)
-
+        return new PeriodicRationalBSplineR1toR2(cp, x.knots)
+        */
     }
 
 
