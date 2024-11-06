@@ -133,7 +133,7 @@ export const useKnotEditorDrawingFunctions = (
   ) {
     //const ticks = knots
     let ticks: number[] = []
-    for (let i = -1; i < 2; i += 1) {
+    for (let i = -2; i < 3; i += 1) {
       knots.forEach(value => ticks.push(value + i))
     }
     return ticks.map(u => u * scaleX + offsetLeft)
@@ -221,178 +221,154 @@ export const useKnotEditorDrawingFunctions = (
       const offsetLeft = 0.05 + periodicReductionFactor * scroll
       const offsetTop = 0.7 * ratio
 
-      const colorPaletteAngle = createColorPaletteRGB(360, 0.2)
+      const setupContext = () => {
+        context.rect(0.03, 0, 0.94, 1)
+        context.clip()
+        context.lineJoin = "round"
+      }
 
-      context.rect(0.03, 0, 0.94, 1)
-      context.clip()
+      const drawBasisFunction = (
+        b: { u: number; value: number }[],
+        color: string,
+        transformY: (y: number) => number,
+        i: number,
+      ) => {
+        if (b[0] === undefined) return
+        context.beginPath()
+        context.strokeStyle = color
+        context.moveTo(
+          (b[0].u + i) * scaleX + offsetLeft,
+          transformY(b[0].value),
+        )
+        b.forEach(point =>
+          context.lineTo(
+            (point.u + i) * scaleX + offsetLeft,
+            transformY(point.value),
+          ),
+        )
+        context.stroke()
+      }
+
+      const drawNonRationalBasisFunctions = () => {
+        const colorPalette = createColorPaletteRGB(curve.points.length, 1)
+        const basisFunctions = computePeriodicBasisFunction(curve)
+        context.lineWidth = 1.6 / width
+        for (let i = -1; i < 2; i += 1) {
+          basisFunctions.forEach((b, index) => {
+            const color = colorPalette[index % curve.points.length]
+            const transformY = (y: number) => -y * ratio * scaleY + offsetTop
+            drawBasisFunction(b, color, transformY, i)
+          })
+        }
+      }
+
+      const drawRationalBasisFunctions = () => {
+        const numberOfControlPoints = curve.points.length / 2
+        const colorPalette = createColorPaletteRGB(numberOfControlPoints, 1)
+        const basisFunctions = computePeriodicRationalBasisFunction(curve)
+        context.lineWidth = 1.6 / width
+        for (let i = -1; i < 2; i += 1) {
+          basisFunctions.forEach((b, index) => {
+            const color = colorPalette[index % numberOfControlPoints]
+            const transformY = (y: number) => -y * ratio * scaleY + offsetTop
+            drawBasisFunction(b, color, transformY, i)
+          })
+        }
+      }
+
+      const drawComplexBasisFunctions = () => {
+        const numberOfControlPoints = curve.points.length / 2
+        const colorPalette = createColorPaletteRGB(numberOfControlPoints, 1)
+        const basisFunctions = computePeriodicComplexBasisFunction(curve, 0.01)
+        const colorPaletteAngle = createColorPaletteRGB(360, 0.2)
+
+        const drawComplexBasisFunction = (
+          b: {
+            u: number
+            value: {
+              x: number
+              y: number
+            }
+          }[],
+          bIndex: number,
+          i: number,
+        ) => {
+          if (b[0] === undefined) return
+          context.beginPath()
+          const grad = context.createLinearGradient(0, 0, 1, 0)
+          b.forEach((point, i) => {
+            const arg = carg(point.value)
+            if (arg) {
+              const colorIndex =
+                Math.round(
+                  (arg * 180) / Math.PI +
+                    (bIndex / basisFunctions.length) * 360,
+                ) % 360
+              grad.addColorStop(i / b.length, colorPaletteAngle[colorIndex])
+            }
+          })
+          context.strokeStyle = grad
+          context.moveTo(
+            (b[0].u + i) * scaleX + offsetLeft,
+            (-Math.atan(cnorm(b[0].value)) / Math.PI) * 2 * ratio * scaleY +
+              offsetTop,
+          )
+          b.slice(1).forEach(point =>
+            context.lineTo(
+              (point.u + i) * scaleX + offsetLeft,
+              (-Math.atan(cnorm(point.value)) / Math.PI) * 2 * ratio * scaleY +
+                offsetTop,
+            ),
+          )
+          context.stroke()
+        }
+
+        context.lineWidth = 6 / width
+        for (let i = -1; i < 2; i += 1) {
+          basisFunctions.forEach((b, bIndex) =>
+            drawComplexBasisFunction(b, bIndex, i),
+          )
+        }
+
+        context.lineJoin = "round"
+        context.lineWidth = 1.8 / width
+        for (let i = -1; i < 2; i += 1) {
+          basisFunctions.forEach((b, index) => {
+            if (b[0] !== undefined) {
+              context.beginPath()
+              context.strokeStyle = colorPalette[index % numberOfControlPoints]
+              context.moveTo(
+                (b[0].u + i) * scaleX + offsetLeft,
+                (-Math.atan(cnorm(b[0].value)) / Math.PI) * 2 * ratio * scaleY +
+                  offsetTop,
+              )
+              b.forEach(point =>
+                context.lineTo(
+                  (point.u + i) * scaleX + offsetLeft,
+                  (-Math.atan(cnorm(point.value)) / Math.PI) *
+                    2 *
+                    ratio *
+                    scaleY +
+                    offsetTop,
+                ),
+              )
+              context.stroke()
+            }
+          })
+        }
+      }
+
+      setupContext()
 
       switch (curve.type) {
         case CurveType.NonRational:
-          {
-            const numberOfControlPoints = curve.points.length
-            const colorPalette = createColorPaletteRGB(numberOfControlPoints, 1)
-            const basisFunctions = computePeriodicBasisFunction(curve)
-            context.strokeStyle = colorPalette[0]
-            context.lineJoin = "round"
-            context.lineWidth = 1.6 / width
-            for (let i = -1; i < 2; i += 1) {
-              basisFunctions.forEach((b, index) => {
-                if (b[0] !== undefined) {
-                  context.beginPath()
-                  context.strokeStyle =
-                    colorPalette[index % curve.points.length]
-                  context.moveTo(
-                    (b[0].u + i) * scaleX + offsetLeft,
-                    -b[0].value * ratio * scaleY + offsetTop,
-                  )
-                  b.forEach(point =>
-                    context.lineTo(
-                      (point.u + i) * scaleX + offsetLeft,
-                      -point.value * ratio * scaleY + offsetTop,
-                    ),
-                  )
-                  context.stroke()
-                }
-              })
-            }
-          }
+          drawNonRationalBasisFunctions()
           break
-        case CurveType.Rational: {
-          const numberOfControlPoints = curve.points.length / 2
-          const colorPalette = createColorPaletteRGB(numberOfControlPoints, 1)
-          const basisFunctions = computePeriodicRationalBasisFunction(curve)
-          context.strokeStyle = colorPalette[0]
-          context.lineJoin = "round"
-          context.lineWidth = 1.6 / width
-          for (let i = -1; i < 2; i += 1) {
-            basisFunctions.forEach((b, index) => {
-              if (b[0] !== undefined) {
-                context.beginPath()
-                context.strokeStyle =
-                  colorPalette[index % numberOfControlPoints]
-                context.moveTo(
-                  (b[0].u + i) * scaleX + offsetLeft,
-                  -b[0].value * ratio * scaleY + offsetTop,
-                )
-                b.forEach(point => {
-                  context.lineTo(
-                    (point.u + i) * scaleX + offsetLeft,
-                    -point.value * ratio * scaleY + offsetTop,
-                  )
-                })
-                context.stroke()
-              }
-            })
-          }
-
+        case CurveType.Rational:
+          drawRationalBasisFunctions()
           break
-        }
-
         case CurveType.Complex:
-          {
-            const numberOfControlPoints =
-              curve.closed === Closed.True
-                ? curve.points.length / 2
-                : (curve.points.length + 1) / 2
-            const colorPalette = createColorPaletteRGB(numberOfControlPoints, 1)
-            const basisFunctions = computePeriodicComplexBasisFunction(
-              curve,
-              0.01,
-            )
-            //console.log(basisFunctions)
-            context.lineWidth = 6 / width
-            for (let i = -1; i < 2; i += 1) {
-              basisFunctions.forEach((b, bIndex) => {
-                if (b[0] !== undefined) {
-                  context.beginPath()
-                  context.moveTo(
-                    (b[0].u + i) * scaleX + offsetLeft,
-                    (-Math.atan(cnorm(b[0].value)) / Math.PI) *
-                      2 *
-                      ratio *
-                      scaleY +
-                      offsetTop,
-                  )
-
-                  const grad = context.createLinearGradient(0, 0, 1, 0)
-                  for (let i = 0; i < b.length; i += 1) {
-                    const arg = carg(b[i].value)
-                    if (arg) {
-                      grad.addColorStop(
-                        i / b.length,
-                        colorPaletteAngle[
-                          Math.round(
-                            (arg * 180) / Math.PI +
-                              (bIndex / basisFunctions.length) * 360,
-                          ) % 360
-                        ],
-                      )
-
-                      grad.addColorStop(
-                        i / b.length,
-                        colorPaletteAngle[
-                          Math.round(
-                            (arg * 180) / Math.PI +
-                              ((bIndex % numberOfControlPoints) /
-                                numberOfControlPoints) *
-                                360 *
-                                0,
-                          ) % 360
-                        ],
-                      )
-                    }
-                  }
-                  context.strokeStyle = grad
-                  b.forEach((point, index) => {
-                    if (index === 0) return
-                    context.lineTo(
-                      (point.u + i) * scaleX + offsetLeft,
-                      (-Math.atan(cnorm(point.value)) / Math.PI) *
-                        2 *
-                        ratio *
-                        scaleY +
-                        offsetTop,
-                    )
-                  })
-                  context.stroke()
-                }
-              })
-            }
-            context.lineJoin = "round"
-            context.lineWidth = 1.8 / width
-            for (let i = -1; i < 2; i += 1) {
-              basisFunctions.forEach((b, index) => {
-                if (b[0] !== undefined) {
-                  context.beginPath()
-                  const numberOfControlPoints =
-                    curve.closed === Closed.True
-                      ? curve.points.length / 2
-                      : (curve.points.length + 1) / 2
-                  context.strokeStyle =
-                    colorPalette[index % numberOfControlPoints]
-                  context.moveTo(
-                    (b[0].u + i) * scaleX + offsetLeft,
-                    (-Math.atan(cnorm(b[0].value)) / Math.PI) *
-                      2 *
-                      ratio *
-                      scaleY +
-                      offsetTop,
-                  )
-                  b.forEach((point, index) =>
-                    context.lineTo(
-                      (point.u + i) * scaleX + offsetLeft,
-                      (-Math.atan(cnorm(point.value)) / Math.PI) *
-                        2 *
-                        ratio *
-                        scaleY +
-                        offsetTop,
-                    ),
-                  )
-                  context.stroke()
-                }
-              })
-            }
-          }
+          drawComplexBasisFunctions()
           break
       }
     },
