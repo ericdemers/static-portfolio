@@ -704,6 +704,18 @@ const KnotVectorEditor = () => {
     [handleMove],
   )
 
+  const handleWheel = useCallback(
+    (event: WheelEvent) => {
+      event.preventDefault()
+      const { deltaX, deltaY } = event
+      let newScroll = scroll - deltaX / 800
+      if (newScroll > 0) newScroll = 0
+      if (newScroll < 1 - zoom) newScroll = 1 - zoom
+      setScroll(newScroll)
+    },
+    [scroll, setScroll, zoom],
+  )
+
   const handlePressRelease = useCallback(
     (newMousePosition: Coordinates) => {
       if (editorState !== "display position on abscissa") {
@@ -753,6 +765,7 @@ const KnotVectorEditor = () => {
     canvas.addEventListener("mouseup", handleMouseUp)
     canvas.addEventListener("touchend", handleTouchEnd)
     canvas.addEventListener("mouseleave", handleMouseLeave)
+    canvas.addEventListener("wheel", handleWheel)
     return () => {
       canvas.removeEventListener("mousedown", handleMouseDown)
       canvas.removeEventListener("touchstart", handleTouchStart)
@@ -761,6 +774,7 @@ const KnotVectorEditor = () => {
       canvas.removeEventListener("mouseup", handleMouseUp)
       canvas.removeEventListener("touchend", handleTouchEnd)
       canvas.removeEventListener("mouseleave", handleMouseLeave)
+      canvas.removeEventListener("wheel", handleWheel)
     }
   }, [
     handleMouseDown,
