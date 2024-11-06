@@ -328,10 +328,13 @@ export const useDrawingFunctions = () => {
           break
         }
         case CurveType.Complex: {
-          const numberOfControlPoints =
+          let numberOfControlPoints =
             curve.closed === Closed.True
               ? curve.points.length / 2
               : (curve.points.length + 1) / 2
+          if (curve.points.length === 3 && curve.closed === Closed.True) {
+            numberOfControlPoints = 3
+          }
           //console.log(numberOfControlPoints)
           const colorPalette1 =
             theme === "light"
