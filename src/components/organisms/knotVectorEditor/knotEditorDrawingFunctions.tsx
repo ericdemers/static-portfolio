@@ -261,20 +261,22 @@ export const useKnotEditorDrawingFunctions = (
           const numberOfControlPoints = curve.points.length / 2
           const colorPalette = createColorPaletteRGB(numberOfControlPoints, 1)
           const basisFunctions = computePeriodicRationalBasisFunction(curve)
+          context.strokeStyle = colorPalette[0]
           context.lineJoin = "round"
           context.lineWidth = 1.6 / width
           for (let i = -1; i < 2; i += 1) {
             basisFunctions.forEach((b, index) => {
               if (b[0] !== undefined) {
                 context.beginPath()
-                context.strokeStyle = colorPalette[index % curve.points.length]
+                context.strokeStyle =
+                  colorPalette[index % numberOfControlPoints]
                 context.moveTo(
-                  b[0].u * scaleX + offsetLeft,
+                  (b[0].u + i) * scaleX + offsetLeft,
                   -b[0].value * ratio * scaleY + offsetTop,
                 )
                 b.forEach(point => {
                   context.lineTo(
-                    point.u * scaleX + offsetLeft,
+                    (point.u + i) * scaleX + offsetLeft,
                     -point.value * ratio * scaleY + offsetTop,
                   )
                 })
