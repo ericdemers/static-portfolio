@@ -125,8 +125,11 @@ export const useDrawingFunctions = () => {
             context.beginPath()
             const points = pointsOnCurve(curve, 1000)
             context.moveTo(points[0].x, points[0].y)
-            points.forEach(point => {
-              if (distance(point, { x: 0, y: 0 }) > 10000)
+            points.forEach((point, index) => {
+              if (
+                index !== 0 &&
+                distance(point, points[index - 1]) > 10000 / zoom
+              )
                 context.moveTo(point.x, point.y)
               context.lineTo(point.x, point.y)
             })

@@ -766,7 +766,7 @@ export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index
                 const lengthSquare = (abx * abx + aby * aby)
                 const length = Math.sqrt(lengthSquare)
                 let coeff = (abx * acx + aby * acy) / lengthSquare
-                const epsilon = factor / length / zoom
+                const epsilon = 7 / length / zoom
                 //if (coeff > 1 - epsilon  ) coeff = 1 - epsilon
                 //if (coeff < epsilon) coeff = epsilon
                 if (Math.abs(coeff) < epsilon ) coeff = epsilon

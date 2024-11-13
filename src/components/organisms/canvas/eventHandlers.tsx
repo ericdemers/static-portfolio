@@ -676,7 +676,7 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
                   newCoordinates,
                   controlPolygonsDisplayed.selectedControlPoint
                     .controlPointIndex,
-                  1,
+                  zoom,
                 )
                 if (newCurve) {
                   dispatch(replaceCurve({ curve: newCurve }))
