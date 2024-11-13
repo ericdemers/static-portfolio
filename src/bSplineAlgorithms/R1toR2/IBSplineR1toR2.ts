@@ -1,4 +1,5 @@
-import type { Vector2d } from "../mathVector/Vector2d"
+
+import type { Vector2d } from "../../mathVector/Vector2d"
 import type { BSplineR1toR2DifferentialPropertiesInterface } from "./IBSplineR1toR2DifferentialProperties"
 
 export interface IBSplineR1toR2 {

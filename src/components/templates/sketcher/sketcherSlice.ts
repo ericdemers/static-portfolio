@@ -4,7 +4,36 @@ import type { Curve } from '../../../sketchElements/curveTypes';
 
 type Theme = "light" | "dark"
 
-type ActiveToolsType = "none" | "freeDraw" | "line" | "circleArc" | "spiral" | "singleSelection" | "multipleSelection"
+//export type ActiveToolsType = "none" | "freeDraw" | "line" | "circleArc" | "spiral" | "singleSelection" | "multipleSelection"
+
+/**
+ * Represents the available drawing tools.
+ */
+export enum DrawingTool {
+    FreeDraw = "freeDraw",
+    Line = "line",
+    CircleArc = "circleArc",
+    Spiral = "spiral"}
+
+/**
+ * Represents the available selection tools.
+ */
+export enum SelectionTool {
+    SingleSelection = "singleSelection",
+    MultipleSelection = "multipleSelection"}
+
+
+/**
+ * Represents the state where no tool is selected
+ */
+export enum ToolState {
+    None = "none"
+}
+
+/**
+ * Represents the currently active tool, which can be a drawing tool, a selection tool, or None if no tool is active.
+ */
+export type ActiveTool = DrawingTool | SelectionTool | ToolState
 
 export type ControlPolygonsDisplayed = {curveIDs: string[], selectedControlPoint: {curveID: string, controlPointIndex: number} | null  } | null
 
@@ -15,7 +44,7 @@ type SketcherState = {
     scrollY: number
     sketcherWidth: number
     sketcherHeight: number
-    activeTool: ActiveToolsType
+    activeTool: ActiveTool
     initialView: boolean
     controlPolygonsDisplayed: ControlPolygonsDisplayed
     showKnotVectorEditor: boolean
@@ -30,7 +59,7 @@ const initialState: SketcherState = {
     scrollY: 0,
     sketcherWidth: 0,
     sketcherHeight: 0,
-    activeTool: "none",
+    activeTool: ToolState.None,
     initialView: true,
     controlPolygonsDisplayed: null,
     showKnotVectorEditor: true,
@@ -88,6 +117,14 @@ const sketcherSlice = createSlice({
             state.scrollX = state.scrollX + action.payload.deltaX
             state.scrollY = state.scrollY + action.payload.deltaY
         },
+        zoomWithWheel(state, action: PayloadAction<{deltaX: number, deltaY: number}>) {
+            const newZoom = state.zoom +  action.payload.deltaY * 0.001
+            const centerX = state.sketcherWidth / 2
+            const centerY = state.sketcherHeight / 2
+            state.scrollX = (state.scrollX - (centerX * (newZoom / state.zoom) - centerX) / newZoom) 
+            state.scrollY = (state.scrollY - (centerY * (newZoom / state.zoom) - centerY) / newZoom) 
+            state.zoom = newZoom
+        },
         scroll(state, action: PayloadAction<{deltaX: number, deltaY: number}>) {
             const {deltaX, deltaY} = action.payload
             state.scrollX += deltaX
@@ -97,35 +134,35 @@ const sketcherSlice = createSlice({
             const {show} = action.payload
             state.initialView = show
             if (show === false) {
-                state.activeTool = "freeDraw"
+                state.activeTool = DrawingTool.FreeDraw
             }
         },
         toggleFreeDrawCreationTool(state) {
             if (state.activeTool === "freeDraw") {
-                state.activeTool = "none"
+                state.activeTool = ToolState.None
             } else {
-                state.activeTool = "freeDraw"
+                state.activeTool = DrawingTool.FreeDraw
                 state.controlPolygonsDisplayed = null
             }
         },
         toggleLineCreationTool(state) {
             if (state.activeTool === "line") {
-                state.activeTool = "none"
+                state.activeTool = ToolState.None
             } else {
-                state.activeTool = "line"
+                state.activeTool = DrawingTool.Line
                 state.controlPolygonsDisplayed = null
             }
         },
         toggleCircleArcCreationTool(state) {
             if (state.activeTool === "circleArc") {
-                state.activeTool = "none"
+                state.activeTool = ToolState.None
             } else {
-                state.activeTool = "circleArc"
+                state.activeTool = DrawingTool.CircleArc
                 state.controlPolygonsDisplayed = null
             }
         },
         activateFreeDrawFromInitialView(state) {
-            state.activeTool = "freeDraw"
+            state.activeTool = DrawingTool.FreeDraw
             state.initialView = false
         },
         resetCanvas(state) {
@@ -147,10 +184,10 @@ const sketcherSlice = createSlice({
             }
         },
         unselectCreationTool(state) {
-            state.activeTool = "none"
+            state.activeTool = ToolState.None
         },
         unselectCurvesAndCreationTool(state) {
-            state.activeTool = "none"
+            state.activeTool = ToolState.None
             state.controlPolygonsDisplayed = null
             state.selectedKnot = null
             state.parametricPosition = null
@@ -160,7 +197,7 @@ const sketcherSlice = createSlice({
         },
         selectASingleCurve(state, action: PayloadAction<{curveID: string}>) {
             state.controlPolygonsDisplayed = {curveIDs: [action.payload.curveID], selectedControlPoint: null}
-            state.activeTool = "singleSelection"
+            state.activeTool = SelectionTool.SingleSelection
         },
         addControlPolygonToBeDisplayed(state, action: PayloadAction<{curveID: string}>) {
             if (state.controlPolygonsDisplayed) {
@@ -203,7 +240,7 @@ export const { selectZoom, selectScrollX, selectScrollY, selectActiveTool,
     selectInitialView, selectTheme, selectControlPolygonsDisplayed, selectShowKnotVectorEditor,
     selectSelectedKnot, selectParametricPosition } = sketcherSlice.selectors
 
-export const { setSketcherSize, zoomIn, zoomOut, zoomWithTwoFingers, scroll, setInitialView, 
+export const { setSketcherSize, zoomIn, zoomOut, zoomWithTwoFingers, zoomWithWheel, scroll, setInitialView, 
      activateFreeDrawFromInitialView, toggleFreeDrawCreationTool, 
      toggleLineCreationTool, toggleCircleArcCreationTool, 
      resetCanvas, setTheme, toggleTheme, 

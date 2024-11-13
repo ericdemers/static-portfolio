@@ -1,4 +1,5 @@
 // Type definitions
+
 type Point1D = number;
 type Point2D = [number, number];
 type Point3D = [number, number, number];
@@ -6,10 +7,13 @@ type Point4D = [number, number, number, number];
 type Complex = { re: number; im: number };
 type Point = Point1D | Point2D | Point3D | Point4D | Complex;
 
+
+
 type Knot = number;
 type KnotVector = Knot[];
 
 type Weight = number;
+
 
 // Complex number operations
 const complex = {
@@ -31,12 +35,14 @@ const complex = {
 };
 
 // Generic types for different B-spline structures
+
 type BSplineCurve<P extends Point> = {
     controlPoints: P[];
     knotVector: KnotVector;
     degree: number;
     weights?: Weight[];
 };
+
 
 type BSplineSurface<P extends Point> = {
     controlPoints: P[][];
@@ -57,6 +63,7 @@ type BSplineVolume<P extends Point> = {
     degreeW: number;
     weights?: Weight[][][];
 };
+
 
 // Basis function (Cox-de Boor recursion formula)
 function basisFunction(i: number, p: number, knots: KnotVector, t: number): number {
@@ -173,6 +180,7 @@ function evaluateVolumePoint<P extends Point>(volume: BSplineVolume<P>, u: numbe
 }
 
 */
+
 
 // Factory functions for creating different types of B-splines
 function createBSplineCurve<P extends Point>(

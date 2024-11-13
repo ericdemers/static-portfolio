@@ -22,6 +22,7 @@ import {
   zoomIn,
   selectControlPoint,
   zoomReset,
+  zoomWithWheel,
 } from "../../templates/sketcher/sketcherSlice"
 import {
   closeCurveMovingControlPoints,
@@ -43,9 +44,7 @@ import {
   updateThisCurve,
   deleteCurves,
   duplicateCurves,
-  moveControlPoint,
   joinCurves,
-  closeCurve,
 } from "../../../sketchElements/sketchElementsSlice"
 import {
   Closed,
@@ -929,9 +928,16 @@ export const useEventHandlers = (canvas: HTMLCanvasElement | null) => {
 
   const handleWheel = useCallback(
     (event: WheelEvent) => {
+      /*
       event.preventDefault()
       const { deltaX, deltaY } = event
       dispatch(scroll({ deltaX: -deltaX / zoom, deltaY: -deltaY / zoom }))
+      */
+      event.preventDefault()
+      const { deltaX, deltaY } = event
+      dispatch(
+        zoomWithWheel({ deltaX: -deltaX / zoom, deltaY: -deltaY / zoom }),
+      )
     },
     [dispatch, zoom],
   )

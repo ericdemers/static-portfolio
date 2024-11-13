@@ -2,13 +2,14 @@ import type { Complex} from "../../mathVector/Complex2d";
 import { Complex2d, cdiv, cmult } from "../../mathVector/Complex2d"
 import { Vector3d } from "../../mathVector/Vector3d"
 import { countAdjacentBy } from "../../utilities/arrayFunctions";
+import type { IBSplineCurve } from "../IBSplineCurve";
 
 import { findSpan } from "../Piegl_Tiller_NURBS_Book"
 import { BSplineR1toC2 } from "../R1toC2/BSplineR1toC2";
 import { BSplineR1toR1 } from "../R1toR1/BSplineR1toR1"
 import { RationalBSplineR1toR2 } from "../R1toR2/RationalBSplineR1toR2"
 
-export class RationalBSplineR1toC1 {
+export class RationalBSplineR1toC1 implements IBSplineCurve {
 
     private readonly spline: BSplineR1toC2
 

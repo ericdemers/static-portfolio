@@ -28,5 +28,18 @@ export type Curve = {
     masterCurveID?: string
 }
 
+export type CurveData = {
+    id: string
+    type: CurveType
+    controlPoints: Coordinates[]
+    farinPoints?: Coordinates[]
+    knots: number[]
+    degree: number
+    close: boolean
+    period?: number // for close curves
+    pythagoreanHodograph?: PythagoreanHodograph
+}
+
+
 
 
