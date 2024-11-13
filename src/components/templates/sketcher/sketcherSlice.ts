@@ -118,7 +118,9 @@ const sketcherSlice = createSlice({
             state.scrollY = state.scrollY + action.payload.deltaY
         },
         zoomWithWheel(state, action: PayloadAction<{deltaX: number, deltaY: number}>) {
-            const newZoom = state.zoom +  action.payload.deltaY * 0.001
+            //const newZoom = state.zoom +  action.payload.deltaY * 0.001
+            if (state.zoom * Math.exp(action.payload.deltaY * 0.001) < 0.01) return
+            const newZoom = state.zoom * Math.exp(action.payload.deltaY * 0.001)
             const centerX = state.sketcherWidth / 2
             const centerY = state.sketcherHeight / 2
             state.scrollX = (state.scrollX - (centerX * (newZoom / state.zoom) - centerX) / newZoom) 

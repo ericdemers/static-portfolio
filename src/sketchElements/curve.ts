@@ -720,6 +720,7 @@ function moveControlPointOfPeriodicRationalCurve(curve: Curve, index: number, ne
 
 export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index: number, zoom: number) {
     let  newCurve = {...curve}
+    const factor = 5
     //if (!curve) return
     switch (newCurve.type) {
         case CurveType.NonRational : {
@@ -765,9 +766,12 @@ export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index
                 const lengthSquare = (abx * abx + aby * aby)
                 const length = Math.sqrt(lengthSquare)
                 let coeff = (abx * acx + aby * acy) / lengthSquare
-                const epsilon = 15 / length / zoom
-                if (coeff > 1 - epsilon  ) coeff = 1 - epsilon
-                if (coeff < epsilon) coeff = epsilon
+                const epsilon = factor / length / zoom
+                //if (coeff > 1 - epsilon  ) coeff = 1 - epsilon
+                //if (coeff < epsilon) coeff = epsilon
+                if (Math.abs(coeff) < epsilon ) coeff = epsilon
+                if (Math.abs(coeff - 1) < epsilon) coeff = 1 - epsilon
+
                 const x = p1.x + abx * coeff
                 const y = p1.y + aby * coeff
 
@@ -790,8 +794,27 @@ export function moveSelectedControlPoint(curve: Curve, point: Coordinates, index
             //     curve.points[index] = point
             // } 
             {
+                // Make sure the distance between two consecutive control points is bigger than epsilon
+                
+                let tooClose = false
+                if (curve.closed === Closed.True) {
+                    if (index === 0) {
+                        if (distance(point, newCurve.points[newCurve.points.length - 2]) < factor / zoom) tooClose = true
+                    }
+                    else if (distance(point, newCurve.points[index - 1]) < factor / zoom) tooClose = true
+                    }
+                else {
+                    if (index !==0) {
+                        if (distance(point, newCurve.points[index - 1]) < factor / zoom) tooClose = true
+                    }
+                    if (index !== newCurve.points.length - 1) {
+                        if (distance(point, newCurve.points[index + 1]) < factor / zoom) tooClose = true
+                    }
+                }
+
+
                 const newPoints = newCurve.points.map(p => {return {x: p.x, y: p.y}})
-                newPoints[index] = point
+                if (!tooClose) newPoints[index] = point
                 newCurve.points = newPoints
                 break
             }

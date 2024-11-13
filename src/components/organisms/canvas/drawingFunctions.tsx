@@ -15,6 +15,7 @@ import { selectTheme, selectZoom } from "../../templates/sketcher/sketcherSlice"
 import { createColorPaletteRGB } from "../../../utilities/color"
 import { circleArcFromThreePoints } from "../../../sketchElements/circleArc"
 import { Vector2d } from "../../../mathVector/Vector2d"
+import { distance } from "../../../sketchElements/coordinates"
 
 export const useDrawingFunctions = () => {
   const theme = useAppSelector(selectTheme)
@@ -124,7 +125,11 @@ export const useDrawingFunctions = () => {
             context.beginPath()
             const points = pointsOnCurve(curve, 1000)
             context.moveTo(points[0].x, points[0].y)
-            points.forEach(point => context.lineTo(point.x, point.y))
+            points.forEach(point => {
+              if (distance(point, { x: 0, y: 0 }) > 10000)
+                context.moveTo(point.x, point.y)
+              context.lineTo(point.x, point.y)
+            })
             context.stroke()
           }
           break
