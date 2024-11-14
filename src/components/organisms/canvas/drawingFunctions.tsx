@@ -123,7 +123,7 @@ export const useDrawingFunctions = () => {
             context.lineJoin = "round"
             context.lineWidth = 1.5 / zoom
             context.beginPath()
-            const points = pointsOnCurve(curve, 1000)
+            const points = pointsOnCurve(curve, 5000)
             context.moveTo(points[0].x, points[0].y)
             points.forEach((point, index) => {
               if (
