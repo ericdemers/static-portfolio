@@ -141,9 +141,11 @@ export const useKnotEditorDrawingFunctions = (
 
   const drawPeriodicKnotSlider = useCallback(
     (context: CanvasRenderingContext2D, curve: Curve, ratio: number = 1) => {
+      /*
       if (curve.points.length === 3 && curve.closed === Closed.True) {
         return
       }
+      */
       let lineColor =
         theme === "dark" ? "rgba(250, 250, 250, 0.8)" : "rgba(0, 0, 0, 0.8)"
       const scaleX = periodicReductionFactor * zoom
@@ -219,9 +221,11 @@ export const useKnotEditorDrawingFunctions = (
 
   const drawPeriodicBasisFunctions = useCallback(
     (context: CanvasRenderingContext2D, curve: Curve, ratio: number = 1) => {
+      /*
       if (curve.points.length === 3 && curve.closed === Closed.True) {
         return
       }
+      */
       const scaleX = periodicReductionFactor * zoom
       const scaleY = 0.5
       const offsetLeft = 0.05 + periodicReductionFactor * scroll
@@ -283,6 +287,7 @@ export const useKnotEditorDrawingFunctions = (
       }
 
       const drawComplexBasisFunctions = () => {
+        if (curve.closed === Closed.True && curve.points.length === 3) return
         const numberOfControlPoints = curve.points.length / 2
         const colorPalette = createColorPaletteRGB(numberOfControlPoints, 1)
         const basisFunctions = computePeriodicComplexBasisFunction(curve, 0.01)

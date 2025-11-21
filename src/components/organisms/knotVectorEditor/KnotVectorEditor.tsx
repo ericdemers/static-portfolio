@@ -613,6 +613,7 @@ const KnotVectorEditor = () => {
       ) {
         newKnots[i] = newPosition
       }
+      console.log(newKnots)
       dispatch(replaceCurve({ curve: { ...curve, knots: newKnots } }))
       dispatch(setParametricPosition({ value: newPosition }))
     },

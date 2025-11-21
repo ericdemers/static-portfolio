@@ -33,12 +33,17 @@ export function computePeriodicBasisFunction(curve: Curve, step: number = 0.001)
     
     let result: {u: number, value: number}[][] = []
     const bspline = curveToPeriodicBSpline(curve)
+    //console.log(bspline)
     if (bspline === undefined) return result
     for (let i = 0; i < bspline.controlPoints.length; i += 1) {
         result.push([])
     }
-    const delta = curve.knots[bspline.degree - 1]
+    //const delta = curve.knots[bspline.degree - 1]
+    if(curve.period === undefined) return result
+    const l = curve.knots.length
+    const delta = curve.knots[(bspline.degree - 1) % l] + curve.period * Math.floor((bspline.degree - 1) / l )
 
+    //console.log(bspline)
     const degree = bspline.degree
     if (degree > 0) {
         bspline.knots.forEach((knotValue, knotIndex) => {

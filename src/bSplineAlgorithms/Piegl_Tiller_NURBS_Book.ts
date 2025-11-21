@@ -9,16 +9,23 @@ import type { BSplineR1toR1 } from "./R1toR1/BSplineR1toR1"
  */
 export function findSpan(u: number, knots: readonly number[], degree: number) {
     // Bibliographic reference : Piegl and Tiller, The NURBS book, p: 68
+    /*
     if (u < knots[degree] || u > knots[knots.length - degree - 1]) {
         console.log("u: " + u)
         console.log("knots: " + knots)
         console.log("degree: " + degree)
         throw new Error("Error: parameter u is outside valid span")
     }
+        */
+       if (u < knots[degree]) return degree
+       if (u >= knots[knots.length - degree - 1]) return knots.length - degree - 2
     // Special case
+    /*
     if (u === knots[knots.length - degree - 1]) {
         return knots.length - degree - 2
     }
+    */
+        
     // Do binary search
     let low = degree;
     let high = knots.length - 1 - degree

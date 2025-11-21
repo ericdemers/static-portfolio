@@ -50,7 +50,7 @@ export function automaticFitting(initialSpline: BSplineR1toR2, scale = 1, resolu
 
 }
 
-export function removeASingleKnot(initialSpline: BSplineR1toR2, knotIndex: number) {
+export function removeASingleKnotAndApproximate(initialSpline: BSplineR1toR2, knotIndex: number) {
     let newKnots = [...initialSpline.knots]
     newKnots.splice(knotIndex, 1)
     const cp = leastSquareApproximation2(initialSpline, newKnots)

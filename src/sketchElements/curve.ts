@@ -4,7 +4,7 @@ import { Closed, CurveType, PythagoreanHodograph } from "./curveTypes";
 import { distance, middlePoint, movePoint, type Coordinates } from "./coordinates";
 import { BSplineR1toR2 } from "../bSplineAlgorithms/R1toR2/BSplineR1toR2";
 import { Vector2d } from "../mathVector/Vector2d";
-import { automaticFitting, removeASingleKnot } from "../bSplineAlgorithms/knotPlacement/automaticFitting";
+import { automaticFitting, removeASingleKnotAndApproximate } from "../bSplineAlgorithms/knotPlacement/automaticFitting";
 import { averagePhi, cadd, cdiv, cmult, csub, weightedAveragePhi } from "../mathVector/ComplexGrassmannSpace";
 import { arcPoints, arrayRange, complexMassPointsFromCircleArc, q0FromPhi } from "./circleArc";
 import { BSplineR1toC2 } from "../bSplineAlgorithms/R1toC2/BSplineR1toC2";
@@ -45,19 +45,29 @@ export function duplicateCurve(curve: Curve, move: {x: number, y: number} = {x: 
 }
 
 export function curveToPeriodicBSpline(curve: Curve) {
+    // Note : For a periodic b-spline the number of periodic control points equal the number of periodic knots
     const p0 = CoordinatesToVector2d(curve.points)
     if (curve.degree === undefined || curve.period === undefined) return
     const period = curve.period
     const degree = curve.degree
-    const controlPoints = p0.concat(p0.slice(0, curve.degree))
+    //const controlPoints = p0.concat(p0.slice(0, curve.degree))
+    let controlPoints : Vector2d[] = []
+    for (let i = 0; i < curve.points.length + degree; i += 1) {
+        controlPoints.push(p0[i % curve.points.length])
+    }
     let additionalKnots: number[] = []
     const l = curve.knots.length
-    for (let i = 0; i < 2 * curve.degree; i += 1) {
-        additionalKnots.push(curve.knots[i % l] + period * Math.floor(i / l + 1))
+    for (let i = 0; i < 2 * curve.degree; i += 1) { // the first knot is not added yet
+        //console.log(period * Math.floor(i / l + 1))
+        //console.log(curve.knots[i % l] + period * Math.floor(i / l + 1))
+        additionalKnots.push(curve.knots[i % l] + period * Math.floor(i / l + 1) * period)
     }
     const firstKnot = curve.knots[0] - (curve.period - curve.knots[curve.knots.length - 1])
-    const p = (additionalKnots[additionalKnots.length-degree-1] - curve.knots[degree -1]) // the first knot is not added yet
-    const knots = ([firstKnot].concat(curve.knots.concat(additionalKnots))).map(v => (v - curve.knots[degree - 1]) / p  )
+    //const p = (additionalKnots[additionalKnots.length-degree-1] - curve.knots[degree -1]) // the first knot is not added yet
+    const p = period
+    const newZero = curve.knots[(degree - 1) % l] + period * Math.floor((degree - 1) / l )
+    //console.log(newZero)
+    const knots = ([firstKnot].concat(curve.knots.concat(additionalKnots))).map(v => ((v - newZero) / p  ))
     return new PeriodicBSplineR1toR2(controlPoints, knots)
 }
 
@@ -73,7 +83,12 @@ export function PeriodicBSplineToCurve(spline: PeriodicBSplineR1toR2) : Curve {
 export function curveToPeriodicRationalBSpline(curve: Curve) {
     //if (curve.degree === undefined || curve.period === undefined) return
     if (curve.degree === undefined || curve.period === undefined) throw new Error("curveToPeriodicRationalBSpline: curve.degree or curve.period is undefined")
-    const newPoints = curve.points.concat(curve.points.slice(0, curve.degree * 2  - 1))
+    //const newPoints = curve.points.concat(curve.points.slice(0, curve.degree * 2  - 1))
+
+    let newPoints : {x: number, y: number}[] = []
+    for (let i = 0; i < curve.points.length + curve.degree * 2; i += 1) { // * 2 because half the points are Farin's points
+        newPoints.push(curve.points[i % curve.points.length])
+    }
     //console.log(newPoints)
     const controlPoints = CoordinatesToVector3d(newPoints)
     //console.log(controlPoints)
@@ -444,9 +459,20 @@ export function removeAKnot(curve: Curve, knotIndex: number) {
     switch (curve.type) {
         case CurveType.NonRational:
         {
-            const bspline =  new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
-            const newBSpline = (curve.closed) ? removeASingleKnot(bspline, knotIndex) : removeASingleKnot(bspline, knotIndex + bspline.degree + 1)
-            return ({...curve, points: Vector2dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots})
+            if (curve.closed === Closed.True) {
+                const newKnots = curve.knots.filter((value, index) => index !== knotIndex)
+                const newControlPoints = curve.points.filter((value, index) => index !== knotIndex)
+                //console.log(newKnots, newControlPoints)
+                //const curve2 = {...curve, knots: newKnots, points: newControlPoints}
+                //console.log(curveToPeriodicBSpline(curve2))
+                //return {...curve}
+                return {...curve, knots: newKnots, points: newControlPoints}
+            } else {
+                const bspline =  new BSplineR1toR2(CoordinatesToVector2d(curve.points), curve.knots)
+                const newBSpline = (curve.closed) ? removeASingleKnotAndApproximate(bspline, knotIndex) : removeASingleKnotAndApproximate(bspline, knotIndex + bspline.degree + 1)
+                return ({...curve, points: Vector2dToCoordinates(newBSpline.controlPoints), knots: newBSpline.knots})
+            }
+
         }
         case CurveType.Complex:
             {
