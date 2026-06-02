@@ -1,5 +1,5 @@
 import { evaluate } from './evaluate'
-import { insertKnotOpen } from './insert'
+import { insertKnot } from './insert'
 import { scalarCoeffs } from './coeffs'
 
 /**
@@ -21,9 +21,15 @@ export interface BSplineFunction {
 export const evalFunction = (f: BSplineFunction, t: number): number =>
   evaluate(scalarCoeffs, f.coeffs, f.degree, f.knots, t, f.closed)
 
-/** Insert a knot into an open scalar function (shape-preserving). */
+/** Insert a knot into a scalar function (open or periodic; shape-preserving). */
 export function insertKnotFunction(f: BSplineFunction, tBar: number): BSplineFunction {
-  if (f.closed) throw new Error('periodic function knot insertion is not implemented yet')
-  const { controlPoints, knots } = insertKnotOpen(scalarCoeffs, f.coeffs, f.degree, f.knots, tBar)
+  const { controlPoints, knots } = insertKnot(
+    scalarCoeffs,
+    f.coeffs,
+    f.degree,
+    f.knots,
+    tBar,
+    f.closed,
+  )
   return { ...f, coeffs: controlPoints, knots }
 }
