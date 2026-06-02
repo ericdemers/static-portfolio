@@ -149,6 +149,11 @@ export class BernsteinDecomposition {
     return this.coeffs.flat()
   }
 
+  /** Restrict to spans [start, end) — used to exploit B-spline locality. */
+  subset(start: number, end: number): BernsteinDecomposition {
+    return new BernsteinDecomposition(this.coeffs.slice(start, end), this.breaks.slice(start, end + 1))
+  }
+
   /**
    * Number of strict sign changes S⁻ in the Bernstein coefficients (zeros
    * skipped). By the variation-diminishing property this bounds the number of
