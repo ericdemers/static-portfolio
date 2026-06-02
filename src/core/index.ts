@@ -1,0 +1,7 @@
+// Clean, self-contained B-spline core: evaluation of plain / rational /
+// complex-rational curves, open or periodic, over a scalar-field abstraction.
+export * from './types'
+export * from './complex'
+export * from './basis'
+export * from './coeffs'
+export * from './evaluate'
