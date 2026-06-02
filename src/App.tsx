@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Home from './pages/Home'
+import Talks from './pages/Talks'
+import Talk from './pages/Talk'
 import ComingSoon from './pages/ComingSoon'
 
 /**
@@ -15,6 +17,8 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/talks" element={<Talks />} />
+        <Route path="/talks/:slug" element={<Talk />} />
         <Route path="*" element={<ComingSoon />} />
       </Routes>
     </BrowserRouter>

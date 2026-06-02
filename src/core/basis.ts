@@ -22,6 +22,16 @@ export function periodicKnotAt(knots: readonly number[], i: number, period = 1):
   return knots[mod(i, n)] + q * period
 }
 
+/** Clamped uniform knot vector for `n` control points of the given degree. */
+export function clampedUniformKnots(n: number, degree: number): number[] {
+  const knots: number[] = []
+  for (let i = 0; i <= degree; i++) knots.push(0)
+  const interior = n - degree - 1
+  for (let i = 1; i <= interior; i++) knots.push(i / (interior + 1))
+  for (let i = 0; i <= degree; i++) knots.push(1)
+  return knots
+}
+
 /** Knot span for an open (clamped) knot vector. (Piegl & Tiller, A2.1) */
 export function findOpenSpan(degree: number, knots: readonly number[], t: number): number {
   const n = knots.length - degree - 2 // index of the last control point
