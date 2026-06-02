@@ -45,7 +45,10 @@ function findZeros(f: (t: number) => number, samples = 600): number[] {
 export default function CurvatureDemo() {
   const pts = useCurveStore((s) => s.controlPoints)
   const degree = useCurveStore((s) => s.degree)
+  const constrain = useCurveStore((s) => s.constrain)
   const moveControlPoint = useCurveStore((s) => s.moveControlPoint)
+  const slideControlPoint = useCurveStore((s) => s.slideControlPoint)
+  const toggleConstrain = useCurveStore((s) => s.toggleConstrain)
   const reset = useCurveStore((s) => s.reset)
 
   const [drag, setDrag] = useState<number | null>(null)
@@ -99,7 +102,9 @@ export default function CurvatureDemo() {
         onPointerMove={(e) => {
           if (drag === null) return
           const p = toSvg(e)
-          moveControlPoint(drag, { x: p.x, y: Math.min(CURVE_H, Math.max(0, p.y)) })
+          const target = { x: p.x, y: Math.min(CURVE_H, Math.max(0, p.y)) }
+          if (constrain) slideControlPoint(drag, target)
+          else moveControlPoint(drag, target)
         }}
         onPointerUp={() => setDrag(null)}
         onPointerLeave={() => setDrag(null)}
@@ -153,15 +158,29 @@ export default function CurvatureDemo() {
         <strong style={{ color: '#f59e0b' }}>{extrema.length}</strong> curvature extrema on the curve&nbsp; ≤&nbsp;
         <strong style={{ color: '#a78bfa' }}>{bound}</strong> sign changes of g&apos;s Bernstein coefficients
         <span style={{ color: '#64748b' }}> (the variation-diminishing bound)</span>
-        <div style={{ marginTop: 8 }}>
+        <div style={{ marginTop: 8, display: 'flex', gap: 10, justifyContent: 'center' }}>
+          <button
+            onClick={toggleConstrain}
+            style={{
+              padding: '6px 18px',
+              fontSize: 14,
+              borderRadius: 6,
+              border: '1px solid #3b82f6',
+              background: constrain ? '#2563eb' : '#1e3a5f',
+              color: 'white',
+              cursor: 'pointer',
+            }}
+          >
+            {constrain ? 'Constrained (sliding) ✓' : 'Free drag'}
+          </button>
           <button
             onClick={reset}
             style={{
               padding: '6px 18px',
               fontSize: 14,
               borderRadius: 6,
-              border: '1px solid #3b82f6',
-              background: '#1e3a5f',
+              border: '1px solid #475569',
+              background: '#1e293b',
               color: 'white',
               cursor: 'pointer',
             }}
