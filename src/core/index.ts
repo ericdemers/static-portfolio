@@ -1,7 +1,10 @@
-// Clean, self-contained B-spline core: evaluation of plain / rational /
-// complex-rational curves, open or periodic, over a scalar-field abstraction.
+// Clean, self-contained B-spline core: evaluation and knot insertion for a
+// scalar function or a plain / rational / complex-rational curve, open or
+// periodic, over a scalar-field abstraction.
 export * from './types'
 export * from './complex'
 export * from './basis'
 export * from './coeffs'
 export * from './evaluate'
+export * from './insert'
+export * from './function'
