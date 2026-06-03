@@ -17,6 +17,8 @@ import { optimizeCurve, applyOptimizeResult, applyOptimizeRationalResult, optimi
 // core/ engine. Closed bsplines (periodic-junction knots) + rational stay on
 // the legacy optimizer until core covers those conventions.
 import { slideCurve as coreSlideCurve, curvatureExtremaNumeratorPlanar as coreCurvatureNumerator, planarCurvatureConstraintState as coreConstraintState } from '../../core'
+import { abPHToLieCurve, identity5, compose5, scaling5, translation5 } from '../lab/lieSphere/lieCurve2D'
+import { liePoint5, SHAPE_GENERATORS } from '../lab/lieSphere/lieAlgebra2D'
 import { computeRationalFarinPoints, updateWeightsFromRationalFarin, updateWeightsFromComplexFarin, projectPointOntoEdge, moveComplexControlPointKeepingFarinFixed, initializeFarinPositionsFromComplexWeights } from '../utils/farinPoints'
 import { csub, cmult, cdiv, cnorm, type Complex } from '../utils/complex'
 import {
@@ -119,6 +121,24 @@ interface SketcherState {
    *  is the banded (near-linear) interior-point; 'primal-dual' is the dense one. */
   solverMethod: 'primal-dual' | 'barrier' | 'ipopt'
   setSolverMethod: (m: 'primal-dual' | 'barrier' | 'ipopt') => void
+
+  // Generate session: apply a (planar) Lie-sphere transform to a PH curve to
+  // PRODUCE A NEW curve. accumulated = baked transform; sliders = the live one;
+  // the preview is a transient curve recomputed via the exact converter.
+  generate: {
+    originalCurveId: string
+    previewCurveId: string
+    accumulated: number[][]
+    coeffs: number[] // one per SHAPE_GENERATORS entry (the 8 o(3,2) generators)
+    norm: number[][] // S: center + unit-scale the curve (generators act at unit scale)
+    denorm: number[][] // S⁻¹
+  } | null
+  startGenerate: (curveId: string) => void
+  setGenerateCoeff: (index: number, value: number) => void
+  applyGenerate: () => void
+  resetGenerate: () => void
+  doneGenerate: () => void
+  cancelGenerate: () => void
 
   // Transform widget
   transformActive: boolean
@@ -315,6 +335,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   dragStartCPsY: null,
   dragConstraintState: null,
   solverMethod: 'ipopt',
+  generate: null,
 
   view: {
     zoom: 1,
@@ -1144,6 +1165,90 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   setDisableSliding: (disable) => set({ disableSliding: disable }),
   setAnchorWeight: (weight) => set({ anchorWeight: weight }),
   setSolverMethod: (m) => set({ solverMethod: m }),
+
+  // ----- Generate (Lie-sphere transform → new curve) -----
+  _refreshGeneratePreview: () => {
+    const g = get().generate
+    if (!g) return
+    const meta = get().phMetadata.get(g.originalCurveId)
+    if (!meta) return
+    // Conjugate by the normalize/denormalize similarity so the generators act
+    // on the unit-scale, origin-centred curve (uniform, sensible slider feel).
+    const M = compose5(g.denorm, g.accumulated, liePoint5(g.coeffs), g.norm)
+    const res = abPHToLieCurve(meta, M)
+    set((s) => ({
+      curves: s.curves.map((c) =>
+        c.id === g.previewCurveId
+          ? { ...c, kind: 'rational', degree: res.degree, knots: res.knots, controlPoints: res.controlPoints }
+          : c,
+      ),
+    }))
+  },
+  startGenerate: (curveId) => {
+    if (get().generate) return
+    const meta = get().phMetadata.get(curveId)
+    if (!meta || meta.kind !== 'ab-complex-rational') return
+    const curve = get().curves.find((c) => c.id === curveId)
+    // Centre + unit-scale similarity from the curve's bounding box, so the Lie
+    // generators act at unit scale (uniform slider sensitivity).
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    for (const p of curve.controlPoints) {
+      const x = p.re ?? p.x, y = p.im ?? p.y
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x)
+      minY = Math.min(minY, y); maxY = Math.max(maxY, y)
+    }
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2
+    const L = Math.max(1e-6, 0.5 * Math.hypot(maxX - minX, maxY - minY))
+    const norm = compose5(scaling5(1 / L), translation5(-cx, -cy))
+    const denorm = compose5(translation5(cx, cy), scaling5(L))
+
+    const previewCurveId = generateCurveId()
+    const res = abPHToLieCurve(meta, identity5())
+    const preview = {
+      id: previewCurveId, kind: 'rational', degree: res.degree,
+      knots: res.knots, controlPoints: res.controlPoints, closed: false,
+    }
+    set((s) => ({
+      curves: [...s.curves, preview],
+      generate: { originalCurveId: curveId, previewCurveId, accumulated: identity5(), coeffs: new Array(SHAPE_GENERATORS.length).fill(0), norm, denorm },
+    }))
+  },
+  setGenerateCoeff: (index, value) => {
+    const g = get().generate
+    if (!g) return
+    const coeffs = g.coeffs.slice()
+    coeffs[index] = value
+    set({ generate: { ...g, coeffs } })
+    get()._refreshGeneratePreview()
+  },
+  applyGenerate: () => {
+    const g = get().generate
+    if (!g) return
+    set({ generate: { ...g, accumulated: compose5(g.accumulated, liePoint5(g.coeffs)), coeffs: new Array(SHAPE_GENERATORS.length).fill(0) } })
+    get()._refreshGeneratePreview()
+  },
+  resetGenerate: () => {
+    const g = get().generate
+    if (!g) return
+    set({ generate: { ...g, accumulated: identity5(), coeffs: new Array(SHAPE_GENERATORS.length).fill(0) } })
+    get()._refreshGeneratePreview()
+  },
+  doneGenerate: () => {
+    const g = get().generate
+    if (!g) return
+    // The preview curve stays — it becomes an independent curve. Original untouched.
+    set({ generate: null, selectedCurveId: g.previewCurveId })
+    get().saveToHistory()
+  },
+  cancelGenerate: () => {
+    const g = get().generate
+    if (!g) return
+    set((s) => ({
+      curves: s.curves.filter((c) => c.id !== g.previewCurveId),
+      generate: null,
+      selectedCurveId: g.originalCurveId,
+    }))
+  },
   snapshotDragStartCPs: (curveId) => {
     const curve = get().curves.find((c) => c.id === curveId)
     if (!curve) return

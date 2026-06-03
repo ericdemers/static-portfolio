@@ -5,6 +5,7 @@ import PencilTool from '../components/PencilTool'
 import BottomBar from '../components/BottomBar'
 import BottomPanel from '../components/BottomPanel'
 import RightContextMenu from '../components/RightContextMenu'
+import GeneratePanel from '../components/GeneratePanel'
 import SketcherCanvas from '../components/SketcherCanvas'
 import { useSketcherKeyboardShortcuts } from '../hooks/useSketcherKeyboardShortcuts'
 
@@ -20,6 +21,7 @@ export default function Sketcher() {
       <HamburgerMenu />
       <PencilTool />
       <RightContextMenu />
+      <GeneratePanel />
       <BottomPanel />
       <BottomBar />
     </div>

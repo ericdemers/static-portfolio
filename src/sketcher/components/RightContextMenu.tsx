@@ -21,6 +21,8 @@ export default function RightContextMenu() {
     startTransform,
     commitTransform,
     phMetadata,
+    startGenerate,
+    generate,
   } = useSceneStore()
 
   const [transformExpanded, setTransformExpanded] = useState(false)
@@ -34,6 +36,8 @@ export default function RightContextMenu() {
 
   // Only show when a curve is selected
   if (!selectedCurve) return null
+  // During a Generate session, the GeneratePanel takes over.
+  if (generate) return null
 
   // Check if the selected curve has PH metadata
   const hasPHMeta = selectedCurveId ? phMetadata.get(selectedCurveId) : null
@@ -67,51 +71,15 @@ export default function RightContextMenu() {
           {t('panels.curvature')}
         </button>
 
-        {/* Transform button — simple for non-PH, dropdown for PH curves */}
+        {/* PH curve: Generate (apply a Lie-sphere transform → a NEW curve).
+            Non-PH: the in-place Transform. */}
         {hasABPHMeta ? (
-          <div>
-            <button
-              onClick={() => {
-                if (transformActive) {
-                  commitTransform()
-                  setTransformExpanded(false)
-                } else {
-                  setTransformExpanded(!transformExpanded)
-                }
-              }}
-              className={`w-full h-8 rounded text-sm font-medium transition-colors flex items-center justify-between px-2 ${
-                transformActive ? activeBtn : inactiveBtn
-              }`}
-            >
-              <span>{t('panels.transform')}</span>
-              {!transformActive && (
-                <svg
-                  className={`w-3 h-3 transition-transform ${transformExpanded ? 'rotate-180' : ''}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              )}
-            </button>
-            {transformExpanded && !transformActive && (
-              <div className="flex flex-col gap-0.5 mt-0.5 pl-2">
-                <button
-                  onClick={() => { startTransform('mobius'); setTransformExpanded(false) }}
-                  className={`w-full h-7 rounded text-xs font-medium transition-colors ${inactiveBtn}`}
-                >
-                  Mobius
-                </button>
-                <button
-                  onClick={() => { startTransform('laguerre'); setTransformExpanded(false) }}
-                  className={`w-full h-7 rounded text-xs font-medium transition-colors ${inactiveBtn}`}
-                >
-                  Laguerre
-                </button>
-              </div>
-            )}
-          </div>
+          <button
+            onClick={() => startGenerate(selectedCurveId)}
+            className={`w-full h-8 rounded text-sm font-medium transition-colors ${inactiveBtn}`}
+          >
+            Generate
+          </button>
         ) : (
           <button
             onClick={() => {
@@ -174,9 +142,11 @@ export default function RightContextMenu() {
         {canDeleteKnot ? t('actions.deleteKnot') : t('actions.delete')}
       </button>
 
+      {/* Curve type — hidden for a PH curve (its type is fixed; Generate handles
+          producing other curve kinds). */}
+      {!hasABPHMeta && (<>
       <div className="h-px bg-gray-200 dark:bg-gray-700 my-2" />
 
-      {/* Curve type */}
       <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('curveTypes.type')}</div>
       <div className="flex flex-col gap-1">
         <button
@@ -210,6 +180,7 @@ export default function RightContextMenu() {
           {t('curveTypes.complex')}
         </button>
       </div>
+      </>)}
     </div>
   )
 }
