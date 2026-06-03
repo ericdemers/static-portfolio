@@ -11,6 +11,7 @@ import OvoidDemo from './OvoidDemo'
 import AirfoilDemo from './AirfoilDemo'
 import DatasetGalaxy from './DatasetGalaxy'
 import AirfoilFitGallery from './AirfoilFitGallery'
+import ComplexRationalDemo from './ComplexRationalDemo'
 import AllFlipDiagram from './AllFlipDiagram'
 import WalkDiagram from './WalkDiagram'
 
@@ -116,46 +117,6 @@ function AirfoilSlideContent() {
         }}
       >
         <AirfoilDemo symmetric={symmetric} />
-      </div>
-    </div>
-  )
-}
-
-/** Placeholder for the closed-curve / dataset demos pending their core/ problem variants. */
-function DemoPlaceholder({ label }: { label: string }) {
-  return (
-    <div
-      style={{
-        border: '1px dashed #cbd5e1',
-        borderRadius: 12,
-        padding: 40,
-        textAlign: 'center',
-        background: '#f8fafc',
-        color: '#475569',
-        height: '70%',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <div style={{ fontSize: '1.05em' }}>{label}</div>
-      <div style={{ color: '#94a3b8', fontSize: '0.8em', marginTop: 8 }}>
-        Interactive demo — porting onto <code>core/</code> (periodic / rational problem variant)
-      </div>
-    </div>
-  )
-}
-
-/** Two-column demo slide: 30% text panel, 70% figure (matches the original layout). */
-function DemoSlide({ panel, figure }: { panel: React.ReactNode; figure: React.ReactNode }) {
-  return (
-    <div style={{ display: 'flex', height: '100%', gap: 0 }}>
-      <div style={{ width: '32%', paddingRight: 24, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        {panel}
-      </div>
-      <div style={{ width: '68%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {figure}
       </div>
     </div>
   )
@@ -637,19 +598,38 @@ export const slides: SlideDefinition[] = [
   {
     type: 'content',
     content: (
-      <DemoSlide
-        panel={
-          <>
-            <h2 style={{ fontSize: '1.1em' }}>Complex Rational B-spline</h2>
-            <p style={{ fontSize: '0.9em', color: '#64748b' }}>
-              Möbius transformations — a further bound-preserving editing technique. The numerator{' '}
-              <Math>{'g'}</Math> is computed exactly via Chen complexity reduction (already in{' '}
-              <code>core/</code>).
-            </p>
-          </>
-        }
-        figure={<DemoPlaceholder label="Complex-rational curve under Möbius transformations" />}
-      />
+      <ComplexRationalDemo>
+        {({ panel, canvas }) => (
+          <div style={{ display: 'flex', height: '100%', gap: 0 }}>
+            <div
+              style={{
+                width: '30%',
+                padding: '40px 20px 40px 0',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                gap: '1em',
+              }}
+            >
+              <h2 style={{ fontSize: '1.1em' }}>Complex Rational B-spline</h2>
+              <p style={{ fontSize: '0.85em', color: '#94a3b8' }}>
+                Move the slider to apply Möbius transformation.
+              </p>
+              {panel}
+            </div>
+            <div
+              style={{
+                width: '70%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {canvas}
+            </div>
+          </div>
+        )}
+      </ComplexRationalDemo>
     ),
   },
 

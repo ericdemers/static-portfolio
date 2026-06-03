@@ -15,8 +15,19 @@ export const cmul = (a: Complex, b: Complex): Complex => ({
   im: a.re * b.im + a.im * b.re,
 })
 
+export const csub = (a: Complex, b: Complex): Complex => ({
+  re: a.re - b.re,
+  im: a.im - b.im,
+})
+
 /** Scale a complex number by a real. */
 export const cscale = (a: Complex, k: number): Complex => ({ re: a.re * k, im: a.im * k })
+
+/** Magnitude |a + bi|. */
+export const cnorm = (a: Complex): number => Math.sqrt(a.re * a.re + a.im * a.im)
+
+/** Complex conjugate. */
+export const cconj = (a: Complex): Complex => ({ re: a.re, im: -a.im })
 
 export function cdiv(a: Complex, b: Complex): Complex {
   const d = b.re * b.re + b.im * b.im

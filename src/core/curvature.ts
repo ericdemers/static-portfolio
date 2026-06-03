@@ -240,6 +240,11 @@ export function curvatureExtremaNumeratorComplex(
     decomposeToBernstein([...wre], knots, degree),
     decomposeToBernstein([...wim], knots, degree),
   )
+  return complexChenG(Z, W)
+}
+
+/** The Chen-reduced complex curvature-derivative numerator g = Im((D1*)²·T·w̄). */
+function complexChenG(Z: ComplexBD, W: ComplexBD): BernsteinDecomposition {
   const Zu = Z.derivative(), Zuu = Zu.derivative(), Zuuu = Zuu.derivative()
   const Wu = W.derivative(), Wuu = Wu.derivative(), Wuuu = Wuu.derivative()
 
@@ -252,4 +257,70 @@ export function curvatureExtremaNumeratorComplex(
   const bracket = D3.mul(D1).add(D1.mul(D21)).sub(D2.mul(D2).scale(1.5))
   const T = W.mul(bracket).add(D1.mul(Wu.mul(D2).sub(Wuu.mul(D1))).scale(2))
   return D1conjSq.mul(T).mul(W.conj()).im
+}
+
+/**
+ * Curvature-extrema numerator for a CLOSED (periodic) planar complex-rational
+ * B-spline curve. Same Chen reduction as the open case but with a periodic
+ * Bernstein decomposition of the homogeneous functions Z = w·z and W = w.
+ *
+ * Assumes the periodic monodromy ρ = wrapWeight/w₀ is 1 (the weight chain
+ * closes), which holds for the initial all-unit-weight curve and is preserved
+ * by Möbius transforms and fixed-weight edits. (A non-trivial spiral would need
+ * the wrapped homogeneous coefficients scaled by ρ^period.)
+ */
+export function curvatureExtremaNumeratorComplexPeriodic(
+  zre: readonly number[],
+  zim: readonly number[],
+  wre: readonly number[],
+  wim: readonly number[],
+  knots: readonly number[],
+  degree: number,
+): BernsteinDecomposition {
+  const Zre = zre.map((zr, i) => zr * wre[i] - zim[i] * wim[i])
+  const Zim = zre.map((zr, i) => zr * wim[i] + zim[i] * wre[i])
+  const Z = new ComplexBD(
+    decomposeToBernsteinPeriodic(Zre, knots, degree),
+    decomposeToBernsteinPeriodic(Zim, knots, degree),
+  )
+  const W = new ComplexBD(
+    decomposeToBernsteinPeriodic([...wre], knots, degree),
+    decomposeToBernsteinPeriodic([...wim], knots, degree),
+  )
+  return complexChenG(Z, W)
+}
+
+/** Parameters t ∈ [0,1) of the curvature extrema of a closed complex-rational curve (zeros of periodic g). */
+export function closedComplexCurvatureExtremaParameters(
+  zre: readonly number[],
+  zim: readonly number[],
+  wre: readonly number[],
+  wim: readonly number[],
+  knots: readonly number[],
+  degree: number,
+  samples = 600,
+): number[] {
+  const g = curvatureExtremaNumeratorComplexPeriodic(zre, zim, wre, wim, knots, degree)
+  const f = (t: number) => g.evaluate(((t % 1) + 1) % 1)
+  const zeros: number[] = []
+  let prevT = 0
+  let prevV = f(0)
+  for (let i = 1; i <= samples; i++) {
+    const t = i / samples
+    const v = f(t)
+    if (prevV === 0) zeros.push(prevT)
+    else if (prevV * v < 0) {
+      let a = prevT
+      let b = t
+      for (let k = 0; k < 40; k++) {
+        const m = (a + b) / 2
+        if (f(a) * f(m) <= 0) b = m
+        else a = m
+      }
+      zeros.push((a + b) / 2)
+    }
+    prevT = t
+    prevV = v
+  }
+  return zeros
 }
