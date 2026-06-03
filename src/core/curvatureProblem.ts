@@ -49,6 +49,26 @@ function computeInactiveSet(gc: number[]): Set<number> {
 }
 
 /**
+ * Per-constraint scale = |coeff|, but floored at `SCALE_FLOOR_REL · max|coeff|`.
+ *
+ * Dividing each active constraint by |coeff| normalizes the slacks to ≈1 and
+ * collapses g's huge dynamic range (the conditioning fix). But a coefficient
+ * that is NOISE — |coeff| far below machine epsilon relative to the largest
+ * (e.g. 7.6e-6 next to 3.5e14, ratio 2e-20, from catastrophic cancellation in
+ * the Bernstein products) — must NOT become the divisor: that would blow its
+ * Jacobian row up by ~1/noise and let the optimizer flip a meaningless sign,
+ * spuriously raising the bound S⁻. The floor caps how small a divisor can be,
+ * so genuinely small-but-meaningful coefficients still get per-constraint
+ * scaling while noise-level ones are treated as ≈the floor.
+ */
+const SCALE_FLOOR_REL = 1e-12
+function scaleFor(coeffs: number[], activeIdx: number[]): number[] {
+  const maxAbs = Math.max(1e-300, ...coeffs.map(Math.abs))
+  const floor = SCALE_FLOOR_REL * maxAbs
+  return activeIdx.map((i) => Math.max(Math.abs(coeffs[i]), floor))
+}
+
+/**
  * The "sliding mechanism" as an optimization problem: drag one control point to
  * a target while keeping the curvature-extrema bound. Objective is weighted
  * least-squares to the targets; constraints keep the sign of every ACTIVE
@@ -79,12 +99,6 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
   // optimizer give up). Sign-invariant (scale > 0), so the feasible set and the
   // bound are unchanged; only the numerics improve.
   private gScale: number[] = []
-  // The optimizer works in normalized variables x̃ = cp / coordScale (so the
-  // control points are O(1) regardless of world units). Keeps the objective
-  // Hessian and the constraint Jacobian on comparable scales — the companion to
-  // gScale. Real coords are recovered in setVariables; gradient/Hessian/Jacobian
-  // carry the chain-rule factor.
-  private coordScale = 1
   private preserveInflections: boolean
   private fActiveIdx: number[] = []
   private fSigns: number[] = []
@@ -126,13 +140,6 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
     this.anchorX = opts.anchorX ?? [...this.cpX]
     this.anchorY = opts.anchorY ?? [...this.cpY]
     this.anchorWeight = opts.anchorWeight ?? 0
-    this.coordScale = Math.max(
-      1,
-      ...this.cpX.map(Math.abs),
-      ...this.cpY.map(Math.abs),
-      ...this.targetX.map(Math.abs),
-      ...this.targetY.map(Math.abs),
-    )
 
     this.preserveInflections = opts.preserveInflections ?? false
 
@@ -141,7 +148,7 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
     const inactive = opts.disableSliding ? new Set<number>() : computeInactiveSet(gc)
     this.activeIdx = gc.map((_, i) => i).filter((i) => !inactive.has(i))
     this.signs = this.activeIdx.map((i) => allSigns[i])
-    this.gScale = this.activeIdx.map((i) => Math.max(Math.abs(gc[i]), 1e-12))
+    this.gScale = scaleFor(gc, this.activeIdx)
 
     if (this.preserveInflections) {
       const fc = this.inflectionNumerator().flatCoeffs()
@@ -149,7 +156,7 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
       const fInactive = opts.disableSliding ? new Set<number>() : computeInactiveSet(fc)
       this.fActiveIdx = fc.map((_, i) => i).filter((i) => !fInactive.has(i))
       this.fSigns = this.fActiveIdx.map((i) => fAllSigns[i])
-      this.fScale = this.fActiveIdx.map((i) => Math.max(Math.abs(fc[i]), 1e-12))
+      this.fScale = scaleFor(fc, this.fActiveIdx)
     }
   }
 
@@ -192,14 +199,12 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
     return this.cpX.length * 2
   }
   getVariables(): number[] {
-    const s = this.coordScale
-    return [...this.cpX.map((v) => v / s), ...this.cpY.map((v) => v / s)]
+    return [...this.cpX, ...this.cpY]
   }
   setVariables(x: number[]): void {
     const n = this.cpX.length
-    const s = this.coordScale
-    this.cpX = x.slice(0, n).map((v) => v * s)
-    this.cpY = x.slice(n).map((v) => v * s)
+    this.cpX = x.slice(0, n)
+    this.cpY = x.slice(n)
     this.cachedCons = null
     this.cachedJac = null
   }
@@ -220,23 +225,19 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
     return s
   }
   computeObjectiveGradient(): number[] {
-    // ∇_x̃ f = coordScale · ∇_cp f (chain rule for x̃ = cp / coordScale).
     const aw = this.anchorWeight
-    const s = this.coordScale
-    const gx = this.cpX.map((x, i) => s * (this.weights[i] * (x - this.targetX[i]) + aw * (x - this.anchorX[i])))
-    const gy = this.cpY.map((y, i) => s * (this.weights[i] * (y - this.targetY[i]) + aw * (y - this.anchorY[i])))
+    const gx = this.cpX.map((x, i) => this.weights[i] * (x - this.targetX[i]) + aw * (x - this.anchorX[i]))
+    const gy = this.cpY.map((y, i) => this.weights[i] * (y - this.targetY[i]) + aw * (y - this.anchorY[i]))
     return [...gx, ...gy]
   }
   computeObjectiveHessian(): Matrix {
-    // ∇²_x̃ f = coordScale² · ∇²_cp f.
     const n = this.numVariables
     const m = this.cpX.length
     const aw = this.anchorWeight
-    const s2 = this.coordScale * this.coordScale
     const H: Matrix = Array.from({ length: n }, () => new Array<number>(n).fill(0))
     for (let i = 0; i < m; i++) {
-      H[i][i] = (this.weights[i] + aw) * s2
-      H[m + i][m + i] = (this.weights[i] + aw) * s2
+      H[i][i] = this.weights[i] + aw
+      H[m + i][m + i] = this.weights[i] + aw
     }
     return H
   }
@@ -257,15 +258,14 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
     return this.cachedCons
   }
   computeConstraintJacobian(): Matrix {
-    // ∂c/∂x̃ = coordScale · ∂c/∂cp, and divide each row by its constraint scale.
+    // Divide each constraint row by its (floored) scale — matches computeConstraints.
     if (!this.cachedJac) {
-      const s = this.coordScale
       const rows = this.jacRows(this.gradient(), this.activeIdx).map((row, k) =>
-        row.map((v) => (v * s) / this.gScale[k]),
+        row.map((v) => v / this.gScale[k]),
       )
       if (this.preserveInflections) {
         const fRows = this.jacRows(this.inflectionGrad(), this.fActiveIdx).map((row, k) =>
-          row.map((v) => (v * s) / this.fScale[k]),
+          row.map((v) => v / this.fScale[k]),
         )
         rows.push(...fRows)
       }

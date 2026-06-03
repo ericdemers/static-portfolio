@@ -54,3 +54,51 @@ describe('PlanarCurvatureProblem scaling: bound preserved + drags progress', () 
     expect(progressed / total).toBeGreaterThan(0.15)
   })
 })
+
+// Regression for the NOISE-coefficient bound violation. When g has a Bernstein
+// coefficient at the floating-point noise floor (|g_i| ≪ machine-eps · max|g|,
+// from catastrophic cancellation), an earlier coordinate-normalization
+// round-trip ((cp/s)·s ≠ cp) flipped that coefficient's sign between the
+// constructor and the first solve iterate → "start infeasible" → the optimizer
+// bailed and returned an infeasible point with a spurious new sign change,
+// raising S⁻ (the bound) — the "extremum flashes then enters" the user saw.
+// These drags must never raise S⁻.
+describe('noise-coefficient drags never raise the bound', () => {
+  const k2 = [0, 0, 0, 0, 0.5, 1, 1, 1, 1]
+  const sc2 = (x: number[], y: number[]) => curvatureExtremaNumeratorPlanar(x, y, k2, degree).signChanges()
+
+  it('the deterministic noise-flip frame keeps S⁻', () => {
+    const x = [-355.2078496872041, -185.94643512413916, -36.85029437633483, -81.15737040420538, 91.65537194238784]
+    const y = [339.30473765577693, -47.1996728337419, 74.81986698923158, 97.40922759636183, -106.59593806976287]
+    const before = sc2(x, y)
+    const r = slideCurve(x, y, k2, degree, 3, -94.74, 87.228, { maxIterations: 20 })
+    expect(sc2(r.x, r.y)).toBeLessThanOrEqual(before)
+  })
+
+  it('chained wandering drags never raise S⁻ (bounded search)', () => {
+    const bases = [
+      { x: [-222.35247802418897, -109.85297098415901, 29.429420767030415, 203.4484242627635, 340.5164794921875], y: [52.57379150284148, -41.22672830286821, -31.175429342484758, -87.28703942089011, -213.9583282470703] },
+      { x: [-169.91911471484707, -131.26593017578125, -3.740121679049728, 110.0525907480096, 211.441545884755], y: [-146.1093110109697, -45.18011474609375, 40.94149211160833, -43.832898796388754, -236.4105528695159] },
+    ]
+    let lcgState = 13
+    const rand = () => { lcgState = (lcgState * 1664525 + 1013904223) >>> 0; return lcgState / 0x100000000 }
+    let increases = 0
+    for (const base of bases) {
+      for (let seed = 0; seed < 3; seed++) {
+        let cx = base.x.slice(), cy = base.y.slice()
+        let idx = 4
+        for (let s = 0; s < 150; s++) {
+          if (rand() < 0.1) idx = Math.floor(rand() * 5)
+          const sp = 10 + rand() * 60
+          const tx = cx[idx] + (rand() * 2 - 1) * sp
+          const ty = cy[idx] + (rand() * 2 - 1) * sp
+          const sB = sc2(cx, cy)
+          const r = slideCurve(cx, cy, k2, degree, idx, tx, ty, { maxIterations: 20 })
+          if (sc2(r.x, r.y) > sB) increases++
+          cx = r.x; cy = r.y
+        }
+      }
+    }
+    expect(increases).toBe(0)
+  })
+})
