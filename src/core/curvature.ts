@@ -129,6 +129,39 @@ export function closedCurvatureExtremaParameters(
   return zeros
 }
 
+/** Parameters t ∈ [0,1) of the inflections of a closed curve (zeros of periodic f = c′×c″). */
+export function closedInflectionParameters(
+  x: readonly number[],
+  y: readonly number[],
+  knots: readonly number[],
+  degree: number,
+  samples = 600,
+): number[] {
+  const f = inflectionNumeratorPlanarPeriodic(x, y, knots, degree)
+  const fn = (t: number) => f.evaluate(((t % 1) + 1) % 1)
+  const zeros: number[] = []
+  let prevT = 0
+  let prevV = fn(0)
+  for (let i = 1; i <= samples; i++) {
+    const t = i / samples
+    const v = fn(t)
+    if (prevV === 0) zeros.push(prevT)
+    else if (prevV * v < 0) {
+      let a = prevT
+      let b = t
+      for (let k = 0; k < 40; k++) {
+        const m = (a + b) / 2
+        if (fn(a) * fn(m) <= 0) b = m
+        else a = m
+      }
+      zeros.push((a + b) / 2)
+    }
+    prevT = t
+    prevV = v
+  }
+  return zeros
+}
+
 // ============================================================================
 // Rational and complex-rational curvature numerators (Chen complexity
 // reduction). Both work on the homogeneous coordinate functions and produce a

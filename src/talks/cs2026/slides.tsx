@@ -7,6 +7,7 @@ import WithoutSlidingPanel from './WithoutSlidingPanel'
 import ExtremaFusionDemo from './ExtremaFusionDemo'
 import FusionPanel from './FusionPanel'
 import OvalDemo from './OvalDemo'
+import OvoidDemo from './OvoidDemo'
 import AllFlipDiagram from './AllFlipDiagram'
 import WalkDiagram from './WalkDiagram'
 
@@ -433,20 +434,44 @@ export const slides: SlideDefinition[] = [
   {
     type: 'content',
     content: (
-      <DemoSlide
-        panel={
-          <>
-            <h2 style={{ fontSize: '1.1em' }}>Single axis of symmetry</h2>
-            <p>A closed curve with</p>
-            <ul style={{ marginTop: '0.4em' }}>
-              <li><strong>1</strong> axis of symmetry</li>
-              <li><strong>4</strong> curvature extrema</li>
-              <li>inflections <em>free</em></li>
-            </ul>
-          </>
-        }
-        figure={<DemoPlaceholder label="Ovoid / peanut — closed-curve sliding" />}
-      />
+      <div style={{ display: 'flex', height: '100%', gap: 0 }}>
+        <div
+          style={{
+            width: '30%',
+            padding: '40px 20px 40px 0',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+          }}
+        >
+          <h2 style={{ fontSize: '1.1em' }}>Single axis of symmetry</h2>
+          <p>A closed curve with</p>
+          <ul style={{ marginTop: '0.4em' }}>
+            <li>
+              <strong>1</strong> axis of symmetry
+            </li>
+            <li>
+              <strong>4</strong> curvature extrema
+            </li>
+            <li>
+              inflections <em>free</em>
+            </li>
+          </ul>
+          <p style={{ marginTop: '1em', fontSize: '0.85em', color: '#94a3b8' }}>
+            Drag any control point.
+          </p>
+        </div>
+        <div
+          style={{
+            width: '70%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <OvoidDemo />
+        </div>
+      </div>
     ),
   },
 
