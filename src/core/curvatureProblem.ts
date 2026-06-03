@@ -2,6 +2,7 @@ import type { Matrix } from './linalg'
 import type { OptimizationProblem, OptimizerConfig } from './optimize'
 import { PrimalDualOptimizer } from './optimize'
 import { BarrierOptimizer } from './barrierOptimizer'
+import { BandedPrimalDualOptimizer } from './bandedPrimalDual'
 import { buildSymmetryReduction, SymmetryReducedProblem } from './symmetryReduction'
 import {
   curvatureExtremaNumeratorPlanar,
@@ -431,13 +432,17 @@ export function slideCurve(
         buildSymmetryReduction(cpX.length, opts.symmetryMaps.mapX, opts.symmetryMaps.mapY),
       )
     : problem
-  // The banded barrier solve assumes control-point-interleaved variables, so it
-  // runs only on the un-reduced problem (no symmetry reduction). Otherwise the
-  // dense primal-dual handles the reduced/symmetric case.
+  // The banded solvers assume control-point-interleaved variables with a banded
+  // Jacobian, so they run only on the un-reduced, OPEN problem (no symmetry
+  // reduction, no periodic wrap). The dense primal-dual handles the
+  // closed/symmetric/reduced cases.
+  const banded = !opts.symmetryMaps && !opts.closed
   const optimizer =
-    opts.method === 'barrier' && !opts.symmetryMaps
+    opts.method === 'barrier' && banded
       ? new BarrierOptimizer(solved, { maxIterations: opts.maxIterations ?? 40, returnBestFeasible: true })
-      : new PrimalDualOptimizer(solved, { maxIterations: opts.maxIterations ?? 80, returnBestFeasible: true })
+      : banded
+        ? new BandedPrimalDualOptimizer(solved, { maxIterations: opts.maxIterations ?? 80, returnBestFeasible: true })
+        : new PrimalDualOptimizer(solved, { maxIterations: opts.maxIterations ?? 80, returnBestFeasible: true })
   const result = optimizer.optimize()
   solved.setVariables(result.variables)
   return { x: problem.cpX, y: problem.cpY, converged: result.converged }
