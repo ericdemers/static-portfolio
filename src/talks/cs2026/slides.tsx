@@ -8,6 +8,7 @@ import ExtremaFusionDemo from './ExtremaFusionDemo'
 import FusionPanel from './FusionPanel'
 import OvalDemo from './OvalDemo'
 import OvoidDemo from './OvoidDemo'
+import AirfoilDemo from './AirfoilDemo'
 import AllFlipDiagram from './AllFlipDiagram'
 import WalkDiagram from './WalkDiagram'
 
@@ -50,6 +51,69 @@ function ExtremaFusionSlideContent() {
       </div>
       <div style={{ width: '68%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <ExtremaFusionDemo constrainExtrema={constrain} onBoundChange={setBound} resetNonce={resetNonce} />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * "Airfoil" slide — owns the x-axis symmetry toggle so the button and the
+ * demo viewer stay in sync. Symmetric → NACA-style mirror enforced in the
+ * solve; Free camber → no mirror, the curve can develop camber.
+ */
+function AirfoilSlideContent() {
+  const [symmetric, setSymmetric] = useState(true)
+  return (
+    <div style={{ display: 'flex', height: '100%', gap: 0 }}>
+      <div
+        style={{
+          width: '30%',
+          padding: '40px 20px 40px 0',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+        }}
+      >
+        <h2 style={{ fontSize: '1.1em' }}>Airfoil</h2>
+        <p>A closed curve with</p>
+        <ul style={{ marginTop: '0.4em' }}>
+          <li>
+            <strong>4</strong> curvature extrema
+          </li>
+          <li>
+            inflections <em>free</em>
+          </li>
+          <li>x-axis symmetry — toggleable</li>
+        </ul>
+        <div style={{ margin: '1em 0' }}>
+          <button
+            onClick={() => setSymmetric((s) => !s)}
+            style={{
+              padding: '8px 24px',
+              fontSize: '0.9em',
+              borderRadius: '6px',
+              border: '1px solid #3b82f6',
+              background: symmetric ? '#2563eb' : '#1e3a5f',
+              color: 'white',
+              cursor: 'pointer',
+            }}
+          >
+            {symmetric ? 'Symmetric' : 'Free camber'}
+          </button>
+        </div>
+        <p style={{ marginTop: '0.5em', fontSize: '0.85em', color: '#94a3b8' }}>
+          Drag any control point.
+        </p>
+      </div>
+      <div
+        style={{
+          width: '70%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <AirfoilDemo symmetric={symmetric} />
       </div>
     </div>
   )
@@ -477,22 +541,7 @@ export const slides: SlideDefinition[] = [
 
   {
     type: 'content',
-    content: (
-      <DemoSlide
-        panel={
-          <>
-            <h2 style={{ fontSize: '1.1em' }}>Airfoil</h2>
-            <p>A closed curve with</p>
-            <ul style={{ marginTop: '0.4em' }}>
-              <li><strong>4</strong> curvature extrema</li>
-              <li>inflections <em>free</em></li>
-              <li>x-axis symmetry — toggleable</li>
-            </ul>
-          </>
-        }
-        figure={<DemoPlaceholder label="Airfoil — closed-curve sliding" />}
-      />
-    ),
+    content: <AirfoilSlideContent />,
   },
 
   {
