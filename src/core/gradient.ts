@@ -1,4 +1,4 @@
-import { BernsteinDecomposition, decomposeToBernstein } from './bernstein'
+import { BernsteinDecomposition, decomposeToBernstein, decomposeToBernsteinPeriodic } from './bernstein'
 
 // ============================================================================
 // Exact sparse gradient / Jacobian of the curvature numerator g.
@@ -161,5 +161,66 @@ export function curvatureExtremaGradientPlanar(
     dy.push(padToFull(gy, s0, numSpans, gDeg, g.breaks))
   }
 
+  return { g, dx, dy }
+}
+
+/**
+ * g and its Jacobian for a CLOSED (periodic) planar B-spline curve. Same
+ * forward-AD assembly; the seed is the periodic Dirac B-spline Nᵢ. Computed on
+ * full periodic decompositions (periodic support wraps, so no span subsetting).
+ */
+export function curvatureExtremaGradientPlanarPeriodic(
+  x: readonly number[],
+  y: readonly number[],
+  knots: readonly number[],
+  degree: number,
+): PlanarCurvatureGradient {
+  const X1 = decomposeToBernsteinPeriodic(x, knots, degree).derivative()
+  const Y1 = decomposeToBernsteinPeriodic(y, knots, degree).derivative()
+  const X2 = X1.derivative()
+  const Y2 = Y1.derivative()
+  const X3 = X2.derivative()
+  const Y3 = Y2.derivative()
+
+  const g = gOverDuals(
+    new Dual(X1, zeroLike(X1)),
+    new Dual(Y1, zeroLike(Y1)),
+    new Dual(X2, zeroLike(X2)),
+    new Dual(Y2, zeroLike(Y2)),
+    new Dual(X3, zeroLike(X3)),
+    new Dual(Y3, zeroLike(Y3)),
+  ).v
+
+  const n = x.length
+  const dx: BernsteinDecomposition[] = []
+  const dy: BernsteinDecomposition[] = []
+  for (let i = 0; i < n; i++) {
+    const e = new Array<number>(n).fill(0)
+    e[i] = 1
+    const Ni = decomposeToBernsteinPeriodic(e, knots, degree)
+    const Ni1 = Ni.derivative()
+    const Ni2 = Ni1.derivative()
+    const Ni3 = Ni2.derivative()
+    dx.push(
+      gOverDuals(
+        new Dual(X1, Ni1),
+        new Dual(Y1, zeroLike(Y1)),
+        new Dual(X2, Ni2),
+        new Dual(Y2, zeroLike(Y2)),
+        new Dual(X3, Ni3),
+        new Dual(Y3, zeroLike(Y3)),
+      ).t,
+    )
+    dy.push(
+      gOverDuals(
+        new Dual(X1, zeroLike(X1)),
+        new Dual(Y1, Ni1),
+        new Dual(X2, zeroLike(X2)),
+        new Dual(Y2, Ni2),
+        new Dual(X3, zeroLike(X3)),
+        new Dual(Y3, Ni3),
+      ).t,
+    )
+  }
   return { g, dx, dy }
 }

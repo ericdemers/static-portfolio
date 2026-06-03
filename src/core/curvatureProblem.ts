@@ -1,8 +1,10 @@
 import type { Matrix } from './linalg'
 import type { OptimizationProblem, OptimizerConfig } from './optimize'
 import { PrimalDualOptimizer } from './optimize'
-import { curvatureExtremaNumeratorPlanar } from './curvature'
-import { curvatureExtremaGradientPlanar } from './gradient'
+import { curvatureExtremaNumeratorPlanar, curvatureExtremaNumeratorPlanarPeriodic } from './curvature'
+import { curvatureExtremaGradientPlanar, curvatureExtremaGradientPlanarPeriodic } from './gradient'
+import type { BernsteinDecomposition } from './bernstein'
+import type { PlanarCurvatureGradient } from './gradient'
 
 /**
  * Anchor-based sliding active set (the talk's mechanism). Walk the g Bernstein
@@ -49,6 +51,7 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
 
   private knots: number[]
   private degree: number
+  private closed: boolean
   private targetX: number[]
   private targetY: number[]
   private weights: number[]
@@ -65,24 +68,35 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
     dragIndex: number,
     targetX: number,
     targetY: number,
-    opts: { disableSliding?: boolean; weights?: number[] } = {},
+    opts: { disableSliding?: boolean; weights?: number[]; closed?: boolean } = {},
   ) {
     this.cpX = [...cpX]
     this.cpY = [...cpY]
     this.knots = [...knots]
     this.degree = degree
+    this.closed = opts.closed ?? false
     this.targetX = [...cpX]
     this.targetY = [...cpY]
     this.targetX[dragIndex] = targetX
     this.targetY[dragIndex] = targetY
     this.weights = opts.weights ?? cpX.map(() => 1)
 
-    const g = curvatureExtremaNumeratorPlanar(this.cpX, this.cpY, this.knots, this.degree)
-    const gc = g.flatCoeffs()
+    const gc = this.numerator().flatCoeffs()
     const allSigns = gc.map((v) => (v > 0 ? -1 : 1))
     const inactive = opts.disableSliding ? new Set<number>() : computeInactiveSet(gc)
     this.activeIdx = gc.map((_, i) => i).filter((i) => !inactive.has(i))
     this.signs = this.activeIdx.map((i) => allSigns[i])
+  }
+
+  private numerator(): BernsteinDecomposition {
+    return this.closed
+      ? curvatureExtremaNumeratorPlanarPeriodic(this.cpX, this.cpY, this.knots, this.degree)
+      : curvatureExtremaNumeratorPlanar(this.cpX, this.cpY, this.knots, this.degree)
+  }
+  private gradient(): PlanarCurvatureGradient {
+    return this.closed
+      ? curvatureExtremaGradientPlanarPeriodic(this.cpX, this.cpY, this.knots, this.degree)
+      : curvatureExtremaGradientPlanar(this.cpX, this.cpY, this.knots, this.degree)
   }
 
   get numVariables(): number {
@@ -129,14 +143,13 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
   }
   computeConstraints(): number[] {
     if (!this.cachedG) {
-      const g = curvatureExtremaNumeratorPlanar(this.cpX, this.cpY, this.knots, this.degree)
-      this.cachedG = g.flatCoeffs()
+      this.cachedG = this.numerator().flatCoeffs()
     }
     return this.activeIdx.map((i) => this.cachedG![i])
   }
   computeConstraintJacobian(): Matrix {
     if (!this.cachedJac) {
-      const { dx, dy } = curvatureExtremaGradientPlanar(this.cpX, this.cpY, this.knots, this.degree)
+      const { dx, dy } = this.gradient()
       const m = this.cpX.length
       const dxf = dx.map((b) => b.flatCoeffs())
       const dyf = dy.map((b) => b.flatCoeffs())
@@ -158,8 +171,7 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
     return new Set<number>()
   }
   updateConstraintState(): void {
-    const g = curvatureExtremaNumeratorPlanar(this.cpX, this.cpY, this.knots, this.degree)
-    const gc = g.flatCoeffs()
+    const gc = this.numerator().flatCoeffs()
     const allSigns = gc.map((v) => (v > 0 ? -1 : 1))
     this.signs = this.activeIdx.map((i) => allSigns[i])
     this.cachedG = null
@@ -179,10 +191,11 @@ export function slideCurve(
   dragIndex: number,
   targetX: number,
   targetY: number,
-  opts: { disableSliding?: boolean } & Partial<OptimizerConfig> = {},
+  opts: { disableSliding?: boolean; closed?: boolean } & Partial<OptimizerConfig> = {},
 ): { x: number[]; y: number[]; converged: boolean } {
   const problem = new PlanarCurvatureProblem(cpX, cpY, knots, degree, dragIndex, targetX, targetY, {
     disableSliding: opts.disableSliding,
+    closed: opts.closed,
   })
   const optimizer = new PrimalDualOptimizer(problem, {
     maxIterations: opts.maxIterations ?? 80,
