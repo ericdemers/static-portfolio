@@ -8,7 +8,7 @@ import { createBSpline, elevateDegree, insertKnot, moveKnot, removeKnot, getCont
 import { createLine, createCircularArc, createFullCircle } from '../utils/shapes'
 import { createDefaultSpiral, createSpiralFromTwoPoints, computePHCurveFromUV, computePHOffset, type PHMetadata, type ComplexRationalPHMetadata } from '../optimizer/phCurve'
 import { createComplexRationalPHFromTwoPoints } from '../optimizer/complexRationalPHCurve'
-import { createABPHFromTwoPoints, computeABPHCurve, computeABPHOffset, applyMobiusToABPH, type ABPHMetadata, evaluateABPHNormal, evaluateABPHCurveAtParam } from '../optimizer/abPHCurve'
+import { createABPHFromTwoPoints, createStraightABPH, computeABPHCurve, computeABPHOffset, applyMobiusToABPH, type ABPHMetadata, evaluateABPHNormal, evaluateABPHCurveAtParam } from '../optimizer/abPHCurve'
 import { createRealRationalPHFromTwoPoints, computeRealRationalPHCurve, computeRealRationalPHOffset, type RealRationalPHMetadata } from '../optimizer/realRationalPHCurve'
 import { insertKnot1D, elevateDegree1D, removeKnot1D } from '../optimizer/phBSplineOps'
 import { weightedAveragePhi, threeArcPointsFromNoisyPoints, circleArcFromThreePoints, type CircleArcGeometry } from '../utils/circleArc'
@@ -707,7 +707,22 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   },
 
   moveCurve: (curveId, displacement) => {
-    set((state) => ({
+    set((state) => {
+      const dx = displacement.x, dy = displacement.y
+      // Translate the PH metadata too, so the PH structure (used by Generate,
+      // offset, …) follows the moved curve. For z = A/B, a translation by
+      // Δ = dx + i·dy gives z+Δ = (A + Δ·B)/B, i.e. A ← A + Δ·B (B, S unchanged
+      // — the PH condition A'B−AB'=S² is translation-invariant).
+      let phMetadata = state.phMetadata
+      const meta = phMetadata.get(curveId)
+      if (meta && meta.kind === 'ab-complex-rational') {
+        const aReCPs = meta.aReCPs.map((a, i) => a + dx * meta.bReCPs[i] - dy * meta.bImCPs[i])
+        const aImCPs = meta.aImCPs.map((a, i) => a + dx * meta.bImCPs[i] + dy * meta.bReCPs[i])
+        phMetadata = new Map(phMetadata)
+        phMetadata.set(curveId, { ...meta, aReCPs, aImCPs })
+      }
+      return {
+      phMetadata,
       curves: state.curves.map((c): Curve => {
         if (c.id !== curveId) return c
 
@@ -748,7 +763,8 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
           }
         }
       }),
-    }))
+      }
+    })
   },
 
   // Drawing actions
@@ -968,8 +984,8 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
 
       const defaultSize = 50 / zoom
       const phResult = (points.length <= 1 || dist < 1e-6)
-        ? createABPHFromTwoPoints(points[0].x, points[0].y, points[0].x + defaultSize, points[0].y)
-        : createABPHFromTwoPoints(points[0].x, points[0].y, last.x, last.y)
+        ? createStraightABPH(points[0].x, points[0].y, points[0].x + defaultSize, points[0].y)
+        : createStraightABPH(points[0].x, points[0].y, last.x, last.y)
       const curveId = generateCurveId()
       const curve: Curve = {
         id: curveId,

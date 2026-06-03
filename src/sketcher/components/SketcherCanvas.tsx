@@ -212,13 +212,17 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
     const curve = curves.find((c) => c.id === selectedCurveId)
     if (!curve) return { rational: [], complex: [] }
 
-    if (phMetadata.has(selectedCurveId)) return { rational: [], complex: [] }
-
-    if (curve.kind === 'rational') {
-      return { rational: computeRationalFarinPoints(curve), complex: [] }
-    }
+    const isPH = phMetadata.has(selectedCurveId)
+    // Complex-rational curves (INCLUDING PH) get the complex Farin points so
+    // their control polygon draws as circle arcs (the natural complex/Farin
+    // representation). The draggable Farin handles are still suppressed for PH
+    // curves at render time — those are for editing a generic complex-rational
+    // curve, whereas a PH curve is edited through its control points + meta.
     if (curve.kind === 'complex-rational') {
       return { rational: [], complex: computeComplexFarinPoints(curve) }
+    }
+    if (curve.kind === 'rational' && !isPH) {
+      return { rational: computeRationalFarinPoints(curve), complex: [] }
     }
     return { rational: [], complex: [] }
   }, [selectedCurveId, curves, phMetadata])
@@ -1444,7 +1448,7 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
                   weights, so Farin points cannot move — showing them invites a drag that
                   fights the optimizer and leaves the interaction stuck. The control-polygon
                   arcs above still render (they only read the Farin positions). */}
-              {isSelected && !preserveCurvatureExtrema && !(activeTool === 'offset' && curve.id === offsetSourceCurveId) && curve.kind === 'complex-rational' && farinPoints.complex.length > 0 && (
+              {isSelected && !preserveCurvatureExtrema && !(activeTool === 'offset' && curve.id === offsetSourceCurveId) && curve.kind === 'complex-rational' && !phMetadata.has(curve.id) && farinPoints.complex.length > 0 && (
                 <g>
                   {farinPoints.complex.map((farin) => (
                     <circle

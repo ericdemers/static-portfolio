@@ -210,6 +210,40 @@ export function createABPHFromTwoPoints(
   }
 }
 
+/**
+ * A STRAIGHT-LINE AB-PH curve from start→end (degree 5). A line is the simplest
+ * PH curve: z(t) = (1−t)·P₀ + t·P₁, so z' = P₁−P₀ is constant and the PH
+ * condition gives S = √(P₁−P₀) (also constant). We use it as the freshly-drawn
+ * PH curve — draw a line, then bend it via dragging / Generate.
+ *   A = collinear, evenly-spaced control points (⇒ A is the straight line)
+ *   B ≡ 1
+ *   S ≡ √(P₁−P₀)   (so S² = P₁−P₀ = A')
+ */
+export function createStraightABPH(startX: number, startY: number, endX: number, endY: number): ABPHCurveResult {
+  const degree = 5
+  const dx = endX - startX, dy = endY - startY
+  const aReCPs: number[] = [], aImCPs: number[] = [], bReCPs: number[] = [], bImCPs: number[] = []
+  const controlPoints: ComplexPoint[] = []
+  for (let i = 0; i <= degree; i++) {
+    const t = i / degree
+    const x = startX + t * dx, y = startY + t * dy
+    aReCPs.push(x); aImCPs.push(y) // A_i = point_i (since B = 1)
+    bReCPs.push(1); bImCPs.push(0)
+    controlPoints.push({ re: x, im: y, w_re: 1, w_im: 0 })
+  }
+  // S = √(P₁−P₀) (principal complex square root), constant ⇒ S² = P₁−P₀ = A'.
+  const mag = Math.hypot(dx, dy)
+  const sr = Math.sqrt(Math.max(0, (mag + dx) / 2))
+  const si = (dy >= 0 ? 1 : -1) * Math.sqrt(Math.max(0, (mag - dx) / 2))
+  const sReCPs = [sr, sr, sr], sImCPs = [si, si, si]
+  const knots = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]
+  const sKnots = [0, 0, 0, 1, 1, 1]
+  const metadata: ABPHMetadata = {
+    kind: 'ab-complex-rational', degree, aReCPs, aImCPs, bReCPs, bImCPs, sReCPs, sImCPs, knots, sKnots,
+  }
+  return { controlPoints, knots, degree, metadata }
+}
+
 // ============================================================================
 // Conversion Utilities
 // ============================================================================
