@@ -305,7 +305,10 @@ export default function OvalDemo({ width = 580, height = 580 }: Props) {
             targetY,
             {
               closed: true,
-              maxIterations: 20,
+              maxIterations: 30,
+              // Weight the dragged point's target term high so it tracks the
+              // cursor while the rest of the polygon adapts to keep the bounds.
+              dragWeight: 25,
               preserveInflections: true,
               symmetryMaps: { mapX: MIRROR_MAP_X, mapY: MIRROR_MAP_Y },
               ...(anchor

@@ -93,6 +93,8 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
       anchorY?: number[]
       anchorWeight?: number
       preserveInflections?: boolean
+      /** Extra objective weight on the dragged point so it tracks the cursor. */
+      dragWeight?: number
     } = {},
   ) {
     this.cpX = [...cpX]
@@ -104,7 +106,8 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
     this.targetY = [...cpY]
     this.targetX[dragIndex] = targetX
     this.targetY[dragIndex] = targetY
-    this.weights = opts.weights ?? cpX.map(() => 1)
+    this.weights = (opts.weights ?? cpX.map(() => 1)).slice()
+    if (opts.dragWeight !== undefined) this.weights[dragIndex] = opts.dragWeight
     this.anchorX = opts.anchorX ?? [...this.cpX]
     this.anchorY = opts.anchorY ?? [...this.cpY]
     this.anchorWeight = opts.anchorWeight ?? 0
@@ -271,6 +274,7 @@ export function slideCurve(
     anchorWeight?: number
     preserveInflections?: boolean
     symmetryMaps?: { mapX: number[] | null; mapY: number[] | null }
+    dragWeight?: number
   } & Partial<OptimizerConfig> = {},
 ): { x: number[]; y: number[]; converged: boolean } {
   const problem = new PlanarCurvatureProblem(cpX, cpY, knots, degree, dragIndex, targetX, targetY, {
@@ -280,6 +284,7 @@ export function slideCurve(
     anchorY: opts.anchorY,
     anchorWeight: opts.anchorWeight,
     preserveInflections: opts.preserveInflections,
+    dragWeight: opts.dragWeight,
   })
   // Symmetry is enforced inside the solve via variable reduction (the result
   // is symmetric AND constraint-feasible — no post-projection).
