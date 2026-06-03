@@ -55,6 +55,9 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
   private targetX: number[]
   private targetY: number[]
   private weights: number[]
+  private anchorX: number[]
+  private anchorY: number[]
+  private anchorWeight: number
   private signs: number[] // per ACTIVE constraint
   private activeIdx: number[] // indices into g.flatCoeffs()
   private cachedG: number[] | null = null
@@ -68,7 +71,14 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
     dragIndex: number,
     targetX: number,
     targetY: number,
-    opts: { disableSliding?: boolean; weights?: number[]; closed?: boolean } = {},
+    opts: {
+      disableSliding?: boolean
+      weights?: number[]
+      closed?: boolean
+      anchorX?: number[]
+      anchorY?: number[]
+      anchorWeight?: number
+    } = {},
   ) {
     this.cpX = [...cpX]
     this.cpY = [...cpY]
@@ -80,6 +90,9 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
     this.targetX[dragIndex] = targetX
     this.targetY[dragIndex] = targetY
     this.weights = opts.weights ?? cpX.map(() => 1)
+    this.anchorX = opts.anchorX ?? [...this.cpX]
+    this.anchorY = opts.anchorY ?? [...this.cpY]
+    this.anchorWeight = opts.anchorWeight ?? 0
 
     const gc = this.numerator().flatCoeffs()
     const allSigns = gc.map((v) => (v > 0 ? -1 : 1))
@@ -115,25 +128,33 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
 
   computeObjective(): number {
     let s = 0
+    const aw = this.anchorWeight
     for (let i = 0; i < this.cpX.length; i++) {
       const dx = this.cpX[i] - this.targetX[i]
       const dy = this.cpY[i] - this.targetY[i]
       s += 0.5 * this.weights[i] * (dx * dx + dy * dy)
+      if (aw > 0) {
+        const ax = this.cpX[i] - this.anchorX[i]
+        const ay = this.cpY[i] - this.anchorY[i]
+        s += 0.5 * aw * (ax * ax + ay * ay)
+      }
     }
     return s
   }
   computeObjectiveGradient(): number[] {
-    const gx = this.cpX.map((x, i) => this.weights[i] * (x - this.targetX[i]))
-    const gy = this.cpY.map((y, i) => this.weights[i] * (y - this.targetY[i]))
+    const aw = this.anchorWeight
+    const gx = this.cpX.map((x, i) => this.weights[i] * (x - this.targetX[i]) + aw * (x - this.anchorX[i]))
+    const gy = this.cpY.map((y, i) => this.weights[i] * (y - this.targetY[i]) + aw * (y - this.anchorY[i]))
     return [...gx, ...gy]
   }
   computeObjectiveHessian(): Matrix {
     const n = this.numVariables
     const m = this.cpX.length
+    const aw = this.anchorWeight
     const H: Matrix = Array.from({ length: n }, () => new Array<number>(n).fill(0))
     for (let i = 0; i < m; i++) {
-      H[i][i] = this.weights[i]
-      H[m + i][m + i] = this.weights[i]
+      H[i][i] = this.weights[i] + aw
+      H[m + i][m + i] = this.weights[i] + aw
     }
     return H
   }
@@ -191,11 +212,20 @@ export function slideCurve(
   dragIndex: number,
   targetX: number,
   targetY: number,
-  opts: { disableSliding?: boolean; closed?: boolean } & Partial<OptimizerConfig> = {},
+  opts: {
+    disableSliding?: boolean
+    closed?: boolean
+    anchorX?: number[]
+    anchorY?: number[]
+    anchorWeight?: number
+  } & Partial<OptimizerConfig> = {},
 ): { x: number[]; y: number[]; converged: boolean } {
   const problem = new PlanarCurvatureProblem(cpX, cpY, knots, degree, dragIndex, targetX, targetY, {
     disableSliding: opts.disableSliding,
     closed: opts.closed,
+    anchorX: opts.anchorX,
+    anchorY: opts.anchorY,
+    anchorWeight: opts.anchorWeight,
   })
   const optimizer = new PrimalDualOptimizer(problem, {
     maxIterations: opts.maxIterations ?? 80,

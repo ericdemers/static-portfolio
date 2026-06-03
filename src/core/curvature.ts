@@ -82,6 +82,39 @@ export function curvatureExtremaNumeratorPlanarPeriodic(
   return normSq.multiply(crossPrime3).subtract(dot.multiply(crossPrime2).scale(3))
 }
 
+/** Parameters t ∈ [0,1) of the curvature extrema of a closed curve (zeros of periodic g). */
+export function closedCurvatureExtremaParameters(
+  x: readonly number[],
+  y: readonly number[],
+  knots: readonly number[],
+  degree: number,
+  samples = 600,
+): number[] {
+  const g = curvatureExtremaNumeratorPlanarPeriodic(x, y, knots, degree)
+  const f = (t: number) => g.evaluate(((t % 1) + 1) % 1)
+  const zeros: number[] = []
+  let prevT = 0
+  let prevV = f(0)
+  for (let i = 1; i <= samples; i++) {
+    const t = i / samples
+    const v = f(t)
+    if (prevV === 0) zeros.push(prevT)
+    else if (prevV * v < 0) {
+      let a = prevT
+      let b = t
+      for (let k = 0; k < 40; k++) {
+        const m = (a + b) / 2
+        if (f(a) * f(m) <= 0) b = m
+        else a = m
+      }
+      zeros.push((a + b) / 2)
+    }
+    prevT = t
+    prevV = v
+  }
+  return zeros
+}
+
 // ============================================================================
 // Rational and complex-rational curvature numerators (Chen complexity
 // reduction). Both work on the homogeneous coordinate functions and produce a

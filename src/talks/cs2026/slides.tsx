@@ -6,6 +6,7 @@ import WithoutSlidingDemo from './WithoutSlidingDemo'
 import WithoutSlidingPanel from './WithoutSlidingPanel'
 import ExtremaFusionDemo from './ExtremaFusionDemo'
 import FusionPanel from './FusionPanel'
+import OvalDemo from './OvalDemo'
 
 /**
  * "Without Sliding" slide — owns the constraint-toggle state so the panel
@@ -345,7 +346,7 @@ export const slides: SlideDefinition[] = [
             </ul>
           </>
         }
-        figure={<DemoPlaceholder label="Oval — closed-curve sliding" />}
+        figure={<OvalDemo width={520} height={520} />}
       />
     ),
   },
