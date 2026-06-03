@@ -1,6 +1,28 @@
+import { useState } from 'react'
 import type { SlideDefinition } from '../framework/types'
 import Math from '../framework/Math'
-import CurvatureDemo from '../../components/CurvatureDemo'
+import ExtremumSlidingDemo from './ExtremumSlidingDemo'
+import WithoutSlidingDemo from './WithoutSlidingDemo'
+import WithoutSlidingPanel from './WithoutSlidingPanel'
+
+/**
+ * "Without Sliding" slide — owns the constraint-toggle state so the panel
+ * button and the demo viewer stay in sync (controlled-state pattern).
+ */
+function WithoutSlidingSlideContent() {
+  const [constrain, setConstrain] = useState(true)
+  const [bound, setBound] = useState<number | null>(null)
+  return (
+    <div style={{ display: 'flex', height: '100%', gap: 0 }}>
+      <div style={{ width: '32%', paddingRight: 24, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <WithoutSlidingPanel constrainExtrema={constrain} onToggle={setConstrain} bound={bound} />
+      </div>
+      <div style={{ width: '68%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <WithoutSlidingDemo constrainExtrema={constrain} onBoundChange={setBound} />
+      </div>
+    </div>
+  )
+}
 
 /** Placeholder for the closed-curve / dataset demos pending their core/ problem variants. */
 function DemoPlaceholder({ label }: { label: string }) {
@@ -153,26 +175,37 @@ export const slides: SlideDefinition[] = [
 
   {
     type: 'content',
+    content: <WithoutSlidingSlideContent />,
+  },
+
+  {
+    type: 'content',
     content: (
-      <DemoSlide
-        panel={
-          <>
-            <h2 style={{ fontSize: '1.1em' }}>With Sliding</h2>
-            <p>Drag a control point. Toggle <strong>Constrained (sliding)</strong>.</p>
-            <p style={{ marginTop: '0.6em' }}>
-              Below: <Math>{'g(t)'}</Math>, the numerator of <Math>{"\\kappa'(t)"}</Math>. Its Bernstein
-              coefficients are shown (
-              <span style={{ color: '#16a34a', fontWeight: 700 }}>+</span> /{' '}
-              <span style={{ color: '#dc2626', fontWeight: 700 }}>−</span>); the sign-change count is the bound
-              on curvature extrema.
-            </p>
-            <p style={{ marginTop: '0.6em' }}>
-              <Math>{'S^-(g)'}</Math> is monotone non-increasing.
-            </p>
-          </>
-        }
-        figure={<CurvatureDemo />}
-      />
+      <div style={{ display: 'flex', height: '100%', gap: 0 }}>
+        <div
+          style={{
+            width: '32%',
+            paddingRight: 24,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+          }}
+        >
+          <h2 style={{ fontSize: '1.1em' }}>With Sliding</h2>
+          <p>Drag the orange marker — the maximum of curvature.</p>
+          <p style={{ marginTop: '0.6em' }}>
+            Below: <Math>{'g(t)'}</Math>, the numerator of <Math>{"\\kappa'(t)"}</Math> — computable
+            analytically. Its 11 Bernstein coefficients are shown (
+            <span style={{ color: '#16a34a', fontWeight: 700 }}>+</span> /{' '}
+            <span style={{ color: '#dc2626', fontWeight: 700 }}>−</span>); faded dots are inactive
+            constraints, free to slide.
+          </p>
+          <p style={{ marginTop: '0.6em' }}>One sign change, moving with the extremum.</p>
+        </div>
+        <div style={{ width: '68%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <ExtremumSlidingDemo width={800} height={580} />
+        </div>
+      </div>
     ),
   },
 
