@@ -71,9 +71,24 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
   private anchorWeight: number
   private signs: number[] // per ACTIVE g constraint
   private activeIdx: number[] // indices into g.flatCoeffs()
+  // Per-constraint scale = |g_i| at the start (floored). Dividing each
+  // constraint (and its Jacobian row) by this normalizes every active slack to
+  // ≈1 at the start, collapsing g's huge dynamic range (its Bernstein coeffs
+  // can span >10 orders of magnitude on real curves — e.g. 0.4 next to 1e12 —
+  // which otherwise makes the KKT system hopelessly ill-conditioned and the
+  // optimizer give up). Sign-invariant (scale > 0), so the feasible set and the
+  // bound are unchanged; only the numerics improve.
+  private gScale: number[] = []
+  // The optimizer works in normalized variables x̃ = cp / coordScale (so the
+  // control points are O(1) regardless of world units). Keeps the objective
+  // Hessian and the constraint Jacobian on comparable scales — the companion to
+  // gScale. Real coords are recovered in setVariables; gradient/Hessian/Jacobian
+  // carry the chain-rule factor.
+  private coordScale = 1
   private preserveInflections: boolean
   private fActiveIdx: number[] = []
   private fSigns: number[] = []
+  private fScale: number[] = []
   private cachedCons: number[] | null = null
   private cachedJac: Matrix | null = null
 
@@ -111,6 +126,13 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
     this.anchorX = opts.anchorX ?? [...this.cpX]
     this.anchorY = opts.anchorY ?? [...this.cpY]
     this.anchorWeight = opts.anchorWeight ?? 0
+    this.coordScale = Math.max(
+      1,
+      ...this.cpX.map(Math.abs),
+      ...this.cpY.map(Math.abs),
+      ...this.targetX.map(Math.abs),
+      ...this.targetY.map(Math.abs),
+    )
 
     this.preserveInflections = opts.preserveInflections ?? false
 
@@ -119,6 +141,7 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
     const inactive = opts.disableSliding ? new Set<number>() : computeInactiveSet(gc)
     this.activeIdx = gc.map((_, i) => i).filter((i) => !inactive.has(i))
     this.signs = this.activeIdx.map((i) => allSigns[i])
+    this.gScale = this.activeIdx.map((i) => Math.max(Math.abs(gc[i]), 1e-12))
 
     if (this.preserveInflections) {
       const fc = this.inflectionNumerator().flatCoeffs()
@@ -126,6 +149,7 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
       const fInactive = opts.disableSliding ? new Set<number>() : computeInactiveSet(fc)
       this.fActiveIdx = fc.map((_, i) => i).filter((i) => !fInactive.has(i))
       this.fSigns = this.fActiveIdx.map((i) => fAllSigns[i])
+      this.fScale = this.fActiveIdx.map((i) => Math.max(Math.abs(fc[i]), 1e-12))
     }
   }
 
@@ -168,12 +192,14 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
     return this.cpX.length * 2
   }
   getVariables(): number[] {
-    return [...this.cpX, ...this.cpY]
+    const s = this.coordScale
+    return [...this.cpX.map((v) => v / s), ...this.cpY.map((v) => v / s)]
   }
   setVariables(x: number[]): void {
     const n = this.cpX.length
-    this.cpX = x.slice(0, n)
-    this.cpY = x.slice(n)
+    const s = this.coordScale
+    this.cpX = x.slice(0, n).map((v) => v * s)
+    this.cpY = x.slice(n).map((v) => v * s)
     this.cachedCons = null
     this.cachedJac = null
   }
@@ -194,19 +220,23 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
     return s
   }
   computeObjectiveGradient(): number[] {
+    // ∇_x̃ f = coordScale · ∇_cp f (chain rule for x̃ = cp / coordScale).
     const aw = this.anchorWeight
-    const gx = this.cpX.map((x, i) => this.weights[i] * (x - this.targetX[i]) + aw * (x - this.anchorX[i]))
-    const gy = this.cpY.map((y, i) => this.weights[i] * (y - this.targetY[i]) + aw * (y - this.anchorY[i]))
+    const s = this.coordScale
+    const gx = this.cpX.map((x, i) => s * (this.weights[i] * (x - this.targetX[i]) + aw * (x - this.anchorX[i])))
+    const gy = this.cpY.map((y, i) => s * (this.weights[i] * (y - this.targetY[i]) + aw * (y - this.anchorY[i])))
     return [...gx, ...gy]
   }
   computeObjectiveHessian(): Matrix {
+    // ∇²_x̃ f = coordScale² · ∇²_cp f.
     const n = this.numVariables
     const m = this.cpX.length
     const aw = this.anchorWeight
+    const s2 = this.coordScale * this.coordScale
     const H: Matrix = Array.from({ length: n }, () => new Array<number>(n).fill(0))
     for (let i = 0; i < m; i++) {
-      H[i][i] = this.weights[i] + aw
-      H[m + i][m + i] = this.weights[i] + aw
+      H[i][i] = (this.weights[i] + aw) * s2
+      H[m + i][m + i] = (this.weights[i] + aw) * s2
     }
     return H
   }
@@ -217,20 +247,27 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
   computeConstraints(): number[] {
     if (!this.cachedCons) {
       const gc = this.numerator().flatCoeffs()
-      const cons = this.activeIdx.map((i) => gc[i])
+      const cons = this.activeIdx.map((i, k) => gc[i] / this.gScale[k])
       if (this.preserveInflections) {
         const fc = this.inflectionNumerator().flatCoeffs()
-        for (const i of this.fActiveIdx) cons.push(fc[i])
+        this.fActiveIdx.forEach((i, k) => cons.push(fc[i] / this.fScale[k]))
       }
       this.cachedCons = cons
     }
     return this.cachedCons
   }
   computeConstraintJacobian(): Matrix {
+    // ∂c/∂x̃ = coordScale · ∂c/∂cp, and divide each row by its constraint scale.
     if (!this.cachedJac) {
-      const rows = this.jacRows(this.gradient(), this.activeIdx)
+      const s = this.coordScale
+      const rows = this.jacRows(this.gradient(), this.activeIdx).map((row, k) =>
+        row.map((v) => (v * s) / this.gScale[k]),
+      )
       if (this.preserveInflections) {
-        rows.push(...this.jacRows(this.inflectionGrad(), this.fActiveIdx))
+        const fRows = this.jacRows(this.inflectionGrad(), this.fActiveIdx).map((row, k) =>
+          row.map((v) => (v * s) / this.fScale[k]),
+        )
+        rows.push(...fRows)
       }
       this.cachedJac = rows
     }
