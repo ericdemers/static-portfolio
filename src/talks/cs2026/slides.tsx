@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { SlideDefinition } from '../framework/types'
 import Math from '../framework/Math'
+import WorkbenchLink from '../framework/WorkbenchLink'
 import ExtremumSlidingDemo from './ExtremumSlidingDemo'
 import WithoutSlidingDemo from './WithoutSlidingDemo'
 import WithoutSlidingPanel from './WithoutSlidingPanel'
@@ -662,6 +663,11 @@ export const slides: SlideDefinition[] = [
             bound-preserving editing group, now on the surface.
           </li>
         </ul>
+        <div style={{ marginTop: '1.4em' }}>
+          <WorkbenchLink to="/lab/lie-sphere" talkSlug="cs2026">
+            Open the Lie Sphere Workbench →
+          </WorkbenchLink>
+        </div>
       </>
     ),
   },
@@ -696,7 +702,10 @@ export const slides: SlideDefinition[] = [
     content: (
       <>
         <h2>References</h2>
-        <ul style={{ fontSize: '0.78em', lineHeight: '1.5' }}>
+        <h3 style={{ fontSize: '0.9em', marginTop: '0.8em', color: '#374151' }}>
+          Variation diminishing &amp; splines
+        </h3>
+        <ul style={{ fontSize: '0.8em', lineHeight: '1.5', marginTop: '0.3em' }}>
           <li>S. Karlin, <em>Total Positivity, Vol. I</em>. Stanford University Press, 1968.</li>
           <li>
             I.J. Schoenberg, "On spline functions," in O. Shisha (ed.), <em>Inequalities</em>, Academic Press,
@@ -707,8 +716,18 @@ export const slides: SlideDefinition[] = [
             2007.
           </li>
           <li>
-            T.N.T. Goodman, "A geometric proof for the variation diminishing property of B-spline
-            approximation," <em>J. Approx. Theory</em> 50 (1987), 111–126.
+            J.M. Lane, R.F. Riesenfeld, "A geometric proof for the variation diminishing property of B-spline
+            approximation," <em>J. Approx. Theory</em> 37 (1983), 1–4.
+          </li>
+        </ul>
+        <h3 style={{ fontSize: '0.9em', marginTop: '0.8em', color: '#374151' }}>
+          Fairness &amp; curvature optimization
+        </h3>
+        <ul style={{ fontSize: '0.8em', lineHeight: '1.5', marginTop: '0.3em' }}>
+          <li>
+            N.S. Sapidis (ed.), <em>Designing Fair Curves and Surfaces: Shape Quality in Geometric Modeling
+            and Computer-Aided Design</em>. SIAM, 1994. — incl. A.K. Jones, "Curvature integration through
+            constrained optimization" (Ch. 2).
           </li>
           <li>
             É. Demers, C. Tribes, F. Guibault, "A selective eraser of curvature extrema for B-spline curves,"{' '}

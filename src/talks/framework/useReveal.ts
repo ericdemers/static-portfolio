@@ -9,6 +9,7 @@ interface RevealDeck {
   initialize(): Promise<void>
   on(event: string, cb: (e: { indexh: number }) => void): void
   configure(opts: Record<string, unknown>): void
+  slide(indexh: number): void
   destroy(): void
 }
 
