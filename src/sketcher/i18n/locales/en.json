@@ -1,0 +1,45 @@
+{
+  "menu": {
+    "home": "Home",
+    "load": "Load",
+    "save": "Save",
+    "clear": "Clear",
+    "darkMode": "Dark Mode",
+    "lightMode": "Light Mode",
+    "language": "Language"
+  },
+  "languages": {
+    "en": "English",
+    "fr": "French"
+  },
+  "panels": {
+    "basis": "Basis",
+    "curvature": "Curvature",
+    "basisFunctions": "Basis Functions",
+    "degree": "degree",
+    "range": "Range",
+    "preserveExtrema": "Bound the number of extrema",
+    "transform": "Transform"
+  },
+  "curveTypes": {
+    "type": "Type",
+    "polynomial": "Polynomial",
+    "rational": "Rational",
+    "complex": "Complex"
+  },
+  "actions": {
+    "delete": "Delete",
+    "deleteKnot": "Delete Knot",
+    "degree": "Degree"
+  },
+  "tools": {
+    "draw": "Draw",
+    "line": "Line",
+    "arc": "Arc",
+    "spiral": "Spiral"
+  },
+  "hints": {
+    "drawToStart": "Draw to start",
+    "touchToDraw": "Touch anywhere to draw"
+  }
+}

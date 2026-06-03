@@ -1,0 +1,45 @@
+{
+  "menu": {
+    "home": "Главная",
+    "load": "Загрузить",
+    "save": "Сохранить",
+    "clear": "Очистить",
+    "darkMode": "Тёмная тема",
+    "lightMode": "Светлая тема",
+    "language": "Язык"
+  },
+  "languages": {
+    "en": "Английский",
+    "fr": "Французский"
+  },
+  "panels": {
+    "basis": "Базис",
+    "curvature": "Кривизна",
+    "basisFunctions": "Базисные функции",
+    "degree": "степень",
+    "range": "Диапазон",
+    "preserveExtrema": "Ограничить число экстремумов",
+    "transform": "Трансформация"
+  },
+  "curveTypes": {
+    "type": "Тип",
+    "polynomial": "Полиномиальный",
+    "rational": "Рациональный",
+    "complex": "Комплексный"
+  },
+  "actions": {
+    "delete": "Удалить",
+    "deleteKnot": "Удалить узел",
+    "degree": "Степень"
+  },
+  "tools": {
+    "draw": "Рисовать",
+    "line": "Линия",
+    "arc": "Дуга",
+    "spiral": "Спираль"
+  },
+  "hints": {
+    "drawToStart": "Рисуйте чтобы начать",
+    "touchToDraw": "Коснитесь в любом месте чтобы рисовать"
+  }
+}

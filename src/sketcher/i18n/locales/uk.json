@@ -1,0 +1,45 @@
+{
+  "menu": {
+    "home": "Головна",
+    "load": "Завантажити",
+    "save": "Зберегти",
+    "clear": "Очистити",
+    "darkMode": "Темна тема",
+    "lightMode": "Світла тема",
+    "language": "Мова"
+  },
+  "languages": {
+    "en": "Англійська",
+    "fr": "Французька"
+  },
+  "panels": {
+    "basis": "Базис",
+    "curvature": "Кривина",
+    "basisFunctions": "Базисні функції",
+    "degree": "степінь",
+    "range": "Діапазон",
+    "preserveExtrema": "Обмежити кількість екстремумів",
+    "transform": "Трансформація"
+  },
+  "curveTypes": {
+    "type": "Тип",
+    "polynomial": "Поліноміальний",
+    "rational": "Раціональний",
+    "complex": "Комплексний"
+  },
+  "actions": {
+    "delete": "Видалити",
+    "deleteKnot": "Видалити вузол",
+    "degree": "Степінь"
+  },
+  "tools": {
+    "draw": "Малювати",
+    "line": "Лінія",
+    "arc": "Дуга",
+    "spiral": "Спіраль"
+  },
+  "hints": {
+    "drawToStart": "Малюйте щоб почати",
+    "touchToDraw": "Торкніться будь-де щоб малювати"
+  }
+}

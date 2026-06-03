@@ -1,0 +1,45 @@
+{
+  "menu": {
+    "home": "الرئيسية",
+    "load": "تحميل",
+    "save": "حفظ",
+    "clear": "مسح",
+    "darkMode": "الوضع الداكن",
+    "lightMode": "الوضع الفاتح",
+    "language": "اللغة"
+  },
+  "languages": {
+    "en": "الإنجليزية",
+    "fr": "الفرنسية"
+  },
+  "panels": {
+    "basis": "الأساس",
+    "curvature": "الانحناء",
+    "basisFunctions": "الدوال الأساسية",
+    "degree": "الدرجة",
+    "range": "النطاق",
+    "preserveExtrema": "تقييد عدد القيم القصوى",
+    "transform": "تحويل"
+  },
+  "curveTypes": {
+    "type": "النوع",
+    "polynomial": "متعدد الحدود",
+    "rational": "نسبي",
+    "complex": "مركب"
+  },
+  "actions": {
+    "delete": "حذف",
+    "deleteKnot": "حذف العقدة",
+    "degree": "الدرجة"
+  },
+  "tools": {
+    "draw": "رسم",
+    "line": "خط",
+    "arc": "قوس",
+    "spiral": "حلزوني"
+  },
+  "hints": {
+    "drawToStart": "ارسم للبدء",
+    "touchToDraw": "المس في أي مكان للرسم"
+  }
+}

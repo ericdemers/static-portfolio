@@ -1,0 +1,45 @@
+{
+  "menu": {
+    "home": "Home",
+    "load": "Laden",
+    "save": "Opslaan",
+    "clear": "Wissen",
+    "darkMode": "Donkere modus",
+    "lightMode": "Lichte modus",
+    "language": "Taal"
+  },
+  "languages": {
+    "en": "Engels",
+    "fr": "Frans"
+  },
+  "panels": {
+    "basis": "Basis",
+    "curvature": "Kromming",
+    "basisFunctions": "Basisfuncties",
+    "degree": "graad",
+    "range": "Bereik",
+    "preserveExtrema": "Aantal extrema begrenzen",
+    "transform": "Transformeren"
+  },
+  "curveTypes": {
+    "type": "Type",
+    "polynomial": "Polynoom",
+    "rational": "Rationeel",
+    "complex": "Complex"
+  },
+  "actions": {
+    "delete": "Verwijderen",
+    "deleteKnot": "Knoop verwijderen",
+    "degree": "Graad"
+  },
+  "tools": {
+    "draw": "Tekenen",
+    "line": "Lijn",
+    "arc": "Boog",
+    "spiral": "Spiraal"
+  },
+  "hints": {
+    "drawToStart": "Teken om te beginnen",
+    "touchToDraw": "Raak ergens aan om te tekenen"
+  }
+}

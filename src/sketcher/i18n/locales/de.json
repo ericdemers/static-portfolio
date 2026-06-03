@@ -1,0 +1,45 @@
+{
+  "menu": {
+    "home": "Startseite",
+    "load": "Laden",
+    "save": "Speichern",
+    "clear": "Löschen",
+    "darkMode": "Dunkelmodus",
+    "lightMode": "Hellmodus",
+    "language": "Sprache"
+  },
+  "languages": {
+    "en": "Englisch",
+    "fr": "Französisch"
+  },
+  "panels": {
+    "basis": "Basis",
+    "curvature": "Krümmung",
+    "basisFunctions": "Basisfunktionen",
+    "degree": "Grad",
+    "range": "Bereich",
+    "preserveExtrema": "Anzahl der Extrema begrenzen",
+    "transform": "Transformieren"
+  },
+  "curveTypes": {
+    "type": "Typ",
+    "polynomial": "Polynomial",
+    "rational": "Rational",
+    "complex": "Komplex"
+  },
+  "actions": {
+    "delete": "Löschen",
+    "deleteKnot": "Knoten löschen",
+    "degree": "Grad"
+  },
+  "tools": {
+    "draw": "Zeichnen",
+    "line": "Linie",
+    "arc": "Bogen",
+    "spiral": "Spirale"
+  },
+  "hints": {
+    "drawToStart": "Zeichnen um zu beginnen",
+    "touchToDraw": "Berühre irgendwo um zu zeichnen"
+  }
+}

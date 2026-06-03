@@ -1,0 +1,45 @@
+{
+  "menu": {
+    "home": "ホーム",
+    "load": "読み込み",
+    "save": "保存",
+    "clear": "クリア",
+    "darkMode": "ダークモード",
+    "lightMode": "ライトモード",
+    "language": "言語"
+  },
+  "languages": {
+    "en": "英語",
+    "fr": "フランス語"
+  },
+  "panels": {
+    "basis": "基底",
+    "curvature": "曲率",
+    "basisFunctions": "基底関数",
+    "degree": "次数",
+    "range": "範囲",
+    "preserveExtrema": "極値の数を制限",
+    "transform": "変換"
+  },
+  "curveTypes": {
+    "type": "タイプ",
+    "polynomial": "多項式",
+    "rational": "有理式",
+    "complex": "複素数"
+  },
+  "actions": {
+    "delete": "削除",
+    "deleteKnot": "ノット削除",
+    "degree": "次数"
+  },
+  "tools": {
+    "draw": "描画",
+    "line": "直線",
+    "arc": "円弧",
+    "spiral": "螺旋"
+  },
+  "hints": {
+    "drawToStart": "描いて始める",
+    "touchToDraw": "どこでもタッチして描く"
+  }
+}

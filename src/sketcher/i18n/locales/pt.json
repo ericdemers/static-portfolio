@@ -1,0 +1,45 @@
+{
+  "menu": {
+    "home": "Início",
+    "load": "Carregar",
+    "save": "Salvar",
+    "clear": "Limpar",
+    "darkMode": "Modo escuro",
+    "lightMode": "Modo claro",
+    "language": "Idioma"
+  },
+  "languages": {
+    "en": "Inglês",
+    "fr": "Francês"
+  },
+  "panels": {
+    "basis": "Base",
+    "curvature": "Curvatura",
+    "basisFunctions": "Funções base",
+    "degree": "grau",
+    "range": "Intervalo",
+    "preserveExtrema": "Limitar o número de extremos",
+    "transform": "Transformar"
+  },
+  "curveTypes": {
+    "type": "Tipo",
+    "polynomial": "Polinomial",
+    "rational": "Racional",
+    "complex": "Complexo"
+  },
+  "actions": {
+    "delete": "Excluir",
+    "deleteKnot": "Excluir nó",
+    "degree": "Grau"
+  },
+  "tools": {
+    "draw": "Desenhar",
+    "line": "Linha",
+    "arc": "Arco",
+    "spiral": "Espiral"
+  },
+  "hints": {
+    "drawToStart": "Desenhe para começar",
+    "touchToDraw": "Toque em qualquer lugar para desenhar"
+  }
+}

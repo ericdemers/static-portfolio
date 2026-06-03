@@ -1,0 +1,45 @@
+{
+  "menu": {
+    "home": "홈",
+    "load": "불러오기",
+    "save": "저장",
+    "clear": "지우기",
+    "darkMode": "다크 모드",
+    "lightMode": "라이트 모드",
+    "language": "언어"
+  },
+  "languages": {
+    "en": "영어",
+    "fr": "프랑스어"
+  },
+  "panels": {
+    "basis": "기저",
+    "curvature": "곡률",
+    "basisFunctions": "기저 함수",
+    "degree": "차수",
+    "range": "범위",
+    "preserveExtrema": "극값 개수 제한",
+    "transform": "변환"
+  },
+  "curveTypes": {
+    "type": "유형",
+    "polynomial": "다항식",
+    "rational": "유리식",
+    "complex": "복소수"
+  },
+  "actions": {
+    "delete": "삭제",
+    "deleteKnot": "매듭 삭제",
+    "degree": "차수"
+  },
+  "tools": {
+    "draw": "그리기",
+    "line": "직선",
+    "arc": "호",
+    "spiral": "나선"
+  },
+  "hints": {
+    "drawToStart": "그려서 시작하세요",
+    "touchToDraw": "아무 곳이나 터치해서 그리기"
+  }
+}

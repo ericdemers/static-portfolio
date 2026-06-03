@@ -1,0 +1,45 @@
+{
+  "menu": {
+    "home": "首页",
+    "load": "加载",
+    "save": "保存",
+    "clear": "清除",
+    "darkMode": "深色模式",
+    "lightMode": "浅色模式",
+    "language": "语言"
+  },
+  "languages": {
+    "en": "英语",
+    "fr": "法语"
+  },
+  "panels": {
+    "basis": "基函数",
+    "curvature": "曲率",
+    "basisFunctions": "基函数",
+    "degree": "阶数",
+    "range": "范围",
+    "preserveExtrema": "限制极值数量",
+    "transform": "变换"
+  },
+  "curveTypes": {
+    "type": "类型",
+    "polynomial": "多项式",
+    "rational": "有理",
+    "complex": "复数"
+  },
+  "actions": {
+    "delete": "删除",
+    "deleteKnot": "删除节点",
+    "degree": "阶数"
+  },
+  "tools": {
+    "draw": "绘制",
+    "line": "直线",
+    "arc": "圆弧",
+    "spiral": "螺旋"
+  },
+  "hints": {
+    "drawToStart": "绘制以开始",
+    "touchToDraw": "点击任意位置开始绘制"
+  }
+}
