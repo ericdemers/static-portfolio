@@ -415,8 +415,13 @@ export default function ComplexRationalDemo({ width = 580, height = 580, childre
                 : {}),
             })
             cpsLiveRef.current = points
-            // Weights (hence Farin geometry) unchanged; keep cached farins/wrap.
-            applyCpsToDom(points, liveFarinPositionsRef.current, liveWrapWeightRef.current)
+            // Weights are held FIXED by the optimizer, so the Farin points must
+            // RE-DERIVE from the moved control points + those fixed weights
+            // (q = (w₀z₀+w₁z₁)/(w₀+w₁) moves with z). Passing `undefined` for
+            // the stored positions lets computeComplexFarinPoints recompute them
+            // — otherwise they'd render frozen at their drag-start spots.
+            liveFarinPositionsRef.current = undefined
+            applyCpsToDom(points, undefined, liveWrapWeightRef.current)
           } else if (dragKind === 'farin') {
             // Free mode Farin drag — direct weight update from the new position.
             const updated = updateWeightsFromComplexFarin(curve, dragIndex, { x: targetX, y: targetY })
