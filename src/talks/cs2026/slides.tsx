@@ -8,6 +8,7 @@ import ExtremaFusionDemo from './ExtremaFusionDemo'
 import FusionPanel from './FusionPanel'
 import OvalDemo from './OvalDemo'
 import AllFlipDiagram from './AllFlipDiagram'
+import WalkDiagram from './WalkDiagram'
 
 /**
  * "Without Sliding" slide — owns the constraint-toggle state so the panel
@@ -263,6 +264,34 @@ export const slides: SlideDefinition[] = [
     type: 'content',
     content: (
       <>
+        <h2>Alternating sequence <i>σ</i></h2>
+        <p style={{ marginTop: '0.5em' }}>
+          Inside an alternating sequence <Math>{"\\sigma"}</Math> of{' '}
+          <Math>{"\\mathbf{b}"}</Math>:
+        </p>
+        <ul>
+          <li>
+            <strong>Interior</strong>: <Math>{"\\sigma"}</Math> already has
+            the <em>maximum possible</em> sign-change count (every adjacent
+            pair is a sign change). Any flip can only reduce or preserve
+            interior sign changes.
+          </li>
+          <li>
+            <strong>Junctions</strong>: <Math>{"\\sigma"}</Math>'s
+            boundary pairs with the rest of the polygon are <em>not</em>{' '}
+            sign changes. Each can <em>become</em> one if{' '}
+            <Math>{"\\sigma"}</Math>'s endpoint flips, at most{' '}
+            <Math>{"+1"}</Math> each.
+          </li>
+        </ul>
+      </>
+    ),
+  },
+
+  {
+    type: 'content',
+    content: (
+      <>
         <h2>All-flip</h2>
         <div
           style={{
@@ -294,20 +323,64 @@ export const slides: SlideDefinition[] = [
     content: (
       <>
         <h2>Anchor lemma</h2>
-        <p>
-          For any flip <Math>{'G \\subseteq \\sigma'}</Math> that leaves at least one sign fixed (the{' '}
-          <strong>anchor</strong>), <Math>{'S^{-}(\\mathrm{flip}_G\\,\\mathbf{b}) \\leq S^{-}(\\mathbf{b})'}</Math>.
+        <div style={{ display: 'flex', gap: 24, marginTop: '0.5em', alignItems: 'flex-start' }}>
+          <div style={{ flex: 1, maxWidth: '52%' }}>
+            <p>
+              For any flip <Math>{"G \\subseteq \\sigma"}</Math> that
+              leaves at least one sign fixed (the{' '}
+              <strong>anchor</strong>),{' '}
+              <Math>{"S^{-}(\\mathrm{flip}_G\\,\\mathbf{b}) \\leq S^{-}(\\mathbf{b})"}</Math>.
+            </p>
+            <p style={{ marginTop: '0.8em' }}>
+              <em>Proof.</em> Encode the flip as a boolean pattern{' '}
+              <Math>{"\\chi"}</Math> on <Math>{"\\sigma"}</Math>, 1 if
+              sign is flipped, 0 otherwise.
+            </p>
+            <p style={{ marginTop: '0.6em' }}>
+              Each <em>transition</em> of <Math>{"\\chi"}</Math> destroys
+              one interior sign change; <Math>{"T(\\chi)"}</Math> counts
+              the transitions.
+            </p>
+            <p style={{ textAlign: 'center', margin: '0.7em 0' }}>
+              <Math display>{"S^{-}(\\mathrm{flip}_G\\,\\mathbf{b}) - S^{-}(\\mathbf{b}) \\;\\leq\\; \\chi(0) + \\chi(k-1) - T(\\chi)."}</Math>
+            </p>
+            <p style={{ marginTop: '0.6em' }}>
+              With one anchor the right-hand side is{' '}
+              <Math>{"\\leq 0"}</Math>. <Math>{"\\blacksquare"}</Math>
+            </p>
+          </div>
+          <div style={{ flex: 1, maxWidth: '48%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <WalkDiagram />
+          </div>
+        </div>
+      </>
+    ),
+  },
+
+  {
+    type: 'content',
+    content: (
+      <>
+        <h2>Multiple sequences</h2>
+        <p style={{ marginTop: '0.5em' }}>
+          For a polygon <Math>{"\\mathbf{b}"}</Math> with alternating
+          sequences <Math>{"\\sigma_1, \\ldots, \\sigma_n"}</Math>,{' '}
+          <strong>one anchor per sequence</strong> gives safety:{' '}
+          <Math>{"S^{-}(\\mathrm{flip}\\,\\mathbf{b}) \\leq S^{-}(\\mathbf{b})"}</Math>.
         </p>
         <p style={{ marginTop: '0.8em' }}>
-          <em>Proof.</em> Encode the flip as a boolean pattern <Math>{'\\chi'}</Math> on{' '}
-          <Math>{'\\sigma'}</Math>. Each transition of <Math>{'\\chi'}</Math> destroys one interior sign
-          change; <Math>{'T(\\chi)'}</Math> counts the transitions.
+          <em>Proof.</em> Apply the anchor lemma to each{' '}
+          <Math>{"\\sigma_i"}</Math> independently. A shared junction
+          between adjacent <Math>{"\\sigma_i"}</Math> and{' '}
+          <Math>{"\\sigma_{i+1}"}</Math> contributes via XOR:
         </p>
-        <Math display>
-          {'S^{-}(\\mathrm{flip}_G\\,\\mathbf{b}) - S^{-}(\\mathbf{b}) \\;\\leq\\; \\chi(0) + \\chi(k-1) - T(\\chi).'}
-        </Math>
-        <p>
-          With one anchor the right-hand side is <Math>{'\\leq 0'}</Math>. <Math>{'\\blacksquare'}</Math>
+        <p style={{ textAlign: 'center', margin: '0.5em 0' }}>
+          <Math display>{"\\chi_i(\\text{last}) \\oplus \\chi_{i+1}(0) \\;\\leq\\; \\chi_i(\\text{last}) + \\chi_{i+1}(0),"}</Math>
+        </p>
+        <p style={{ marginTop: '0.4em' }}>
+          so the per-sequence bounds sum without double-counting. Each
+          is <Math>{"\\leq 0"}</Math> by the anchor lemma, so the total
+          is <Math>{"\\leq 0"}</Math>. <Math>{"\\blacksquare"}</Math>
         </p>
       </>
     ),
