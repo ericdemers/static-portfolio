@@ -10,6 +10,10 @@ import { computeRegionPreview } from '../utils/regionSmooth'
 import { computeRationalFarinPoints, computeComplexFarinPoints, computeEdgePerpendicular, computeComplexControlPolygonPath, type RationalFarinPoint, type ComplexFarinPoint } from '../utils/farinPoints'
 import { getBasisColor } from '../utils/colors'
 import { computeCurvatureExtremaParameters, computeClosedCurvatureExtremaParameters, computeRationalCurvatureExtremaParameters, computeClosedRationalCurvatureExtremaParameters, computeClosedComplexCurvatureExtremaParameters, computeOpenComplexCurvatureExtremaParameters, computeClosedInflectionParameters } from '../optimizer'
+// Open planar B-spline curvature-extrema markers now come from core/ (accurate
+// dense-scan zeros), replacing the legacy coefficient-root finder which reports
+// spurious extra markers on fine-knotted curves.
+import { openCurvatureExtremaParameters as coreOpenExtremaParams } from '../../core'
 import TransformWidget from './TransformWidget'
 import { threeArcPointsFromNoisyPoints, circleArcFromThreePoints } from '../utils/circleArc'
 import { evaluatePHNormal, findNearestPointParam, computePHCurveFromUV, type PHMetadata } from '../optimizer/phCurve'
@@ -161,10 +165,11 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
           curve.degree
         )
       } else {
-        params = computeCurvatureExtremaParameters(
-          curve.knots,
+        params = coreOpenExtremaParams(
           curve.controlPoints.map((p) => p.x),
-          curve.controlPoints.map((p) => p.y)
+          curve.controlPoints.map((p) => p.y),
+          curve.knots,
+          curve.degree,
         )
       }
 

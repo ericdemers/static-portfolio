@@ -9,6 +9,10 @@ import { basisFunctions, findKnotSpan, isClampedEndKnot, isPeriodicRepresentatio
 import { curvatureComb } from '../utils/curvature'
 import { getBasisColor } from '../utils/colors'
 import { computeOpenCurveConstraintState, computeClosedCurveConstraintState, computeRationalCurveConstraintState, computeClosedRationalCurveConstraintState, computeComplexCurvatureConstraintState, computeOpenComplexCurvatureConstraintState, computeCurvatureExtremaParameters } from '../optimizer'
+// Open planar B-spline: the displayed bound S and the marker count come from
+// core/ (what the core optimizer actually preserves), not the legacy code —
+// which computed them on a different g decomposition and could drift.
+import { curvatureExtremaNumeratorPlanar as coreCurvatureNumerator } from '../../core'
 
 export default function BottomPanel() {
   const { panelView, curves, selectedCurveId } = useSceneStore()
@@ -664,8 +668,15 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
   // Current curvature-extrema count of the bounded preview (the upper bound S).
   const smoothBound = useMemo(() => {
     if (!smooth || smoothMode !== 'laplacian-bounded') return null
-    try { return computeCurvatureExtremaParameters(curve.knots, smooth.cpX, smooth.cpY).length } catch { return null }
-  }, [smooth, smoothMode, curve.knots])
+    try {
+      // Open planar B-spline: core's S⁻ (the bound), consistent with the drag
+      // display; else the legacy marker count.
+      if (curve.kind === 'bspline' && !curve.closed) {
+        return coreCurvatureNumerator(smooth.cpX, smooth.cpY, curve.knots, curve.degree).signChanges()
+      }
+      return computeCurvatureExtremaParameters(curve.knots, smooth.cpX, smooth.cpY).length
+    } catch { return null }
+  }, [smooth, smoothMode, curve])
 
   // Curve shown in the κ panel: the live preview when smoothing, else the curve.
   const shownCurve = useMemo(() => {
@@ -745,6 +756,19 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
   // count being held. Shown next to the toggle, mirroring the cs2026 talk slide.
   const extremaBound = useMemo(() => {
     if (!constraintState) return null
+    // Open planar B-spline: show core's S⁻ (the bound the core optimizer
+    // preserves), so the displayed "S" matches what's actually constrained
+    // rather than the legacy constraint-state count on a different decomposition.
+    if (curve.kind === 'bspline' && !curve.closed) {
+      try {
+        return coreCurvatureNumerator(
+          curve.controlPoints.map((p) => p.x),
+          curve.controlPoints.map((p) => p.y),
+          curve.knots,
+          curve.degree,
+        ).signChanges()
+      } catch { /* fall through to legacy */ }
+    }
     let count = 0, last = 0
     for (const v of constraintState.gCPs) {
       if (v === 0) continue
@@ -753,7 +777,7 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
       last = s
     }
     return count
-  }, [constraintState])
+  }, [constraintState, curve])
 
   // Find curvature range for scaling
   const curvatures = curvatureData.map((d) => d.curvature)

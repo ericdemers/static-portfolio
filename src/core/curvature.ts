@@ -129,6 +129,48 @@ export function closedCurvatureExtremaParameters(
   return zeros
 }
 
+/**
+ * Parameters t of the curvature extrema of an OPEN (clamped) planar B-spline —
+ * the zeros of g on the curve's parameter domain [knots[degree], knots[n]].
+ * Accurate (dense scan + bisection), unlike a coefficient-root finder that can
+ * report spurious zeros on fine-knotted curves.
+ */
+export function openCurvatureExtremaParameters(
+  x: readonly number[],
+  y: readonly number[],
+  knots: readonly number[],
+  degree: number,
+  samples = 800,
+): number[] {
+  const g = curvatureExtremaNumeratorPlanar(x, y, knots, degree)
+  const tMin = knots[degree]
+  const tMax = knots[knots.length - 1 - degree]
+  const span = tMax - tMin
+  if (!(span > 0)) return []
+  const f = (t: number) => g.evaluate(t)
+  const zeros: number[] = []
+  let prevT = tMin
+  let prevV = f(tMin)
+  for (let i = 1; i <= samples; i++) {
+    const t = tMin + (i / samples) * span
+    const v = f(t)
+    if (prevV === 0) zeros.push(prevT)
+    else if (prevV * v < 0) {
+      let a = prevT
+      let b = t
+      for (let k = 0; k < 40; k++) {
+        const m = (a + b) / 2
+        if (f(a) * f(m) <= 0) b = m
+        else a = m
+      }
+      zeros.push((a + b) / 2)
+    }
+    prevT = t
+    prevV = v
+  }
+  return zeros
+}
+
 /** Parameters t ∈ [0,1) of the inflections of a closed curve (zeros of periodic f = c′×c″). */
 export function closedInflectionParameters(
   x: readonly number[],
