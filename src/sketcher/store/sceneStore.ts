@@ -17,7 +17,6 @@ import { optimizeCurve, applyOptimizeResult, applyOptimizeRationalResult, optimi
 // core/ engine. Closed bsplines (periodic-junction knots) + rational stay on
 // the legacy optimizer until core covers those conventions.
 import { slideCurve as coreSlideCurve, curvatureExtremaNumeratorPlanar as coreCurvatureNumerator } from '../../core'
-import { computeCurvatureExtremaParameters as legacyExtremaParams } from '../optimizer/algebra'
 import { computeRationalFarinPoints, updateWeightsFromRationalFarin, updateWeightsFromComplexFarin, projectPointOntoEdge, moveComplexControlPointKeepingFarinFixed, initializeFarinPositionsFromComplexWeights } from '../utils/farinPoints'
 import { csub, cmult, cdiv, cnorm, type Complex } from '../utils/complex'
 import {
@@ -548,28 +547,20 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
           },
         )
         const optimizedCurve = { ...curve, controlPoints: x.map((xi, i) => ({ x: xi, y: y[i] })) } as Curve
-        // DEV self-capture. Logs when a single drag frame raises EITHER measure:
-        //   S⁻      = core's Bernstein sign-change count (the BOUND the theorem
-        //             preserves and the optimizer constrains), or
-        //   actual  = the displayed marker count (zeros of g via the legacy
-        //             computeCurvatureExtremaParameters — what the "S" label shows).
-        // A rise in `actual` while S⁻ holds is the bound staying loose, NOT a
-        // theorem violation; a rise in S⁻ is a real violation. Stripped in prod.
+        // DEV self-capture: log ONLY a genuine bound violation — a single drag
+        // frame that raises S⁻ (core's Bernstein sign-change count, the bound the
+        // theorem preserves and the optimizer constrains). The markers (now also
+        // from core) can legitimately rise within a preserved bound, so they are
+        // NOT a trigger. Stripped in prod.
         if (import.meta.env.DEV) {
           const bx = curve.controlPoints.map((p) => p.x)
           const by = curve.controlPoints.map((p) => p.y)
           const sBefore = coreCurvatureNumerator(bx, by, curve.knots, curve.degree).signChanges()
           const sAfter = coreCurvatureNumerator(x, y, curve.knots, curve.degree).signChanges()
-          let aBefore = -1, aAfter = -1
-          try {
-            aBefore = legacyExtremaParams(curve.knots, bx, by).length
-            aAfter = legacyExtremaParams(curve.knots, x, y).length
-          } catch { /* ignore */ }
-          if (sAfter > sBefore || aAfter > aBefore) {
+          if (sAfter > sBefore) {
             console.warn(
-              `[bound-capture] S⁻(bound) ${sBefore}→${sAfter}  actual(markers) ${aBefore}→${aAfter}  ` +
-                `${sAfter > sBefore ? 'REAL S⁻ VIOLATION' : 'actual rose within preserved bound'}  ` +
-                `dragging cp${pointIndex} → (${newPosition.x.toFixed(3)},${newPosition.y.toFixed(3)})\nINPUT:`,
+              `[bound-violation] S⁻ ${sBefore}→${sAfter} dragging cp${pointIndex} → ` +
+                `(${newPosition.x.toFixed(3)},${newPosition.y.toFixed(3)})\nINPUT:`,
               JSON.stringify({ kind: 'bspline', degree: curve.degree, closed: false, knots: curve.knots, controlPoints: curve.controlPoints }),
             )
           }
