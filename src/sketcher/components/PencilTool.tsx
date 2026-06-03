@@ -42,21 +42,18 @@ const chevronIcon = (expanded: boolean) => (
   </svg>
 )
 
+// Offset: two parallel lines — a curve and its offset copy run parallel.
 const offsetIcon = (
   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-    <path
-      d="M4 16 Q12 4 20 16"
-      strokeWidth={2}
-      strokeLinecap="round"
-      fill="none"
-    />
-    <path
-      d="M6 18 Q12 8 18 18"
-      strokeWidth={2}
-      strokeLinecap="round"
-      fill="none"
-      strokeDasharray="3 2"
-    />
+    <line x1="4" y1="9" x2="20" y2="9" strokeWidth={2} strokeLinecap="round" />
+    <line x1="4" y1="15" x2="20" y2="15" strokeWidth={2} strokeLinecap="round" />
+  </svg>
+)
+
+// PH Curve: a smooth curve.
+const phCurveIcon = (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+    <path d="M3 18 C 7 18, 9 6, 13 6 S 20 11, 21 11" strokeWidth={2} strokeLinecap="round" />
   </svg>
 )
 
@@ -233,249 +230,58 @@ export default function PencilTool({ className }: { className?: string }) {
             )
           })}
 
-          {/* PH Curve submenu */}
+          {/* PH Curve — one tool (AB-PH: enforces the curvature-extrema bound,
+              supports offset + Möbius/Laguerre transforms). Drawn from two
+              points like a line. Offset appears below when a PH curve is
+              selected. */}
           <div className="border-t border-gray-100 dark:border-gray-700 mt-1 pt-1">
-            {/* PH Curve header row — click to expand/collapse */}
-            <button
-              className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                isPHToolActive
-                  ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-              onClick={() => setPhExpanded(!phExpanded)}
-            >
-              <span className="flex-1 text-left">PH Curve</span>
-              {chevronIcon(phExpanded)}
-            </button>
+            {(() => {
+              const isActive = activeTool === 'complex-spiral'
+              const isPinned = isActive && toolLocked
+              return (
+                <div
+                  className={`flex items-center transition-colors ${
+                    isActive ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <button
+                    className={`flex-1 flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                      isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-200'
+                    }`}
+                    onClick={() => {
+                      setActiveTool(isActive ? 'none' : 'complex-spiral')
+                      setPencilExpanded(false)
+                    }}
+                  >
+                    {phCurveIcon}
+                    PH
+                  </button>
 
-            {/* PH sub-items (indented) */}
-            {phExpanded && (
-              <div>
-                {/* Polynomial PH — wired to 'spiral' tool */}
-                {(() => {
-                  const isActive = activeTool === 'spiral'
-                  const isPinned = isActive && toolLocked
-                  return (
-                    <div
-                      className={`flex items-center transition-colors ${
-                        isActive
-                          ? 'bg-blue-50 dark:bg-blue-900/30'
-                          : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      <button
-                        className={`flex-1 pl-8 pr-4 py-2 text-sm text-left transition-colors ${
-                          isActive
-                            ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-gray-700 dark:text-gray-200'
-                        }`}
-                        onClick={() => {
-                          if (isActive) {
-                            setActiveTool('none')
-                          } else {
-                            setActiveTool('spiral')
-                          }
-                          setPencilExpanded(false)
-                        }}
-                      >
-                        Polynomial
-                      </button>
+                  <button
+                    className={`px-3 py-2.5 transition-colors ${
+                      isPinned
+                        ? 'text-blue-500 dark:text-blue-400'
+                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                    }`}
+                    onClick={() => {
+                      if (isPinned) {
+                        setToolLocked(false)
+                      } else {
+                        if (!isActive) setActiveTool('complex-spiral')
+                        setToolLocked(true)
+                      }
+                      setPencilExpanded(false)
+                    }}
+                    aria-label={isPinned ? 'Unpin PH Curve' : 'Pin PH Curve'}
+                  >
+                    {pinIcon(isPinned)}
+                  </button>
+                </div>
+              )
+            })()}
 
-                      <button
-                        className={`px-3 py-2 transition-colors ${
-                          isPinned
-                            ? 'text-blue-500 dark:text-blue-400'
-                            : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
-                        }`}
-                        onClick={() => {
-                          if (isPinned) {
-                            setToolLocked(false)
-                          } else {
-                            if (!isActive) {
-                              setActiveTool('spiral')
-                            }
-                            setToolLocked(true)
-                          }
-                          setPencilExpanded(false)
-                        }}
-                        aria-label={isPinned ? 'Unpin Polynomial PH' : 'Pin Polynomial PH'}
-                      >
-                        {pinIcon(isPinned)}
-                      </button>
-                    </div>
-                  )
-                })()}
-
-                {/* Rational PH — wired to 'rational-spiral' tool */}
-                {(() => {
-                  const isActive = activeTool === 'rational-spiral'
-                  const isPinned = isActive && toolLocked
-                  return (
-                    <div
-                      className={`flex items-center transition-colors ${
-                        isActive
-                          ? 'bg-blue-50 dark:bg-blue-900/30'
-                          : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      <button
-                        className={`flex-1 pl-8 pr-4 py-2 text-sm text-left transition-colors ${
-                          isActive
-                            ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-gray-700 dark:text-gray-200'
-                        }`}
-                        onClick={() => {
-                          if (isActive) {
-                            setActiveTool('none')
-                          } else {
-                            setActiveTool('rational-spiral')
-                          }
-                          setPencilExpanded(false)
-                        }}
-                      >
-                        Rational
-                      </button>
-
-                      <button
-                        className={`px-3 py-2 transition-colors ${
-                          isPinned
-                            ? 'text-blue-500 dark:text-blue-400'
-                            : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
-                        }`}
-                        onClick={() => {
-                          if (isPinned) {
-                            setToolLocked(false)
-                          } else {
-                            if (!isActive) {
-                              setActiveTool('rational-spiral')
-                            }
-                            setToolLocked(true)
-                          }
-                          setPencilExpanded(false)
-                        }}
-                        aria-label={isPinned ? 'Unpin Rational PH' : 'Pin Rational PH'}
-                      >
-                        {pinIcon(isPinned)}
-                      </button>
-                    </div>
-                  )
-                })()}
-
-                {/* Complex Rational PH — wired to 'complex-spiral' tool */}
-                {(() => {
-                  const isActive = activeTool === 'complex-spiral'
-                  const isPinned = isActive && toolLocked
-                  return (
-                    <div
-                      className={`flex items-center transition-colors ${
-                        isActive
-                          ? 'bg-blue-50 dark:bg-blue-900/30'
-                          : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      <button
-                        className={`flex-1 pl-8 pr-4 py-2 text-sm text-left transition-colors ${
-                          isActive
-                            ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-gray-700 dark:text-gray-200'
-                        }`}
-                        onClick={() => {
-                          if (isActive) {
-                            setActiveTool('none')
-                          } else {
-                            setActiveTool('complex-spiral')
-                          }
-                          setPencilExpanded(false)
-                        }}
-                      >
-                        Complex
-                      </button>
-
-                      <button
-                        className={`px-3 py-2 transition-colors ${
-                          isPinned
-                            ? 'text-blue-500 dark:text-blue-400'
-                            : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
-                        }`}
-                        onClick={() => {
-                          if (isPinned) {
-                            setToolLocked(false)
-                          } else {
-                            if (!isActive) {
-                              setActiveTool('complex-spiral')
-                            }
-                            setToolLocked(true)
-                          }
-                          setPencilExpanded(false)
-                        }}
-                        aria-label={isPinned ? 'Unpin Complex PH' : 'Pin Complex PH'}
-                      >
-                        {pinIcon(isPinned)}
-                      </button>
-                    </div>
-                  )
-                })()}
-
-                {/* Offset — conditional, only when a PH curve is selected */}
-                {selectedCurveId && phMetadata.has(selectedCurveId) && (() => {
-                  const isActive = activeTool === 'offset'
-                  const isPinned = isActive && toolLocked
-
-                  return (
-                    <div
-                      className={`flex items-center transition-colors ${
-                        isActive
-                          ? 'bg-blue-50 dark:bg-blue-900/30'
-                          : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      <button
-                        className={`flex-1 pl-8 pr-4 py-2 text-sm text-left transition-colors ${
-                          isActive
-                            ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-gray-700 dark:text-gray-200'
-                        }`}
-                        onClick={() => {
-                          if (isActive) {
-                            setActiveTool('none')
-                            setOffsetSourceCurveId(null)
-                          } else {
-                            setActiveTool('offset')
-                            setOffsetSourceCurveId(selectedCurveId)
-                          }
-                          setPencilExpanded(false)
-                        }}
-                      >
-                        Offset
-                      </button>
-
-                      <button
-                        className={`px-3 py-2 transition-colors ${
-                          isPinned
-                            ? 'text-blue-500 dark:text-blue-400'
-                            : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
-                        }`}
-                        onClick={() => {
-                          if (isPinned) {
-                            setToolLocked(false)
-                          } else {
-                            if (!isActive) {
-                              setActiveTool('offset')
-                              setOffsetSourceCurveId(selectedCurveId)
-                            }
-                            setToolLocked(true)
-                          }
-                          setPencilExpanded(false)
-                        }}
-                        aria-label={isPinned ? 'Unpin Offset' : 'Pin Offset'}
-                      >
-                        {pinIcon(isPinned)}
-                      </button>
-                    </div>
-                  )
-                })()}
-              </div>
-            )}
+            {/* Offset is not here — for a PH curve it lives inside Generate
+                (as the Laguerre slider). */}
           </div>
         </div>
       )}
