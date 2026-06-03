@@ -639,21 +639,27 @@ export const slides: SlideDefinition[] = [
       <>
         <h2>PH curves &amp; Lie sphere transformations</h2>
         <p style={{ marginTop: '0.5em' }}>
-          A <strong>Pythagorean-hodograph</strong> curve is built from a generating function{' '}
-          <Math>{'S'}</Math> — the curve is <Math>{'\\textstyle\\int S^2'}</Math>, so it is PH by
-          construction (rational offsets, rational arc length).
+          A <strong>complex-rational Pythagorean-hodograph</strong> curve{' '}
+          <Math>{'z = A/B'}</Math> is built so its hodograph generator is a
+          perfect square — <Math>{"A'B - AB' = S^2"}</Math> — making the speed{' '}
+          <Math>{"|z'| = |S|^2/|B|^2"}</Math> rational. So it is PH{' '}
+          <em>by construction</em>: rational offsets, rational arc length.
         </p>
         <ul style={{ marginTop: '0.4em' }}>
           <li>
-            The same <Math>{"\\kappa'"}</Math> sign-change bound applies on the PH curve.
+            The same <Math>{"\\kappa'"}</Math> sign-change bound applies on the
+            PH curve — edit the generator, the curvature-extrema count is
+            monotone non-increasing.
           </li>
           <li style={{ marginTop: '0.3em' }}>
-            Revolve it into a <strong>canal surface</strong>: its ridges are exactly the curve's extrema,
-            swept into rings.
+            Revolve it into a <strong>canal surface</strong>: its{' '}
+            <strong>ridges</strong> (curvature extrema of the principal family)
+            are exactly the curve's extrema, swept into rings.
           </li>
           <li style={{ marginTop: '0.3em' }}>
-            <strong>Lie sphere transformations</strong> act linearly on the oriented-contact lift and preserve
-            ridges.
+            <strong>Lie sphere transformations</strong> act linearly on the
+            oriented-contact lift and <em>preserve ridges</em> — a further
+            bound-preserving editing group, now on the surface.
           </li>
         </ul>
       </>
