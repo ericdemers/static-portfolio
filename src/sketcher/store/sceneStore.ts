@@ -16,7 +16,7 @@ import { optimizeCurve, applyOptimizeResult, applyOptimizeRationalResult, optimi
 // MIGRATION: open planar B-spline curvature-extrema drag now runs on the clean
 // core/ engine. Closed bsplines (periodic-junction knots) + rational stay on
 // the legacy optimizer until core covers those conventions.
-import { slideCurve as coreSlideCurve } from '../../core'
+import { slideCurve as coreSlideCurve, curvatureExtremaNumeratorPlanar as coreCurvatureNumerator } from '../../core'
 import { computeRationalFarinPoints, updateWeightsFromRationalFarin, updateWeightsFromComplexFarin, projectPointOntoEdge, moveComplexControlPointKeepingFarinFixed, initializeFarinPositionsFromComplexWeights } from '../utils/farinPoints'
 import { csub, cmult, cdiv, cnorm, type Complex } from '../utils/complex'
 import {
@@ -542,6 +542,19 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
           },
         )
         const optimizedCurve = { ...curve, controlPoints: x.map((xi, i) => ({ x: xi, y: y[i] })) } as Curve
+        // DEV self-capture: if a single drag frame actually raised the bound S⁻
+        // (sign changes of g's Bernstein coeffs), log the exact frame so any
+        // real violation can be replayed deterministically. Stripped in prod.
+        if (import.meta.env.DEV) {
+          const sBefore = coreCurvatureNumerator(curve.controlPoints.map((p) => p.x), curve.controlPoints.map((p) => p.y), curve.knots, curve.degree).signChanges()
+          const sAfter = coreCurvatureNumerator(x, y, curve.knots, curve.degree).signChanges()
+          if (sAfter > sBefore) {
+            console.warn(
+              `[bound-violation] S⁻ ${sBefore}→${sAfter} dragging cp${pointIndex} → (${newPosition.x.toFixed(3)},${newPosition.y.toFixed(3)})\nINPUT:`,
+              JSON.stringify({ kind: 'bspline', degree: curve.degree, closed: false, knots: curve.knots, controlPoints: curve.controlPoints }),
+            )
+          }
+        }
         set((state) => ({
           curves: state.curves.map((c) => (c.id === curveId ? optimizedCurve : c)),
         }))
