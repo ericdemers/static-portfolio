@@ -534,6 +534,11 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
           newPosition.y,
           {
             maxIterations: 20,
+            // Weight the dragged point's target term high so it tracks the
+            // cursor instead of being balanced equally against holding every
+            // other CP put (which felt sluggish/"stuck"). The bound can still
+            // legitimately block a direction that would add a curvature extremum.
+            dragWeight: 25,
             ...(symmetryMaps ? { symmetryMaps } : {}),
             ...(preserveInflections ? { preserveInflections } : {}),
             ...(disableSliding ? { disableSliding } : {}),

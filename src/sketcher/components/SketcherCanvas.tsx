@@ -311,7 +311,7 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
 
   // Handle wheel zoom - smooth exponential scaling towards mouse position
   const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
+    (e: WheelEvent) => {
       e.preventDefault()
       const rect = svgRef.current?.getBoundingClientRect()
       if (!rect) return
@@ -337,6 +337,16 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
     },
     [view.zoom, view.panX, view.panY, setZoom, setPan, dimensions]
   )
+
+  // Attach the wheel handler as a NON-passive native listener so preventDefault
+  // actually suppresses page scroll while zooming. React's onWheel is passive,
+  // which both ignores preventDefault and logs a console warning.
+  useEffect(() => {
+    const el = svgRef.current
+    if (!el) return
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [handleWheel])
 
   // Get control point index at position (for selected curve only)
   const getControlPointAtPosition = useCallback(
@@ -1200,7 +1210,6 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
       ref={svgRef}
       className="w-full h-full bg-white dark:bg-gray-900 touch-none"
       style={{ cursor: getCursor() }}
-      onWheel={handleWheel}
       onContextMenu={(e) => e.preventDefault()}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
