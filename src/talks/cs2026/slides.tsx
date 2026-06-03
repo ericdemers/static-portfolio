@@ -334,20 +334,44 @@ export const slides: SlideDefinition[] = [
   {
     type: 'content',
     content: (
-      <DemoSlide
-        panel={
-          <>
-            <h2 style={{ fontSize: '1.1em' }}>Oval</h2>
-            <p>A closed curve with</p>
-            <ul style={{ marginTop: '0.4em' }}>
-              <li><strong>2</strong> axes of symmetry</li>
-              <li><strong>4</strong> curvature extrema</li>
-              <li><strong>0</strong> inflections</li>
-            </ul>
-          </>
-        }
-        figure={<OvalDemo width={520} height={520} />}
-      />
+      <div style={{ display: 'flex', height: '100%', gap: 0 }}>
+        <div
+          style={{
+            width: '30%',
+            padding: '40px 20px 40px 0',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+          }}
+        >
+          <h2 style={{ fontSize: '1.1em' }}>Oval</h2>
+          <p>A closed curve with</p>
+          <ul style={{ marginTop: '0.4em' }}>
+            <li>
+              <strong>2</strong> axes of symmetry
+            </li>
+            <li>
+              <strong>4</strong> curvature extrema
+            </li>
+            <li>
+              <strong>0</strong> inflections
+            </li>
+          </ul>
+          <p style={{ marginTop: '1em', fontSize: '0.85em', color: '#94a3b8' }}>
+            Drag any control point.
+          </p>
+        </div>
+        <div
+          style={{
+            width: '70%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <OvalDemo />
+        </div>
+      </div>
     ),
   },
 
