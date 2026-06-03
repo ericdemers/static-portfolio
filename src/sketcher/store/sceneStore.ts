@@ -13,6 +13,10 @@ import { createRealRationalPHFromTwoPoints, computeRealRationalPHCurve, computeR
 import { insertKnot1D, elevateDegree1D, removeKnot1D } from '../optimizer/phBSplineOps'
 import { weightedAveragePhi, threeArcPointsFromNoisyPoints, circleArcFromThreePoints, type CircleArcGeometry } from '../utils/circleArc'
 import { optimizeCurve, applyOptimizeResult, applyOptimizeRationalResult, optimizeComplexRationalCurve, applyComplexRationalOptimizeResult, optimizeRationalFarinCurve, applyOptimizeRationalFarinResult, optimizePHCurve, optimizeComplexRationalPHCurve, optimizeABPHCurve, optimizeRealRationalPHCurve, type OptimizeRationalResult } from '../optimizer'
+// MIGRATION: open planar B-spline curvature-extrema drag now runs on the clean
+// core/ engine. Closed bsplines (periodic-junction knots) + rational stay on
+// the legacy optimizer until core covers those conventions.
+import { slideCurve as coreSlideCurve } from '../../core'
 import { computeRationalFarinPoints, updateWeightsFromRationalFarin, updateWeightsFromComplexFarin, projectPointOntoEdge, moveComplexControlPointKeepingFarinFixed, initializeFarinPositionsFromComplexWeights } from '../utils/farinPoints'
 import { csub, cmult, cdiv, cnorm, type Complex } from '../utils/complex'
 import {
@@ -511,7 +515,44 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
       }
     }
 
+    // MIGRATED → core/: open planar B-spline curvature-extrema drag.
+    // core's slideCurve (PlanarCurvatureProblem on the primal-dual optimizer)
+    // returns best-feasible control points, so we always apply the result —
+    // staying on the constrained side rather than falling through to an
+    // unconstrained direct move. symmetryMaps is already the {mapX,mapY} shape
+    // core expects; the only rename is anchorCPsX/Y → anchorX/Y.
+    if (preserveCurvatureExtrema && curve.kind === 'bspline' && !curve.closed) {
+      try {
+        const { x, y } = coreSlideCurve(
+          curve.controlPoints.map((p) => p.x),
+          curve.controlPoints.map((p) => p.y),
+          curve.knots,
+          curve.degree,
+          pointIndex,
+          newPosition.x,
+          newPosition.y,
+          {
+            maxIterations: 20,
+            ...(symmetryMaps ? { symmetryMaps } : {}),
+            ...(preserveInflections ? { preserveInflections } : {}),
+            ...(disableSliding ? { disableSliding } : {}),
+            ...(anchorWeight > 0 && dragStartCPsX && dragStartCPsY
+              ? { anchorWeight, anchorX: dragStartCPsX, anchorY: dragStartCPsY }
+              : {}),
+          },
+        )
+        const optimizedCurve = { ...curve, controlPoints: x.map((xi, i) => ({ x: xi, y: y[i] })) } as Curve
+        set((state) => ({
+          curves: state.curves.map((c) => (c.id === curveId ? optimizedCurve : c)),
+        }))
+        return
+      } catch (e) {
+        console.warn('Curvature optimizer (core) failed:', e)
+      }
+    }
+
     // Use optimizer if preserveCurvatureExtrema is enabled and curve is compatible
+    // (closed bsplines + rational — not yet migrated to core/).
     if (preserveCurvatureExtrema && (curve.kind === 'bspline' || curve.kind === 'rational')) {
       try {
         const opts = {
