@@ -1,0 +1,178 @@
+/* Scope reveal.js styles to prevent conflicts with Tailwind */
+.reveal-container {
+  position: absolute;
+  inset: 0;
+}
+
+.reveal-container .reveal {
+  height: 100%;
+  background-color: transparent;
+}
+
+.reveal-container .reveal .slides {
+  text-align: left;
+}
+
+.reveal-container .reveal .slides section {
+  height: 100%;
+  padding: 40px 60px;
+  box-sizing: border-box;
+}
+
+/* Title slides */
+.reveal-container .reveal .slides section.title-slide {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.reveal-container .reveal .slides section.title-slide h1 {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.3;
+  margin-bottom: 0.5em;
+  text-transform: none;
+}
+
+.reveal-container .reveal .slides section.title-slide .author {
+  font-size: 1.1em;
+  color: #475569;
+  margin-top: 0.5em;
+}
+
+.reveal-container .reveal .slides section.title-slide .event {
+  font-size: 0.9em;
+  color: #64748b;
+  margin-top: 0.3em;
+}
+
+/* Content slides */
+.reveal-container .reveal .slides section h2 {
+  font-size: 1.4em;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.6em;
+  border-bottom: 2px solid #3b82f6;
+  padding-bottom: 0.3em;
+  text-transform: none;
+}
+
+.reveal-container .reveal .slides section p {
+  font-size: 0.85em;
+  color: #334155;
+  line-height: 1.6;
+  margin-bottom: 0.5em;
+}
+
+.reveal-container .reveal .slides section ul,
+.reveal-container .reveal .slides section ol {
+  font-size: 0.85em;
+  color: #334155;
+  line-height: 1.8;
+  padding-left: 1.5em;
+}
+
+.reveal-container .reveal .slides section li {
+  margin-bottom: 0.3em;
+}
+
+/* Demo slides: split layout */
+.reveal-container .reveal .slides section.demo-slide {
+  display: flex !important;
+  flex-direction: row;
+  gap: 0;
+  padding: 0;
+}
+
+.reveal-container .reveal .slides section.demo-slide .demo-text {
+  width: 35%;
+  padding: 40px 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-right: 2px solid #e2e8f0;
+  overflow-y: auto;
+}
+
+.reveal-container .reveal .slides section.demo-slide .demo-area {
+  width: 65%;
+  position: relative;
+}
+
+/* Stacked demo-slide variant: sketcher canvas on top, secondary panel
+   (e.g. live g(t) display) below. The framework still renders the canvas
+   into .demo-area; the slide content lives in .demo-text on the left and
+   may include an extra `.demo-aux` panel that gets pinned to the bottom
+   of the demo-area via absolute positioning. */
+.reveal-container .reveal .slides section.demo-slide.demo-slide-stacked .demo-area {
+  /* Canvas now occupies the top 60% of the right column. */
+  height: 60%;
+}
+
+.reveal-container .reveal .slides section.demo-slide.demo-slide-stacked .demo-aux {
+  position: absolute;
+  left: 35%;
+  right: 0;
+  top: 60%;
+  bottom: 0;
+  padding: 8px 8px 8px 0;
+  box-sizing: border-box;
+}
+
+/* Math */
+.reveal-container .reveal .slides section .math {
+  font-family: 'Times New Roman', serif;
+  font-style: italic;
+}
+
+/* Reveal navigation arrows: lift above the demo canvas overlay (z-60)
+   so the prev/next controls remain clickable on demo slides. */
+.reveal-container .reveal .controls {
+  z-index: 65;
+}
+
+/* Slide number styling */
+.reveal-container .reveal .slide-number {
+  font-size: 14px;
+  color: #94a3b8;
+  background-color: transparent;
+}
+
+[data-theme="light"] .reveal-container .reveal .slide-number {
+  color: #64748b;
+}
+
+/* Progress bar */
+.reveal-container .reveal .progress span {
+  background: #3b82f6;
+}
+
+/* Dark mode */
+[data-theme="dark"] .reveal-container .reveal .slides section.title-slide h1 {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .reveal-container .reveal .slides section.title-slide .author {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .reveal-container .reveal .slides section.title-slide .event {
+  color: #64748b;
+}
+
+[data-theme="dark"] .reveal-container .reveal .slides section h2 {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .reveal-container .reveal .slides section p,
+[data-theme="dark"] .reveal-container .reveal .slides section ul,
+[data-theme="dark"] .reveal-container .reveal .slides section ol {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .reveal-container .reveal .slides section.demo-slide .demo-text {
+  border-right-color: #374151;
+}
