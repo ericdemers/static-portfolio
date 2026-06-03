@@ -16,7 +16,7 @@ import { optimizeCurve, applyOptimizeResult, applyOptimizeRationalResult, optimi
 // MIGRATION: open planar B-spline curvature-extrema drag now runs on the clean
 // core/ engine. Closed bsplines (periodic-junction knots) + rational stay on
 // the legacy optimizer until core covers those conventions.
-import { slideCurve as coreSlideCurve, curvatureExtremaNumeratorPlanar as coreCurvatureNumerator } from '../../core'
+import { slideCurve as coreSlideCurve, curvatureExtremaNumeratorPlanar as coreCurvatureNumerator, planarCurvatureConstraintState as coreConstraintState } from '../../core'
 import { computeRationalFarinPoints, updateWeightsFromRationalFarin, updateWeightsFromComplexFarin, projectPointOntoEdge, moveComplexControlPointKeepingFarinFixed, initializeFarinPositionsFromComplexWeights } from '../utils/farinPoints'
 import { csub, cmult, cdiv, cnorm, type Complex } from '../utils/complex'
 import {
@@ -112,6 +112,9 @@ interface SketcherState {
   anchorWeight: number  // 0 = disabled, >0 = anchor undragged CPs to drag-start positions
   dragStartCPsX: number[] | null
   dragStartCPsY: number[] | null
+  /** Curvature-extrema constraint state fixed at drag start (open B-spline);
+   *  reused for every frame so the sign assignment is followed, not recomputed. */
+  dragConstraintState: import('../../core').CurvatureConstraintState | null
 
   // Transform widget
   transformActive: boolean
@@ -306,6 +309,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   anchorWeight: 0,
   dragStartCPsX: null,
   dragStartCPsY: null,
+  dragConstraintState: null,
 
   view: {
     zoom: 1,
@@ -402,7 +406,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   },
 
   moveControlPoint: (curveId, pointIndex, newPosition) => {
-    const { preserveCurvatureExtrema, preserveInflections, disableSliding, symmetryMaps, curves, phMetadata, anchorWeight, dragStartCPsX, dragStartCPsY } = get()
+    const { preserveCurvatureExtrema, preserveInflections, disableSliding, symmetryMaps, curves, phMetadata, anchorWeight, dragStartCPsX, dragStartCPsY, dragConstraintState } = get()
     const curve = curves.find((c) => c.id === curveId)
 
     if (!curve) return
@@ -538,6 +542,9 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
             // other CP put (which felt sluggish/"stuck"). The bound can still
             // legitimately block a direction that would add a curvature extremum.
             dragWeight: 25,
+            // Follow the sign assignment fixed at drag start (set above), rather
+            // than re-deriving signs each frame.
+            ...(dragConstraintState ? { constraintState: dragConstraintState } : {}),
             ...(symmetryMaps ? { symmetryMaps } : {}),
             ...(preserveInflections ? { preserveInflections } : {}),
             ...(disableSliding ? { disableSliding } : {}),
@@ -1130,12 +1137,29 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     const curve = get().curves.find((c) => c.id === curveId)
     if (!curve) return
     const cps = curve.controlPoints
+    // Fix the sliding-mechanism sign assignment ONCE, here at drag start, for
+    // open planar B-splines. Every frame of this drag then follows these signs
+    // (the optimizer AND the constraint-bar display), so a near-zero coefficient
+    // can't flicker sign and destabilize the bound or the coloring.
+    let dragConstraintState = null
+    if (get().preserveCurvatureExtrema && curve.kind === 'bspline' && !curve.closed) {
+      try {
+        dragConstraintState = coreConstraintState(
+          cps.map((p) => p.x),
+          cps.map((p) => p.y),
+          curve.knots,
+          curve.degree,
+          { disableSliding: get().disableSliding },
+        )
+      } catch { /* leave null → per-frame recompute fallback */ }
+    }
     set({
       dragStartCPsX: cps.map((p) => p.x),
       dragStartCPsY: cps.map((p) => p.y),
+      dragConstraintState,
     })
   },
-  clearDragStartCPs: () => set({ dragStartCPsX: null, dragStartCPsY: null }),
+  clearDragStartCPs: () => set({ dragStartCPsX: null, dragStartCPsY: null, dragConstraintState: null }),
 
   // View actions
   setZoom: (zoom) =>

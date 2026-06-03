@@ -69,6 +69,53 @@ function scaleFor(coeffs: number[], activeIdx: number[]): number[] {
 }
 
 /**
+ * The sliding mechanism's state, fixed ONCE at the start of a drag. Every g
+ * Bernstein coefficient is assigned a definite sign here (even a near-zero one)
+ * — the mechanism then PRESERVES those assigned signs for the whole drag, never
+ * re-deriving a sign from a noise-level value mid-drag. Recomputing per frame let
+ * a near-zero coefficient flicker sign, which destabilized the bound S⁻ and the
+ * constraint coloring. Carry this across the drag's frames (optimizer + display).
+ */
+export interface CurvatureConstraintState {
+  /** g Bernstein coefficients at the start (for the display; values are fixed). */
+  gCPs: number[]
+  /** Per coefficient: −1 if g>0, +1 if g<0 (assigned once at the start). */
+  signs: number[]
+  /** Non-anchor members of alternating runs — allowed to slide. */
+  inactiveIndices: number[]
+  /** Per coefficient scale (floored), for conditioning. */
+  gScale: number[]
+  /** Per coefficient parameter position, for the constraint-bar display. */
+  grevilleAbscissae: number[]
+}
+
+/** Compute the constraint state from a curve — call ONCE at drag start, then reuse. */
+export function planarCurvatureConstraintState(
+  cpX: readonly number[],
+  cpY: readonly number[],
+  knots: readonly number[],
+  degree: number,
+  opts: { disableSliding?: boolean } = {},
+): CurvatureConstraintState {
+  const g = curvatureExtremaNumeratorPlanar(cpX, cpY, knots, degree)
+  const gc = g.flatCoeffs()
+  const signs = gc.map((v) => (v > 0 ? -1 : 1))
+  const inactive = opts.disableSliding ? new Set<number>() : computeInactiveSet(gc)
+  const gScale = scaleFor(
+    gc,
+    gc.map((_, i) => i),
+  )
+  const grevilleAbscissae: number[] = []
+  for (let s = 0; s < g.coeffs.length; s++) {
+    const a = g.breaks[s]
+    const b = g.breaks[s + 1]
+    const m = g.coeffs[s].length
+    for (let j = 0; j < m; j++) grevilleAbscissae.push(a + (m > 1 ? j / (m - 1) : 0) * (b - a))
+  }
+  return { gCPs: gc, signs, inactiveIndices: [...inactive], gScale, grevilleAbscissae }
+}
+
+/**
  * The "sliding mechanism" as an optimization problem: drag one control point to
  * a target while keeping the curvature-extrema bound. Objective is weighted
  * least-squares to the targets; constraints keep the sign of every ACTIVE
@@ -124,6 +171,8 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
       preserveInflections?: boolean
       /** Extra objective weight on the dragged point so it tracks the cursor. */
       dragWeight?: number
+      /** Fixed sign/active-set from drag start (preferred over recomputing). */
+      constraintState?: CurvatureConstraintState
     } = {},
   ) {
     this.cpX = [...cpX]
@@ -143,12 +192,22 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
 
     this.preserveInflections = opts.preserveInflections ?? false
 
-    const gc = this.numerator().flatCoeffs()
-    const allSigns = gc.map((v) => (v > 0 ? -1 : 1))
-    const inactive = opts.disableSliding ? new Set<number>() : computeInactiveSet(gc)
-    this.activeIdx = gc.map((_, i) => i).filter((i) => !inactive.has(i))
-    this.signs = this.activeIdx.map((i) => allSigns[i])
-    this.gScale = scaleFor(gc, this.activeIdx)
+    if (opts.constraintState) {
+      // FIXED signs/active-set/scale from drag start — the sliding mechanism
+      // follows the initial sign assignment instead of re-deriving each frame.
+      const cs = opts.constraintState
+      const inactive = new Set(cs.inactiveIndices)
+      this.activeIdx = cs.signs.map((_, i) => i).filter((i) => !inactive.has(i))
+      this.signs = this.activeIdx.map((i) => cs.signs[i])
+      this.gScale = this.activeIdx.map((i) => cs.gScale[i])
+    } else {
+      const gc = this.numerator().flatCoeffs()
+      const allSigns = gc.map((v) => (v > 0 ? -1 : 1))
+      const inactive = opts.disableSliding ? new Set<number>() : computeInactiveSet(gc)
+      this.activeIdx = gc.map((_, i) => i).filter((i) => !inactive.has(i))
+      this.signs = this.activeIdx.map((i) => allSigns[i])
+      this.gScale = scaleFor(gc, this.activeIdx)
+    }
 
     if (this.preserveInflections) {
       const fc = this.inflectionNumerator().flatCoeffs()
@@ -312,6 +371,7 @@ export function slideCurve(
     preserveInflections?: boolean
     symmetryMaps?: { mapX: number[] | null; mapY: number[] | null }
     dragWeight?: number
+    constraintState?: CurvatureConstraintState
   } & Partial<OptimizerConfig> = {},
 ): { x: number[]; y: number[]; converged: boolean } {
   const problem = new PlanarCurvatureProblem(cpX, cpY, knots, degree, dragIndex, targetX, targetY, {
@@ -322,6 +382,7 @@ export function slideCurve(
     anchorWeight: opts.anchorWeight,
     preserveInflections: opts.preserveInflections,
     dragWeight: opts.dragWeight,
+    constraintState: opts.constraintState,
   })
   // Symmetry is enforced inside the solve via variable reduction (the result
   // is symmetric AND constraint-feasible — no post-projection).

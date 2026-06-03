@@ -12,7 +12,7 @@ import { computeOpenCurveConstraintState, computeClosedCurveConstraintState, com
 // Open planar B-spline: the displayed bound S and the marker count come from
 // core/ (what the core optimizer actually preserves), not the legacy code —
 // which computed them on a different g decomposition and could drift.
-import { curvatureExtremaNumeratorPlanar as coreCurvatureNumerator } from '../../core'
+import { curvatureExtremaNumeratorPlanar as coreCurvatureNumerator, planarCurvatureConstraintState as coreConstraintState } from '../../core'
 
 export default function BottomPanel() {
   const { panelView, curves, selectedCurveId } = useSceneStore()
@@ -640,6 +640,7 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
     smoothActive, smoothWindow, smoothAmount, smoothEnergy, smoothMode, smoothIterations,
     enterSmooth, cancelSmooth, applySmooth, setSmoothWindow, setSmoothAmount,
     setSmoothMode, setSmoothIterations,
+    dragConstraintState, disableSliding,
   } = useSceneStore()
 
   const kSvgRef = useRef<SVGSVGElement>(null)
@@ -740,44 +741,40 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
           curve.degree
         )
       } else {
-        return computeOpenCurveConstraintState(
-          curve.knots,
-          curve.controlPoints.map((p) => p.x),
-          curve.controlPoints.map((p) => p.y)
+        // Open planar B-spline → core. During a drag, use the constraint state
+        // FIXED at drag start (so the coloring follows the assigned signs and
+        // doesn't flicker as near-zero coefficients wobble); at rest, compute
+        // fresh from the current curve.
+        return (
+          dragConstraintState ??
+          coreConstraintState(
+            curve.controlPoints.map((p) => p.x),
+            curve.controlPoints.map((p) => p.y),
+            curve.knots,
+            curve.degree,
+            { disableSliding },
+          )
         )
       }
     } catch (e) {
       console.error('constraintState computation failed:', e)
       return null
     }
-  }, [curve, preserveCurvatureExtrema])
+  }, [curve, preserveCurvatureExtrema, dragConstraintState, disableSliding])
 
   // Current bound S(b): the number of sign changes of g = the curvature-extrema
   // count being held. Shown next to the toggle, mirroring the cs2026 talk slide.
   const extremaBound = useMemo(() => {
     if (!constraintState) return null
-    // Open planar B-spline: show core's S⁻ (the bound the core optimizer
-    // preserves), so the displayed "S" matches what's actually constrained
-    // rather than the legacy constraint-state count on a different decomposition.
-    if (curve.kind === 'bspline' && !curve.closed) {
-      try {
-        return coreCurvatureNumerator(
-          curve.controlPoints.map((p) => p.x),
-          curve.controlPoints.map((p) => p.y),
-          curve.knots,
-          curve.degree,
-        ).signChanges()
-      } catch { /* fall through to legacy */ }
-    }
-    let count = 0, last = 0
-    for (const v of constraintState.gCPs) {
-      if (v === 0) continue
-      const s = v > 0 ? 1 : -1
-      if (last !== 0 && s !== last) count++
-      last = s
-    }
+    // Sign changes of the ASSIGNED signs — every coefficient has a sign (never
+    // skipped), so S is well-defined and, during a drag, fixed (the mechanism
+    // follows the drag-start assignment). This is the bound the talk's theorem
+    // keeps monotone.
+    const s = constraintState.signs
+    let count = 0
+    for (let i = 1; i < s.length; i++) if (s[i] !== s[i - 1]) count++
     return count
-  }, [constraintState, curve])
+  }, [constraintState])
 
   // Find curvature range for scaling
   const curvatures = curvatureData.map((d) => d.curvature)
