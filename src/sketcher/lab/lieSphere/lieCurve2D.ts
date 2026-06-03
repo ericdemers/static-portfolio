@@ -18,7 +18,8 @@
 //   q_poly = [W²+X²+Y²,  W²−X²−Y²,  2XW,  2YW,  0]
 //   n_poly = [X·ReG+Y·ImG,  −(X·ReG+Y·ImG),  W·ReG,  W·ImG,  W²σ]      G = i·S²·B̄²
 // with homogeneous point (X,Y,W)=(Re(A B̄),Im(A B̄),|B|²), σ=|S|², for z=A/B, gen S.
-import { decomposeToBernstein, recomposeBD } from '../../optimizer/algebra'
+import { decomposeToBernstein } from '../../optimizer/algebra'
+import { fitRealRational } from './rationalFit'
 
 export type Mat5 = number[][] // 5×5, row-major. Index map: [s0, s1, x, y, r].
 
@@ -60,6 +61,19 @@ export function inversionInCircle5(cx: number, cy: number, rho: number): Mat5 {
 export function offset5(d: number): Mat5 {
   const h = (d * d) / 2
   return [[1 - h, -h, 0, 0, d], [h, 1 + h, 0, 0, -d], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [-d, -d, 0, 0, 1]]
+}
+
+// --- Generate sliders → composed transform ---
+export interface GenerateSliders {
+  scale: number // λ (1 = identity)
+  rotation: number // θ radians (0 = identity)
+  offset: number // Laguerre distance d (0 = identity)
+}
+export const IDENTITY_SLIDERS: GenerateSliders = { scale: 1, rotation: 0, offset: 0 }
+
+/** Compose the live slider transform (scale ∘ rotation ∘ offset). */
+export function slidersToMat5(s: GenerateSliders): Mat5 {
+  return compose5(scaling5(s.scale), rotation5(s.rotation), offset5(s.offset))
 }
 
 // --- Bernstein Vec5 helpers ---
@@ -132,25 +146,40 @@ export function lieCurveHomogeneous(meta, M: Mat5): { X; Y; W } {
 }
 
 /**
- * Transform an AB-PH curve by a planar Lie-sphere transform M (5×5, O(3,2)).
- * Returns an exact rational B-spline (real weights): ComplexPoint[] with w_im = 0.
+ * Transform an AB-PH curve by a planar Lie-sphere transform M (5×5, O(3,2)) and
+ * return a COMPACT rational B-spline (NURBS). The symbolic homogeneous form is
+ * exact but degree-inflated (~10·n) with astronomically large coefficients, so
+ * we don't recompose it directly — instead we sample its (numerically stable)
+ * point ratios and re-fit a rational Bézier of degree 2n. Since every Lie
+ * transform of a degree-n PH curve is representable at degree ≤ 2n (the classic
+ * PH-offset bound, verified in lieDegree.test.ts), the fit is exact at 2n —
+ * recovering a clean, well-conditioned, minimal-ish curve. The image points are
+ * real, so we fit a REAL rational curve (real weights) — a clean NURBS, not a
+ * complex-weight curve with a strange control polygon.
  */
 export function abPHToLieCurve(meta, M: Mat5): { controlPoints; knots: number[]; degree: number } {
   const h = lieCurveHomogeneous(meta, M)
-  const Xout = recomposeBD(h.X)
-  const Yout = recomposeBD(h.Y)
-  const Wout = recomposeBD(h.W)
+  const degree = 2 * meta.degree
+  const m = Math.max(2 * degree + 6, 24)
+  const samples = []
+  for (let k = 0; k < m; k++) {
+    const u = (k + 0.5) / m
+    const w = h.W.evaluate(u)
+    samples.push({ u, x: h.X.evaluate(u) / w, y: h.Y.evaluate(u) / w })
+  }
+  const fit = fitRealRational(samples, degree)
 
   const controlPoints = []
-  for (let i = 0; i < Wout.controlPoints.length; i++) {
-    const w = Wout.controlPoints[i]
+  for (let i = 0; i <= degree; i++) {
+    const w = fit.den[i]
     controlPoints.push({
-      re: Math.abs(w) > 1e-300 ? Xout.controlPoints[i] / w : 0,
-      im: Math.abs(w) > 1e-300 ? Yout.controlPoints[i] / w : 0,
-      w_re: w,
-      w_im: 0,
+      x: Math.abs(w) > 1e-300 ? fit.numX[i] / w : 0,
+      y: Math.abs(w) > 1e-300 ? fit.numY[i] / w : 0,
+      w,
     })
   }
-  const degree = Wout.knots.length - Wout.controlPoints.length - 1
-  return { controlPoints, knots: Wout.knots, degree }
+  const knots = []
+  for (let i = 0; i <= degree; i++) knots.push(0)
+  for (let i = 0; i <= degree; i++) knots.push(1)
+  return { controlPoints, knots, degree }
 }

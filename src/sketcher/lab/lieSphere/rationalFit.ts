@@ -160,3 +160,48 @@ export function evalComplexRational(c: ComplexRationalCurve, u: number): { re: n
   const d2 = dr * dr + di * di
   return { re: (nr * dr + ni * di) / d2, im: (ni * dr - nr * di) / d2 }
 }
+
+// ---- Real rational curve fit (common real denominator) ----
+export interface RealSample { u: number; x: number; y: number }
+export interface RealRationalCurve { numX: number[]; numY: number[]; den: number[]; degree: number }
+
+/**
+ * Fit a degree-`degree` REAL rational Bézier (x,y)(u) = (Nx,Ny)(u)/D(u) to
+ * samples, gauge D_0 = 1. Each sample gives two equations N − point·D = 0. Use
+ * this when the curve is genuinely real (e.g. a Lie-sphere image of a PH curve):
+ * a real common denominator gives a clean, well-conditioned NURBS, unlike a
+ * complex-weight fit.
+ */
+export function fitRealRational(samples: RealSample[], degree: number): RealRationalCurve {
+  const nN = degree + 1
+  const offNy = nN
+  const offD = 2 * nN
+  const nUnknown = 2 * nN + degree // numX(d+1) + numY(d+1) + den_1..d
+  const A: number[][] = []
+  const rhs: number[] = []
+  for (const { u, x, y } of samples) {
+    const B = bernsteinBasis(degree, u)
+    const rowX = new Array(nUnknown).fill(0)
+    for (let i = 0; i <= degree; i++) rowX[i] = B[i]
+    for (let i = 1; i <= degree; i++) rowX[offD + (i - 1)] += -x * B[i]
+    A.push(rowX); rhs.push(x * B[0])
+    const rowY = new Array(nUnknown).fill(0)
+    for (let i = 0; i <= degree; i++) rowY[offNy + i] = B[i]
+    for (let i = 1; i <= degree; i++) rowY[offD + (i - 1)] += -y * B[i]
+    A.push(rowY); rhs.push(y * B[0])
+  }
+  const s = lstsq(A, rhs)
+  const numX: number[] = []
+  const numY: number[] = []
+  const den: number[] = [1]
+  for (let i = 0; i <= degree; i++) { numX.push(s[i]); numY.push(s[offNy + i]) }
+  for (let i = 1; i <= degree; i++) den.push(s[offD + (i - 1)])
+  return { numX, numY, den, degree }
+}
+
+export function evalRealRational(c: RealRationalCurve, u: number): { x: number; y: number } {
+  const B = bernsteinBasis(c.degree, u)
+  let nx = 0, ny = 0, d = 0
+  for (let i = 0; i <= c.degree; i++) { nx += c.numX[i] * B[i]; ny += c.numY[i] * B[i]; d += c.den[i] * B[i] }
+  return { x: nx / d, y: ny / d }
+}
