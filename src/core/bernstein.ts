@@ -1,5 +1,5 @@
 import { scalarCoeffs } from './coeffs'
-import { insertKnotOpen } from './insert'
+import { makeIndexing, deBoor } from './indexing'
 
 // ============================================================================
 // B-spline FUNCTION algebra in Bernstein form.
@@ -174,34 +174,58 @@ export class BernsteinDecomposition {
 }
 
 /**
- * Decompose a scalar B-spline function (open/clamped) into Bernstein form by
- * inserting each interior knot to full multiplicity (reusing core knot
- * insertion), then reading off the per-span Bézier coefficients.
+ * Decompose a scalar B-spline function into Bernstein form. One implementation
+ * for open and periodic, via the unified de Boor blossom (Indexing handles the
+ * topology). Each span's Bézier coefficients are the blossom values at the span
+ * corners — exact. For periodic the spans are the distinct knots; the last wraps
+ * to +period.
  */
+function decomposeScalar(
+  coeffs: readonly number[],
+  knots: readonly number[],
+  degree: number,
+  closed: boolean,
+): BernsteinDecomposition {
+  const ix = makeIndexing(scalarCoeffs, coeffs, knots, degree, closed)
+  const distinct = distinctKnots(knots)
+  const breaks = closed ? [...distinct, distinct[0] + 1] : [...distinct]
+  const numSpans = breaks.length - 1
+
+  const spanCoeffs: number[][] = []
+  for (let s = 0; s < numSpans; s++) {
+    const a = breaks[s]
+    const b = breaks[s + 1]
+    const span = ix.span(a)
+    const seg: number[] = []
+    for (let j = 0; j <= degree; j++) {
+      const args: number[] = []
+      for (let m = 0; m < degree - j; m++) args.push(a)
+      for (let m = 0; m < j; m++) args.push(b)
+      seg.push(deBoor(ix, scalarCoeffs, span, degree, args))
+    }
+    spanCoeffs.push(seg)
+  }
+  return new BernsteinDecomposition(spanCoeffs, breaks)
+}
+
+/** Bernstein decomposition of an open (clamped) scalar B-spline function. */
 export function decomposeToBernstein(
   coeffs: readonly number[],
   knots: readonly number[],
   degree: number,
 ): BernsteinDecomposition {
-  const breaks = distinctKnots(knots)
-  let c = [...coeffs]
-  let k = [...knots]
+  return decomposeScalar(coeffs, knots, degree, false)
+}
 
-  for (let bi = 1; bi < breaks.length - 1; bi++) {
-    const v = breaks[bi]
-    let mult = k.filter((x) => Math.abs(x - v) < 1e-10).length
-    while (mult < degree) {
-      const res = insertKnotOpen(scalarCoeffs, c, degree, k, v)
-      c = res.controlPoints
-      k = res.knots
-      mult++
-    }
-  }
-
-  const numSpans = breaks.length - 1
-  const spanCoeffs: number[][] = []
-  for (let s = 0; s < numSpans; s++) {
-    spanCoeffs.push(c.slice(s * degree, s * degree + degree + 1))
-  }
-  return new BernsteinDecomposition(spanCoeffs, breaks)
+/**
+ * Bernstein decomposition of a PERIODIC scalar B-spline function (one period;
+ * knots in [0,1) starting at 0), over [0,1). Spans are the distinct knots; the
+ * last wraps to +period.
+ */
+export function decomposeToBernsteinPeriodic(
+  coeffs: readonly number[],
+  knots: readonly number[],
+  degree: number,
+): BernsteinDecomposition {
+  return decomposeScalar(coeffs, knots, degree, true)
 }

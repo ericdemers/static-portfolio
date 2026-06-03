@@ -1,4 +1,4 @@
-import { BernsteinDecomposition, decomposeToBernstein } from './bernstein'
+import { BernsteinDecomposition, decomposeToBernstein, decomposeToBernsteinPeriodic } from './bernstein'
 import { ComplexBD } from './complexBernstein'
 
 /**
@@ -54,6 +54,31 @@ export function curvatureExtremaNumeratorPlanar(
   const dot = x1.multiply(x2).add(y1.multiply(y2)) // c′ · c″
   const crossPrime3 = x1.multiply(y3).subtract(y1.multiply(x3)) // c′ × c‴
   const normSq = x1.multiply(x1).add(y1.multiply(y1)) // ‖c′‖²
+  return normSq.multiply(crossPrime3).subtract(dot.multiply(crossPrime2).scale(3))
+}
+
+/**
+ * Curvature-extrema numerator g(t) for a CLOSED (periodic) planar B-spline
+ * curve — same formula as above, on the periodic Bernstein decomposition.
+ * For a closed curve the Bernstein coefficients form a cycle (the bound is the
+ * cyclic sign-change count).
+ */
+export function curvatureExtremaNumeratorPlanarPeriodic(
+  x: readonly number[],
+  y: readonly number[],
+  knots: readonly number[],
+  degree: number,
+): BernsteinDecomposition {
+  const x1 = decomposeToBernsteinPeriodic(x, knots, degree).derivative()
+  const y1 = decomposeToBernsteinPeriodic(y, knots, degree).derivative()
+  const x2 = x1.derivative()
+  const y2 = y1.derivative()
+  const x3 = x2.derivative()
+  const y3 = y2.derivative()
+  const crossPrime2 = x1.multiply(y2).subtract(y1.multiply(x2))
+  const dot = x1.multiply(x2).add(y1.multiply(y2))
+  const crossPrime3 = x1.multiply(y3).subtract(y1.multiply(x3))
+  const normSq = x1.multiply(x1).add(y1.multiply(y1))
   return normSq.multiply(crossPrime3).subtract(dot.multiply(crossPrime2).scale(3))
 }
 
