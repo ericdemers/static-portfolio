@@ -1,0 +1,22 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        # Amplify's image ships Node/npm but not bun; install it and restore the
+        # exact dependency set from bun.lock (the repo's only lockfile).
+        - npm install -g bun
+        - bun install --frozen-lockfile
+    build:
+      commands:
+        # tsc -b && vite build → static SPA in dist/. No backend phase: the site
+        # is pure static hosting (the old Amplify backend was removed).
+        - bun run build
+  artifacts:
+    baseDirectory: dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - ~/.bun/install/cache/**/*
