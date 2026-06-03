@@ -7,6 +7,7 @@ import WithoutSlidingPanel from './WithoutSlidingPanel'
 import ExtremaFusionDemo from './ExtremaFusionDemo'
 import FusionPanel from './FusionPanel'
 import OvalDemo from './OvalDemo'
+import AllFlipDiagram from './AllFlipDiagram'
 
 /**
  * "Without Sliding" slide — owns the constraint-toggle state so the panel
@@ -87,37 +88,6 @@ function DemoSlide({ panel, figure }: { panel: React.ReactNode; figure: React.Re
       </div>
       <div style={{ width: '68%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {figure}
-      </div>
-    </div>
-  )
-}
-
-/** A Bernstein sign pattern with the anchor highlighted. */
-function SignRow({ pattern, anchor, title }: { pattern: number[]; anchor: number; title: string }) {
-  return (
-    <div style={{ textAlign: 'center' }}>
-      <div style={{ color: '#64748b', fontSize: '0.8em', marginBottom: 8 }}>{title}</div>
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-        {pattern.map((s, i) => (
-          <div
-            key={i}
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 700,
-              color: 'white',
-              background: s > 0 ? '#16a34a' : '#dc2626',
-              outline: i === anchor ? '3px solid #f59e0b' : 'none',
-              outlineOffset: 2,
-            }}
-          >
-            {s > 0 ? '+' : '−'}
-          </div>
-        ))}
       </div>
     </div>
   )
@@ -294,14 +264,26 @@ export const slides: SlideDefinition[] = [
     content: (
       <>
         <h2>All-flip</h2>
-        <div style={{ display: 'flex', gap: 60, justifyContent: 'center', margin: '1.5em 0' }}>
-          <SignRow title="Interior σ" pattern={[1, 1, -1, 1, -1, 1, 1]} anchor={3} />
-          <SignRow title="Boundary σ" pattern={[1, 1, 1, -1, 1, -1, 1]} anchor={3} />
+        <div
+          style={{
+            display: 'flex',
+            gap: 16,
+            marginTop: '0.5em',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+          }}
+        >
+          <div style={{ flex: 1, maxWidth: '50%' }}>
+            <AllFlipDiagram title="Interior σ" pattern={[+1, +1, -1, +1, -1, +1, +1]} sigma={{ start: 1, end: 5 }} />
+          </div>
+          <div style={{ flex: 1, maxWidth: '50%' }}>
+            <AllFlipDiagram title="Boundary σ" pattern={[+1, +1, +1, -1, +1, -1, +1]} sigma={{ start: 2, end: 6 }} />
+          </div>
         </div>
-        <p style={{ textAlign: 'center', fontStyle: 'italic', opacity: 0.85 }}>
+        <p style={{ marginTop: '0.5em', fontStyle: 'italic', opacity: 0.85, textAlign: 'center' }}>
           The only flip that grows <Math>{'S^{-}'}</Math> is <em>all-flip</em>. Excluding any single position
-          of <Math>{'\\sigma'}</Math> — the <strong style={{ color: '#d97706' }}>anchor</strong> — blocks the
-          all-flip. <Math>{'S^{-}'}</Math> does not grow.
+          of <Math>{'\\sigma'}</Math> from the flip — the <strong>anchor</strong> — blocks the all-flip.{' '}
+          <Math>{'S^{-}'}</Math> does not grow.
         </p>
       </>
     ),
