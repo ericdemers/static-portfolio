@@ -1,6 +1,7 @@
 import type { Matrix } from './linalg'
 import type { OptimizationProblem, OptimizerConfig } from './optimize'
 import { PrimalDualOptimizer } from './optimize'
+import { BarrierOptimizer } from './barrierOptimizer'
 import { buildSymmetryReduction, SymmetryReducedProblem } from './symmetryReduction'
 import {
   curvatureExtremaNumeratorPlanar,
@@ -372,6 +373,8 @@ export function slideCurve(
     symmetryMaps?: { mapX: number[] | null; mapY: number[] | null }
     dragWeight?: number
     constraintState?: CurvatureConstraintState
+    /** Which optimizer to use. 'barrier' uses the banded (near-linear) solve. */
+    method?: 'primal-dual' | 'barrier'
   } & Partial<OptimizerConfig> = {},
 ): { x: number[]; y: number[]; converged: boolean } {
   const problem = new PlanarCurvatureProblem(cpX, cpY, knots, degree, dragIndex, targetX, targetY, {
@@ -392,10 +395,13 @@ export function slideCurve(
         buildSymmetryReduction(cpX.length, opts.symmetryMaps.mapX, opts.symmetryMaps.mapY),
       )
     : problem
-  const optimizer = new PrimalDualOptimizer(solved, {
-    maxIterations: opts.maxIterations ?? 80,
-    returnBestFeasible: true,
-  })
+  // The banded barrier solve assumes control-point-interleaved variables, so it
+  // runs only on the un-reduced problem (no symmetry reduction). Otherwise the
+  // dense primal-dual handles the reduced/symmetric case.
+  const optimizer =
+    opts.method === 'barrier' && !opts.symmetryMaps
+      ? new BarrierOptimizer(solved, { maxIterations: opts.maxIterations ?? 40, returnBestFeasible: true })
+      : new PrimalDualOptimizer(solved, { maxIterations: opts.maxIterations ?? 80, returnBestFeasible: true })
   const result = optimizer.optimize()
   solved.setVariables(result.variables)
   return { x: problem.cpX, y: problem.cpY, converged: result.converged }
