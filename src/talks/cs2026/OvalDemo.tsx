@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useMemo } from 'react'
 import type { Point2D } from '../../core'
 import { evaluate, plainCoeffs, closedCurvatureExtremaParameters, slideCurve } from '../../core'
 import { twoAxisSequence } from './ovalShapes'
-import { buildMirrorMap, projectSymmetric } from './symmetry'
+import { buildMirrorMap } from './symmetry'
 
 /**
  * Self-contained viewer for the "Oval" application slide.
@@ -291,11 +291,10 @@ export default function OvalDemo({ width = 580, height = 580 }: Props) {
         const live = cpsLiveRef.current
         const anchor = dragStartCpsRef.current
         try {
-          // Closed-curve sliding (4-extrema bound) via core/, with drift
-          // resistance toward the drag-start polygon. Symmetry is restored by
-          // projecting the result onto the symmetric subspace each step (keeps
-          // the oval's two axes exact). Inflection-preservation is not yet
-          // enforced in the optimizer — fine for the near-circle oval here.
+          // Closed-curve sliding via core/, all hard constraints inside the
+          // solve: 4 curvature extrema (g signs) AND 0 inflections (f signs),
+          // with the 2 axes of symmetry enforced by variable reduction
+          // (symmetryMaps) and drift resistance toward the drag-start polygon.
           const { x, y } = slideCurve(
             live.map((p) => p.x),
             live.map((p) => p.y),
@@ -307,6 +306,8 @@ export default function OvalDemo({ width = 580, height = 580 }: Props) {
             {
               closed: true,
               maxIterations: 20,
+              preserveInflections: true,
+              symmetryMaps: { mapX: MIRROR_MAP_X, mapY: MIRROR_MAP_Y },
               ...(anchor
                 ? {
                     anchorWeight: ANCHOR_WEIGHT,
@@ -316,11 +317,7 @@ export default function OvalDemo({ width = 580, height = 580 }: Props) {
                 : {}),
             },
           )
-          const next = projectSymmetric(
-            x.map((xi, i) => ({ x: xi, y: y[i] })),
-            MIRROR_MAP_X,
-            MIRROR_MAP_Y,
-          )
+          const next: Point2D[] = x.map((xi, i) => ({ x: xi, y: y[i] }))
           cpsLiveRef.current = next
           applyCpsToDom(next)
         } catch {

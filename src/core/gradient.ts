@@ -224,3 +224,61 @@ export function curvatureExtremaGradientPlanarPeriodic(
   }
   return { g, dx, dy }
 }
+
+/** Inflection numerator f = c′×c″ assembled over Duals. */
+function fOverDuals(x1: Dual, y1: Dual, x2: Dual, y2: Dual): Dual {
+  return x1.mul(y2).sub(y1.mul(x2))
+}
+
+/** f and its Jacobian for an OPEN planar B-spline curve. */
+export function inflectionGradientPlanar(
+  x: readonly number[],
+  y: readonly number[],
+  knots: readonly number[],
+  degree: number,
+): PlanarCurvatureGradient {
+  return inflectionGradient(x, y, knots, degree, decomposeToBernstein)
+}
+
+/** f and its Jacobian for a CLOSED (periodic) planar B-spline curve. */
+export function inflectionGradientPlanarPeriodic(
+  x: readonly number[],
+  y: readonly number[],
+  knots: readonly number[],
+  degree: number,
+): PlanarCurvatureGradient {
+  return inflectionGradient(x, y, knots, degree, decomposeToBernsteinPeriodic)
+}
+
+function inflectionGradient(
+  x: readonly number[],
+  y: readonly number[],
+  knots: readonly number[],
+  degree: number,
+  decompose: (c: readonly number[], k: readonly number[], d: number) => BernsteinDecomposition,
+): PlanarCurvatureGradient {
+  const X1 = decompose(x, knots, degree).derivative()
+  const Y1 = decompose(y, knots, degree).derivative()
+  const X2 = X1.derivative()
+  const Y2 = Y1.derivative()
+  const g = fOverDuals(
+    new Dual(X1, zeroLike(X1)),
+    new Dual(Y1, zeroLike(Y1)),
+    new Dual(X2, zeroLike(X2)),
+    new Dual(Y2, zeroLike(Y2)),
+  ).v
+
+  const n = x.length
+  const dx: BernsteinDecomposition[] = []
+  const dy: BernsteinDecomposition[] = []
+  for (let i = 0; i < n; i++) {
+    const e = new Array<number>(n).fill(0)
+    e[i] = 1
+    const Ni = decompose(e, knots, degree)
+    const Ni1 = Ni.derivative()
+    const Ni2 = Ni1.derivative()
+    dx.push(fOverDuals(new Dual(X1, Ni1), new Dual(Y1, zeroLike(Y1)), new Dual(X2, Ni2), new Dual(Y2, zeroLike(Y2))).t)
+    dy.push(fOverDuals(new Dual(X1, zeroLike(X1)), new Dual(Y1, Ni1), new Dual(X2, zeroLike(X2)), new Dual(Y2, Ni2)).t)
+  }
+  return { g, dx, dy }
+}

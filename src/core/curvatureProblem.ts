@@ -1,8 +1,19 @@
 import type { Matrix } from './linalg'
 import type { OptimizationProblem, OptimizerConfig } from './optimize'
 import { PrimalDualOptimizer } from './optimize'
-import { curvatureExtremaNumeratorPlanar, curvatureExtremaNumeratorPlanarPeriodic } from './curvature'
-import { curvatureExtremaGradientPlanar, curvatureExtremaGradientPlanarPeriodic } from './gradient'
+import { buildSymmetryReduction, SymmetryReducedProblem } from './symmetryReduction'
+import {
+  curvatureExtremaNumeratorPlanar,
+  curvatureExtremaNumeratorPlanarPeriodic,
+  inflectionNumeratorPlanar,
+  inflectionNumeratorPlanarPeriodic,
+} from './curvature'
+import {
+  curvatureExtremaGradientPlanar,
+  curvatureExtremaGradientPlanarPeriodic,
+  inflectionGradientPlanar,
+  inflectionGradientPlanarPeriodic,
+} from './gradient'
 import type { BernsteinDecomposition } from './bernstein'
 import type { PlanarCurvatureGradient } from './gradient'
 
@@ -58,9 +69,12 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
   private anchorX: number[]
   private anchorY: number[]
   private anchorWeight: number
-  private signs: number[] // per ACTIVE constraint
+  private signs: number[] // per ACTIVE g constraint
   private activeIdx: number[] // indices into g.flatCoeffs()
-  private cachedG: number[] | null = null
+  private preserveInflections: boolean
+  private fActiveIdx: number[] = []
+  private fSigns: number[] = []
+  private cachedCons: number[] | null = null
   private cachedJac: Matrix | null = null
 
   constructor(
@@ -78,6 +92,7 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
       anchorX?: number[]
       anchorY?: number[]
       anchorWeight?: number
+      preserveInflections?: boolean
     } = {},
   ) {
     this.cpX = [...cpX]
@@ -94,11 +109,21 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
     this.anchorY = opts.anchorY ?? [...this.cpY]
     this.anchorWeight = opts.anchorWeight ?? 0
 
+    this.preserveInflections = opts.preserveInflections ?? false
+
     const gc = this.numerator().flatCoeffs()
     const allSigns = gc.map((v) => (v > 0 ? -1 : 1))
     const inactive = opts.disableSliding ? new Set<number>() : computeInactiveSet(gc)
     this.activeIdx = gc.map((_, i) => i).filter((i) => !inactive.has(i))
     this.signs = this.activeIdx.map((i) => allSigns[i])
+
+    if (this.preserveInflections) {
+      const fc = this.inflectionNumerator().flatCoeffs()
+      const fAllSigns = fc.map((v) => (v > 0 ? -1 : 1))
+      const fInactive = opts.disableSliding ? new Set<number>() : computeInactiveSet(fc)
+      this.fActiveIdx = fc.map((_, i) => i).filter((i) => !fInactive.has(i))
+      this.fSigns = this.fActiveIdx.map((i) => fAllSigns[i])
+    }
   }
 
   private numerator(): BernsteinDecomposition {
@@ -111,6 +136,30 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
       ? curvatureExtremaGradientPlanarPeriodic(this.cpX, this.cpY, this.knots, this.degree)
       : curvatureExtremaGradientPlanar(this.cpX, this.cpY, this.knots, this.degree)
   }
+  private inflectionNumerator(): BernsteinDecomposition {
+    return this.closed
+      ? inflectionNumeratorPlanarPeriodic(this.cpX, this.cpY, this.knots, this.degree)
+      : inflectionNumeratorPlanar(this.cpX, this.cpY, this.knots, this.degree)
+  }
+  private inflectionGrad(): PlanarCurvatureGradient {
+    return this.closed
+      ? inflectionGradientPlanarPeriodic(this.cpX, this.cpY, this.knots, this.degree)
+      : inflectionGradientPlanar(this.cpX, this.cpY, this.knots, this.degree)
+  }
+  /** Build the variable-space rows (length 2m) for a gradient's coeff index. */
+  private jacRows(grad: PlanarCurvatureGradient, activeIdx: number[]): number[][] {
+    const m = this.cpX.length
+    const dxf = grad.dx.map((b) => b.flatCoeffs())
+    const dyf = grad.dy.map((b) => b.flatCoeffs())
+    return activeIdx.map((idx) => {
+      const row = new Array<number>(2 * m)
+      for (let j = 0; j < m; j++) {
+        row[j] = dxf[j][idx]
+        row[m + j] = dyf[j][idx]
+      }
+      return row
+    })
+  }
 
   get numVariables(): number {
     return this.cpX.length * 2
@@ -122,7 +171,7 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
     const n = this.cpX.length
     this.cpX = x.slice(0, n)
     this.cpY = x.slice(n)
-    this.cachedG = null
+    this.cachedCons = null
     this.cachedJac = null
   }
 
@@ -160,42 +209,44 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
   }
 
   get numConstraints(): number {
-    return this.activeIdx.length
+    return this.activeIdx.length + (this.preserveInflections ? this.fActiveIdx.length : 0)
   }
   computeConstraints(): number[] {
-    if (!this.cachedG) {
-      this.cachedG = this.numerator().flatCoeffs()
+    if (!this.cachedCons) {
+      const gc = this.numerator().flatCoeffs()
+      const cons = this.activeIdx.map((i) => gc[i])
+      if (this.preserveInflections) {
+        const fc = this.inflectionNumerator().flatCoeffs()
+        for (const i of this.fActiveIdx) cons.push(fc[i])
+      }
+      this.cachedCons = cons
     }
-    return this.activeIdx.map((i) => this.cachedG![i])
+    return this.cachedCons
   }
   computeConstraintJacobian(): Matrix {
     if (!this.cachedJac) {
-      const { dx, dy } = this.gradient()
-      const m = this.cpX.length
-      const dxf = dx.map((b) => b.flatCoeffs())
-      const dyf = dy.map((b) => b.flatCoeffs())
-      this.cachedJac = this.activeIdx.map((idx) => {
-        const row = new Array<number>(2 * m)
-        for (let j = 0; j < m; j++) {
-          row[j] = dxf[j][idx]
-          row[m + j] = dyf[j][idx]
-        }
-        return row
-      })
+      const rows = this.jacRows(this.gradient(), this.activeIdx)
+      if (this.preserveInflections) {
+        rows.push(...this.jacRows(this.inflectionGrad(), this.fActiveIdx))
+      }
+      this.cachedJac = rows
     }
     return this.cachedJac
   }
   getConstraintSigns(): number[] {
-    return this.signs
+    return this.preserveInflections ? [...this.signs, ...this.fSigns] : this.signs
   }
   getInactiveConstraints(): Set<number> {
     return new Set<number>()
   }
   updateConstraintState(): void {
     const gc = this.numerator().flatCoeffs()
-    const allSigns = gc.map((v) => (v > 0 ? -1 : 1))
-    this.signs = this.activeIdx.map((i) => allSigns[i])
-    this.cachedG = null
+    this.signs = this.activeIdx.map((i) => (gc[i] > 0 ? -1 : 1))
+    if (this.preserveInflections) {
+      const fc = this.inflectionNumerator().flatCoeffs()
+      this.fSigns = this.fActiveIdx.map((i) => (fc[i] > 0 ? -1 : 1))
+    }
+    this.cachedCons = null
     this.cachedJac = null
   }
 }
@@ -218,6 +269,8 @@ export function slideCurve(
     anchorX?: number[]
     anchorY?: number[]
     anchorWeight?: number
+    preserveInflections?: boolean
+    symmetryMaps?: { mapX: number[] | null; mapY: number[] | null }
   } & Partial<OptimizerConfig> = {},
 ): { x: number[]; y: number[]; converged: boolean } {
   const problem = new PlanarCurvatureProblem(cpX, cpY, knots, degree, dragIndex, targetX, targetY, {
@@ -226,12 +279,21 @@ export function slideCurve(
     anchorX: opts.anchorX,
     anchorY: opts.anchorY,
     anchorWeight: opts.anchorWeight,
+    preserveInflections: opts.preserveInflections,
   })
-  const optimizer = new PrimalDualOptimizer(problem, {
+  // Symmetry is enforced inside the solve via variable reduction (the result
+  // is symmetric AND constraint-feasible — no post-projection).
+  const solved: OptimizationProblem = opts.symmetryMaps
+    ? new SymmetryReducedProblem(
+        problem,
+        buildSymmetryReduction(cpX.length, opts.symmetryMaps.mapX, opts.symmetryMaps.mapY),
+      )
+    : problem
+  const optimizer = new PrimalDualOptimizer(solved, {
     maxIterations: opts.maxIterations ?? 80,
     returnBestFeasible: true,
   })
   const result = optimizer.optimize()
-  problem.setVariables(result.variables)
+  solved.setVariables(result.variables)
   return { x: problem.cpX, y: problem.cpY, converged: result.converged }
 }

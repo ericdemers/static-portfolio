@@ -82,6 +82,20 @@ export function curvatureExtremaNumeratorPlanarPeriodic(
   return normSq.multiply(crossPrime3).subtract(dot.multiply(crossPrime2).scale(3))
 }
 
+/** Inflection numerator f = c′×c″ for a CLOSED (periodic) planar B-spline curve. */
+export function inflectionNumeratorPlanarPeriodic(
+  x: readonly number[],
+  y: readonly number[],
+  knots: readonly number[],
+  degree: number,
+): BernsteinDecomposition {
+  const x1 = decomposeToBernsteinPeriodic(x, knots, degree).derivative()
+  const y1 = decomposeToBernsteinPeriodic(y, knots, degree).derivative()
+  const x2 = x1.derivative()
+  const y2 = y1.derivative()
+  return x1.multiply(y2).subtract(y1.multiply(x2))
+}
+
 /** Parameters t ∈ [0,1) of the curvature extrema of a closed curve (zeros of periodic g). */
 export function closedCurvatureExtremaParameters(
   x: readonly number[],
