@@ -3,12 +3,15 @@ import type { OptimizationProblem, OptimizerConfig } from './optimize'
 import { PrimalDualOptimizer } from './optimize'
 import { BarrierOptimizer } from './barrierOptimizer'
 import { BandedPrimalDualOptimizer } from './bandedPrimalDual'
+import { InteriorPointOptimizer } from './ipopt/InteriorPointOptimizer'
 import { buildSymmetryReduction, SymmetryReducedProblem } from './symmetryReduction'
 import {
   curvatureExtremaNumeratorPlanar,
   curvatureExtremaNumeratorPlanarPeriodic,
   inflectionNumeratorPlanar,
   inflectionNumeratorPlanarPeriodic,
+  openCurvatureExtremaParameters,
+  closedCurvatureExtremaParameters,
 } from './curvature'
 import {
   curvatureExtremaGradientPlanar,
@@ -20,11 +23,92 @@ import {
 import type { BernsteinDecomposition } from './bernstein'
 import type { PlanarCurvatureGradient } from './gradient'
 
+/** Per coefficient: −1 if g>0 (keep ≥0), +1 if g≤0 (keep ≤0). Exact-0 → +1. */
+function assignSigns(gc: number[]): number[] {
+  return gc.map((v) => (v > 0 ? -1 : 1))
+}
+
+const SIGN_NOISE_REL = 1e-9
+/**
+ * Neighbour-aware sign assignment for the robust (unscaled) regime. A
+ * coefficient above the noise floor takes the sign of its own value; a near-zero
+ * one — the STRUCTURALLY ZERO clamped-boundary coefficient our core computes as
+ * exactly 0 — takes its nearest determined neighbour's sign. That mirrors what
+ * the sketcher gets for free from its tiny roundoff residual (g[0] ≈ +7.8e-3):
+ * the boundary coefficient joins its run, stays ACTIVE, and is enforced, so the
+ * solve coordinates the neighbours to keep it feasible instead of letting it
+ * slide across zero (a real extremum).
+ */
+function assignSignsNeighbor(gc: number[]): number[] {
+  const maxAbs = Math.max(1e-300, ...gc.map(Math.abs))
+  const noise = SIGN_NOISE_REL * maxAbs
+  const det = gc.map((v) => (Math.abs(v) <= noise ? 0 : v > 0 ? -1 : 1))
+  const out = det.slice()
+  const n = det.length
+  for (let i = 0; i < n; i++) {
+    if (det[i] !== 0) continue
+    let l = i - 1
+    while (l >= 0 && det[l] === 0) l--
+    let r = i + 1
+    while (r < n && det[r] === 0) r++
+    const dl = l >= 0 ? i - l : Infinity
+    const dr = r < n ? r - i : Infinity
+    out[i] = dl <= dr ? (l >= 0 ? det[l] : 1) : r < n ? det[r] : 1
+    if (out[i] === 0) out[i] = 1
+  }
+  return out
+}
+
+/** Sliding active set driven by the ASSIGNED signs (robust regime): a near-zero
+ *  coefficient that took its run's sign shares its neighbour's sign and so stays
+ *  active. Within each alternating-sign run keep the largest-|g| anchor active. */
+function computeInactiveSetBySign(signs: number[], absVal: number[]): Set<number> {
+  const inactive = new Set<number>()
+  const n = signs.length
+  let i = 0
+  while (i < n - 1) {
+    if (signs[i] !== signs[i + 1]) {
+      const seq = [
+        { idx: i, abs: absVal[i] },
+        { idx: i + 1, abs: absVal[i + 1] },
+      ]
+      let j = i + 1
+      while (j < n - 1 && signs[j] !== signs[j + 1]) {
+        j++
+        seq.push({ idx: j, abs: absVal[j] })
+      }
+      const anchor = seq.reduce((m, e) => (e.abs > m.abs ? e : m))
+      for (const e of seq) if (e.idx !== anchor.idx) inactive.add(e.idx)
+      i = j + 1
+    } else {
+      i++
+    }
+  }
+  return inactive
+}
+
+/** Tiny feasible-side margin (in raw g units) for structurally-zero ACTIVE
+ *  coefficients, so g=0 starts at a small POSITIVE slack — the analogue of the
+ *  sketcher's roundoff residual — instead of exactly 0 (a barrier wall). The
+ *  excursion it permits is MARGIN_REL·max|g| ≈ noise, never a real extremum. */
+const MARGIN_REL = 1e-9
+function structuralMargins(gcAll: number[], activeIdx: number[]): number[] {
+  const maxAbs = Math.max(1e-300, ...gcAll.map(Math.abs))
+  const noise = SIGN_NOISE_REL * maxAbs
+  const margin = MARGIN_REL * maxAbs
+  return activeIdx.map((i) => (Math.abs(gcAll[i]) <= noise ? margin : 0))
+}
+
 /**
  * Anchor-based sliding active set (the talk's mechanism). Walk the g Bernstein
- * coefficients: within each maximal alternating-sign run, keep only the anchor
- * (largest |g|) active and let the rest slide; positions with same-sign
- * neighbours stay active. Inactive constraints are dropped from the problem.
+ * coefficients: within each maximal alternating-sign run (consecutive products
+ * ≤ 0, so a zero joins the run on either side) keep only the anchor (largest
+ * |g|) active and let the rest slide; positions with same-sign neighbours stay
+ * active. Inactive constraints are dropped from the barrier but the active
+ * anchors still bound S⁻ by the variation-diminishing property. This matches the
+ * sketcher's proven setup; a structurally-zero boundary coefficient lands in the
+ * inactive set (so it does not wall the solve), and the robust IPOPT solver
+ * keeps the bound via the neighbouring active anchor.
  */
 function computeInactiveSet(gc: number[]): Set<number> {
   const inactive = new Set<number>()
@@ -98,12 +182,20 @@ export function planarCurvatureConstraintState(
   cpY: readonly number[],
   knots: readonly number[],
   degree: number,
-  opts: { disableSliding?: boolean } = {},
+  opts: { disableSliding?: boolean; robust?: boolean } = {},
 ): CurvatureConstraintState {
   const g = curvatureExtremaNumeratorPlanar(cpX, cpY, knots, degree)
   const gc = g.flatCoeffs()
-  const signs = gc.map((v) => (v > 0 ? -1 : 1))
-  const inactive = opts.disableSliding ? new Set<number>() : computeInactiveSet(gc)
+  // The robust regime (IPOPT path) keeps the structurally-zero boundary
+  // coefficient active via its neighbour's sign; the banded regime uses the
+  // raw sign rule and value-based sliding. Match whichever solver will run so
+  // the fixed drag-start signs agree with the optimizer's constraint set.
+  const signs = opts.robust ? assignSignsNeighbor(gc) : assignSigns(gc)
+  const inactive = opts.disableSliding
+    ? new Set<number>()
+    : opts.robust
+      ? computeInactiveSetBySign(signs, gc.map(Math.abs))
+      : computeInactiveSet(gc)
   const gScale = scaleFor(
     gc,
     gc.map((_, i) => i),
@@ -149,10 +241,12 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
   // optimizer give up). Sign-invariant (scale > 0), so the feasible set and the
   // bound are unchanged; only the numerics improve.
   private gScale: number[] = []
+  private margins: number[] = []
   private preserveInflections: boolean
   private fActiveIdx: number[] = []
   private fSigns: number[] = []
   private fScale: number[] = []
+  private fMargins: number[] = []
   private cachedCons: number[] | null = null
   private cachedJac: Matrix | null = null
 
@@ -176,6 +270,16 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
       dragWeight?: number
       /** Fixed sign/active-set from drag start (preferred over recomputing). */
       constraintState?: CurvatureConstraintState
+      /**
+       * Use RAW (unscaled) constraints — gScale ≡ 1 — instead of dividing each
+       * by |g_i|. The per-constraint scaling conditions the lean Mehrotra/barrier
+       * solvers but it floors a structurally-zero coefficient at the noise level,
+       * which blows up its Jacobian row and makes that constraint impossible to
+       * enforce (the drag stalls or the bound is violated). The robust IPOPT
+       * solver handles the raw dynamic range via its trust region, exactly as the
+       * sketcher does, so it takes the unscaled form.
+       */
+      noScale?: boolean
     } = {},
   ) {
     this.cpX = [...cpX]
@@ -195,6 +299,13 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
 
     this.preserveInflections = opts.preserveInflections ?? false
 
+    // Two regimes. The ROBUST regime (`noScale`, used by the IPOPT solver and
+    // the editor) mirrors the sketcher: unscaled (raw) constraints, neighbour-
+    // aware signs that keep the structurally-zero clamped-boundary coefficient
+    // ACTIVE in its run, and a tiny margin so g=0 starts at positive slack. The
+    // BANDED regime (default, for the near-linear slide solvers) keeps the
+    // per-constraint scaling and the value-based sliding set the banded
+    // solvers were tuned for.
     if (opts.constraintState) {
       // FIXED signs/active-set/scale from drag start — the sliding mechanism
       // follows the initial sign assignment instead of re-deriving each frame.
@@ -202,23 +313,38 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
       const inactive = new Set(cs.inactiveIndices)
       this.activeIdx = cs.signs.map((_, i) => i).filter((i) => !inactive.has(i))
       this.signs = this.activeIdx.map((i) => cs.signs[i])
-      this.gScale = this.activeIdx.map((i) => cs.gScale[i])
+      this.gScale = opts.noScale ? this.activeIdx.map(() => 1) : this.activeIdx.map((i) => cs.gScale[i])
+      this.margins = opts.noScale ? structuralMargins(cs.gCPs, this.activeIdx) : this.activeIdx.map(() => 0)
+    } else if (opts.noScale) {
+      const gc = this.numerator().flatCoeffs()
+      const allSigns = assignSignsNeighbor(gc)
+      const inactive = opts.disableSliding ? new Set<number>() : computeInactiveSetBySign(allSigns, gc.map(Math.abs))
+      this.activeIdx = gc.map((_, i) => i).filter((i) => !inactive.has(i))
+      this.signs = this.activeIdx.map((i) => allSigns[i])
+      this.gScale = this.activeIdx.map(() => 1)
+      this.margins = structuralMargins(gc, this.activeIdx)
     } else {
       const gc = this.numerator().flatCoeffs()
-      const allSigns = gc.map((v) => (v > 0 ? -1 : 1))
+      const allSigns = assignSigns(gc)
       const inactive = opts.disableSliding ? new Set<number>() : computeInactiveSet(gc)
       this.activeIdx = gc.map((_, i) => i).filter((i) => !inactive.has(i))
       this.signs = this.activeIdx.map((i) => allSigns[i])
       this.gScale = scaleFor(gc, this.activeIdx)
+      this.margins = this.activeIdx.map(() => 0)
     }
 
     if (this.preserveInflections) {
       const fc = this.inflectionNumerator().flatCoeffs()
-      const fAllSigns = fc.map((v) => (v > 0 ? -1 : 1))
-      const fInactive = opts.disableSliding ? new Set<number>() : computeInactiveSet(fc)
+      const fAllSigns = opts.noScale ? assignSignsNeighbor(fc) : assignSigns(fc)
+      const fInactive = opts.disableSliding
+        ? new Set<number>()
+        : opts.noScale
+          ? computeInactiveSetBySign(fAllSigns, fc.map(Math.abs))
+          : computeInactiveSet(fc)
       this.fActiveIdx = fc.map((_, i) => i).filter((i) => !fInactive.has(i))
       this.fSigns = this.fActiveIdx.map((i) => fAllSigns[i])
-      this.fScale = scaleFor(fc, this.fActiveIdx)
+      this.fScale = opts.noScale ? this.fActiveIdx.map(() => 1) : scaleFor(fc, this.fActiveIdx)
+      this.fMargins = opts.noScale ? structuralMargins(fc, this.fActiveIdx) : this.fActiveIdx.map(() => 0)
     }
   }
 
@@ -310,10 +436,10 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
   computeConstraints(): number[] {
     if (!this.cachedCons) {
       const gc = this.numerator().flatCoeffs()
-      const cons = this.activeIdx.map((i, k) => gc[i] / this.gScale[k])
+      const cons = this.activeIdx.map((i, k) => gc[i] / this.gScale[k] - this.signs[k] * this.margins[k])
       if (this.preserveInflections) {
         const fc = this.inflectionNumerator().flatCoeffs()
-        this.fActiveIdx.forEach((i, k) => cons.push(fc[i] / this.fScale[k]))
+        this.fActiveIdx.forEach((i, k) => cons.push(fc[i] / this.fScale[k] - this.fSigns[k] * this.fMargins[k]))
       }
       this.cachedCons = cons
     }
@@ -378,10 +504,12 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
   }
   updateConstraintState(): void {
     const gc = this.numerator().flatCoeffs()
-    this.signs = this.activeIdx.map((i) => (gc[i] > 0 ? -1 : 1))
+    const gSigns = assignSigns(gc)
+    this.signs = this.activeIdx.map((i) => gSigns[i])
     if (this.preserveInflections) {
       const fc = this.inflectionNumerator().flatCoeffs()
-      this.fSigns = this.fActiveIdx.map((i) => (fc[i] > 0 ? -1 : 1))
+      const fSigns = assignSigns(fc)
+      this.fSigns = this.fActiveIdx.map((i) => fSigns[i])
     }
     this.cachedCons = null
     this.cachedJac = null
@@ -410,8 +538,14 @@ export function slideCurve(
     symmetryMaps?: { mapX: number[] | null; mapY: number[] | null }
     dragWeight?: number
     constraintState?: CurvatureConstraintState
-    /** Which optimizer to use. 'barrier' uses the banded (near-linear) solve. */
-    method?: 'primal-dual' | 'barrier'
+    /**
+     * Which optimizer to use. 'primal-dual'/'barrier' use the banded
+     * (near-linear) solvers — best for large curves and the method comparison.
+     * 'ipopt' uses the ported robust IPOPT-style solver (trust region, filter,
+     * feasibility restoration) — the editor's default for reliable, coordinated,
+     * never-bound-violating drags.
+     */
+    method?: 'primal-dual' | 'barrier' | 'ipopt'
   } & Partial<OptimizerConfig> = {},
 ): { x: number[]; y: number[]; converged: boolean } {
   const problem = new PlanarCurvatureProblem(cpX, cpY, knots, degree, dragIndex, targetX, targetY, {
@@ -423,6 +557,7 @@ export function slideCurve(
     preserveInflections: opts.preserveInflections,
     dragWeight: opts.dragWeight,
     constraintState: opts.constraintState,
+    noScale: opts.method === 'ipopt',
   })
   // Symmetry is enforced inside the solve via variable reduction (the result
   // is symmetric AND constraint-feasible — no post-projection).
@@ -437,13 +572,58 @@ export function slideCurve(
   // reduction, no periodic wrap). The dense primal-dual handles the
   // closed/symmetric/reduced cases.
   const banded = !opts.symmetryMaps && !opts.closed
-  const optimizer =
-    opts.method === 'barrier' && banded
-      ? new BarrierOptimizer(solved, { maxIterations: opts.maxIterations ?? 40, returnBestFeasible: true })
-      : banded
-        ? new BandedPrimalDualOptimizer(solved, { maxIterations: opts.maxIterations ?? 80, returnBestFeasible: true })
-        : new PrimalDualOptimizer(solved, { maxIterations: opts.maxIterations ?? 80, returnBestFeasible: true })
-  const result = optimizer.optimize()
-  solved.setVariables(result.variables)
-  return { x: problem.cpX, y: problem.cpY, converged: result.converged }
+  let converged: boolean
+  if (opts.method === 'ipopt') {
+    // The robust IPOPT-style solver: trust region + filter + feasibility
+    // restoration give gradual, coordinated drags. Works on any problem (dense
+    // Jacobian), so it also serves the symmetry/closed cases when selected.
+    const ip = new InteriorPointOptimizer(solved, {
+      maxIterations: opts.maxIterations ?? 80,
+      returnBestFeasible: true,
+    })
+    const r = ip.optimize()
+    solved.setVariables(r.variables)
+    converged = r.converged
+  } else {
+    const optimizer =
+      opts.method === 'barrier' && banded
+        ? new BarrierOptimizer(solved, { maxIterations: opts.maxIterations ?? 40, returnBestFeasible: true })
+        : banded
+          ? new BandedPrimalDualOptimizer(solved, { maxIterations: opts.maxIterations ?? 80, returnBestFeasible: true })
+          : new PrimalDualOptimizer(solved, { maxIterations: opts.maxIterations ?? 80, returnBestFeasible: true })
+    const result = optimizer.optimize()
+    solved.setVariables(result.variables)
+    converged = result.converged
+  }
+
+  // Extrema guard: never return a curve with MORE actual curvature extrema than
+  // the start. The count is the dense-sampled number of zeros of g(t) — robust
+  // to noise-level coefficients (unlike the Bernstein sign-change bound, a
+  // coefficient at ~1e-9·max never makes g(t) actually cross zero), so it does
+  // not fight the tiny structural-zero margin. If a solve still overshot (added
+  // a real extremum), bisect the straight path from the start to the solved
+  // curve for the furthest point that preserves the count: the dragged point
+  // follows the cursor as far as the bound allows and never past it.
+  const sOf = (x: readonly number[], y: readonly number[]) =>
+    (opts.closed
+      ? closedCurvatureExtremaParameters(x, y, knots, degree)
+      : openCurvatureExtremaParameters(x, y, knots, degree)
+    ).length
+  let rx = problem.cpX
+  let ry = problem.cpY
+  const startS = sOf(cpX, cpY)
+  if (sOf(rx, ry) > startS) {
+    let lo = 0
+    let hi = 1
+    for (let it = 0; it < 26; it++) {
+      const mid = (lo + hi) / 2
+      const xm = cpX.map((v, i) => v + mid * (rx[i] - v))
+      const ym = cpY.map((v, i) => v + mid * (ry[i] - v))
+      if (sOf(xm, ym) <= startS) lo = mid
+      else hi = mid
+    }
+    rx = cpX.map((v, i) => v + lo * (rx[i] - v))
+    ry = cpY.map((v, i) => v + lo * (ry[i] - v))
+  }
+  return { x: rx, y: ry, converged }
 }

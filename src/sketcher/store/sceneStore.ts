@@ -117,8 +117,8 @@ interface SketcherState {
   dragConstraintState: import('../../core').CurvatureConstraintState | null
   /** Which curvature-extrema optimizer the open B-spline drag uses. 'barrier'
    *  is the banded (near-linear) interior-point; 'primal-dual' is the dense one. */
-  solverMethod: 'primal-dual' | 'barrier'
-  setSolverMethod: (m: 'primal-dual' | 'barrier') => void
+  solverMethod: 'primal-dual' | 'barrier' | 'ipopt'
+  setSolverMethod: (m: 'primal-dual' | 'barrier' | 'ipopt') => void
 
   // Transform widget
   transformActive: boolean
@@ -314,7 +314,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   dragStartCPsX: null,
   dragStartCPsY: null,
   dragConstraintState: null,
-  solverMethod: 'primal-dual',
+  solverMethod: 'ipopt',
 
   view: {
     zoom: 1,
@@ -541,15 +541,17 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
           newPosition.x,
           newPosition.y,
           {
-            // Banded barrier needs a few more iterations to converge per frame;
-            // dense primal-dual is capped lower. Both early-exit when converged.
-            maxIterations: solverMethod === 'barrier' ? 40 : 20,
+            // 'ipopt' is the robust solver (trust region + filter + feasibility
+            // restoration): it coordinates the other control points to keep the
+            // curvature-extrema bound and never returns a violating curve, like
+            // the reference sketcher. 'primal-dual'/'barrier' are the near-linear
+            // banded solvers, kept for comparison.
+            maxIterations: solverMethod === 'ipopt' ? 60 : solverMethod === 'barrier' ? 40 : 20,
             method: solverMethod,
-            // Weight the dragged point's target term high so it tracks the
-            // cursor instead of being balanced equally against holding every
-            // other CP put (which felt sluggish/"stuck"). The bound can still
-            // legitimately block a direction that would add a curvature extremum.
-            dragWeight: 25,
+            // ipopt: equal weights so the whole curve moves together (the
+            // coordinated feel). The banded solvers weight the dragged point
+            // high so it tracks the cursor instead of being held equally.
+            ...(solverMethod === 'ipopt' ? {} : { dragWeight: 25 }),
             // Follow the sign assignment fixed at drag start (set above), rather
             // than re-deriving signs each frame.
             ...(dragConstraintState ? { constraintState: dragConstraintState } : {}),
@@ -1158,7 +1160,10 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
           cps.map((p) => p.y),
           curve.knots,
           curve.degree,
-          { disableSliding: get().disableSliding },
+          // Match the solver regime: 'ipopt' uses neighbour-aware signs that keep
+          // the structurally-zero boundary coefficient active (so the fixed signs
+          // agree with the optimizer's constraint set and the bar display).
+          { disableSliding: get().disableSliding, robust: get().solverMethod === 'ipopt' },
         )
       } catch { /* leave null → per-frame recompute fallback */ }
     }

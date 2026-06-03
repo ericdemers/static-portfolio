@@ -754,7 +754,7 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
             curve.controlPoints.map((p) => p.y),
             curve.knots,
             curve.degree,
-            { disableSliding },
+            { disableSliding, robust: solverMethod === 'ipopt' },
           )
         )
       }
@@ -762,7 +762,7 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
       console.error('constraintState computation failed:', e)
       return null
     }
-  }, [curve, preserveCurvatureExtrema, dragConstraintState, disableSliding])
+  }, [curve, preserveCurvatureExtrema, dragConstraintState, disableSliding, solverMethod])
 
   // Current bound S(b): the number of sign changes of g = the curvature-extrema
   // count being held. Shown next to the toggle, mirroring the cs2026 talk slide.
@@ -925,12 +925,13 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
                   )}
                 </label>
               )}
-              {/* Optimizer toggle (open B-spline): compare the dense primal-dual
-                  against the banded barrier (near-linear) while dragging. */}
+              {/* Optimizer toggle (open B-spline): 'Robust' is the IPOPT-style
+                  solver (coordinated, never violates the bound — the default);
+                  PD/Barrier are the near-linear banded solvers, for comparison. */}
               {isCompatible && isOpenBspline && preserveCurvatureExtrema && (
                 <div className="flex items-center gap-1 text-xs">
                   <span className="text-gray-400">solver</span>
-                  {(['primal-dual', 'barrier'] as const).map((m) => (
+                  {(['ipopt', 'primal-dual', 'barrier'] as const).map((m) => (
                     <button
                       key={m}
                       onClick={() => setSolverMethod(m)}
@@ -940,7 +941,7 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
                           : 'border-gray-300 text-gray-600 dark:text-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
                       }`}
                     >
-                      {m === 'primal-dual' ? 'PD' : 'Barrier'}
+                      {m === 'ipopt' ? 'Robust' : m === 'primal-dual' ? 'PD' : 'Barrier'}
                     </button>
                   ))}
                 </div>
