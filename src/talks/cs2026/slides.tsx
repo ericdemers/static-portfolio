@@ -9,6 +9,8 @@ import FusionPanel from './FusionPanel'
 import OvalDemo from './OvalDemo'
 import OvoidDemo from './OvoidDemo'
 import AirfoilDemo from './AirfoilDemo'
+import DatasetGalaxy from './DatasetGalaxy'
+import AirfoilFitGallery from './AirfoilFitGallery'
 import AllFlipDiagram from './AllFlipDiagram'
 import WalkDiagram from './WalkDiagram'
 
@@ -547,24 +549,88 @@ export const slides: SlideDefinition[] = [
   {
     type: 'content',
     content: (
-      <DemoSlide
-        panel={
-          <>
-            <h2 style={{ fontSize: '1.1em' }}>The UIUC airfoil dataset</h2>
-            <p>
-              <strong style={{ fontSize: '1.2em' }}>1644</strong> airfoils, single workflow: <em>Fair → Fit</em>.
-            </p>
-            <ul style={{ marginTop: '0.6em', fontSize: '0.9em' }}>
-              <li>
-                <strong style={{ color: '#16a34a' }}>97.8%</strong> admit a 4-curvature-extrema fit
-              </li>
-              <li>median error <strong>0.35% chord</strong> (p90 = 0.61%)</li>
-              <li><strong>0</strong> errors, <strong>0</strong> fits worsened by the constraint</li>
-            </ul>
-          </>
-        }
-        figure={<DemoPlaceholder label="UIUC dataset galaxy + open-curve precision gallery" />}
-      />
+      <div style={{ display: 'flex', height: '100%', gap: 0 }}>
+        <div
+          style={{
+            width: '38%',
+            padding: '40px 24px 40px 0',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+          }}
+        >
+          <h2 style={{ fontSize: '1.1em' }}>The UIUC airfoil dataset</h2>
+          <p style={{ marginTop: '0.4em' }}>
+            <strong style={{ fontSize: '1.3em' }}>1644</strong> airfoils, same machinery.
+          </p>
+          <ul style={{ marginTop: '0.6em', fontSize: '0.9em' }}>
+            <li>
+              <strong style={{ color: '#16a34a', fontSize: '1.15em' }}>98.8%</strong> admit a
+              4-curvature-extrema fit
+            </li>
+            <li style={{ marginTop: '0.3em' }}>
+              median error <strong>0.13% chord</strong> (p90 = 0.38%)
+            </li>
+            <li style={{ marginTop: '0.3em' }}>
+              <strong>0</strong> errors, <strong>0</strong> fits worsened by the constraint
+            </li>
+          </ul>
+          <p style={{ marginTop: '0.8em', fontSize: '0.78em', color: '#94a3b8', fontStyle: 'italic' }}>
+            Workflow: fair → fit with an interior-point optimizer → a primal–dual solve tightens the fit.
+          </p>
+        </div>
+        <div
+          style={{
+            width: '62%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <DatasetGalaxy />
+        </div>
+      </div>
+    ),
+  },
+
+  {
+    type: 'content',
+    content: (
+      <div style={{ display: 'flex', height: '100%', gap: 0 }}>
+        <div
+          style={{
+            width: '30%',
+            padding: '40px 24px 40px 0',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+          }}
+        >
+          <h2 style={{ fontSize: '1.1em' }}>How precise can we get?</h2>
+          <p style={{ marginTop: '0.4em' }}>
+            Open curve, trailing edge pinned — push the bounded fit to its limit.
+          </p>
+          <ul style={{ marginTop: '0.6em', fontSize: '0.9em' }}>
+            <li>degree-5 B-spline · <em>Fair ↔ Fit</em> · primal–dual finish</li>
+            <li style={{ marginTop: '0.3em' }}>
+              1–2 curvature extrema, <strong style={{ color: '#34d399' }}>&lt; 0.1% chord</strong>
+            </li>
+          </ul>
+          <p style={{ marginTop: '0.8em', fontSize: '0.78em', color: '#94a3b8', fontStyle: 'italic' }}>
+            An AI-assisted algorithm-design experiment (Claude Code).
+          </p>
+        </div>
+        <div
+          style={{
+            width: '70%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <AirfoilFitGallery />
+        </div>
+      </div>
     ),
   },
 
