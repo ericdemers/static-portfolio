@@ -641,7 +641,9 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
     enterSmooth, cancelSmooth, applySmooth, setSmoothWindow, setSmoothAmount,
     setSmoothMode, setSmoothIterations,
     dragConstraintState, disableSliding,
+    solverMethod, setSolverMethod,
   } = useSceneStore()
+  const isOpenBspline = curve.kind === 'bspline' && !curve.closed
 
   const kSvgRef = useRef<SVGSVGElement>(null)
   const dragIdx = useRef<number | null>(null)
@@ -922,6 +924,26 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
                     </span>
                   )}
                 </label>
+              )}
+              {/* Optimizer toggle (open B-spline): compare the dense primal-dual
+                  against the banded barrier (near-linear) while dragging. */}
+              {isCompatible && isOpenBspline && preserveCurvatureExtrema && (
+                <div className="flex items-center gap-1 text-xs">
+                  <span className="text-gray-400">solver</span>
+                  {(['primal-dual', 'barrier'] as const).map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => setSolverMethod(m)}
+                      className={`px-1.5 py-0.5 rounded border ${
+                        solverMethod === m
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'border-gray-300 text-gray-600 dark:text-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {m === 'primal-dual' ? 'PD' : 'Barrier'}
+                    </button>
+                  ))}
+                </div>
               )}
               {smoothEligible && (
                 <button

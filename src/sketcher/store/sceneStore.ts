@@ -115,6 +115,10 @@ interface SketcherState {
   /** Curvature-extrema constraint state fixed at drag start (open B-spline);
    *  reused for every frame so the sign assignment is followed, not recomputed. */
   dragConstraintState: import('../../core').CurvatureConstraintState | null
+  /** Which curvature-extrema optimizer the open B-spline drag uses. 'barrier'
+   *  is the banded (near-linear) interior-point; 'primal-dual' is the dense one. */
+  solverMethod: 'primal-dual' | 'barrier'
+  setSolverMethod: (m: 'primal-dual' | 'barrier') => void
 
   // Transform widget
   transformActive: boolean
@@ -310,6 +314,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   dragStartCPsX: null,
   dragStartCPsY: null,
   dragConstraintState: null,
+  solverMethod: 'primal-dual',
 
   view: {
     zoom: 1,
@@ -406,7 +411,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   },
 
   moveControlPoint: (curveId, pointIndex, newPosition) => {
-    const { preserveCurvatureExtrema, preserveInflections, disableSliding, symmetryMaps, curves, phMetadata, anchorWeight, dragStartCPsX, dragStartCPsY, dragConstraintState } = get()
+    const { preserveCurvatureExtrema, preserveInflections, disableSliding, symmetryMaps, curves, phMetadata, anchorWeight, dragStartCPsX, dragStartCPsY, dragConstraintState, solverMethod } = get()
     const curve = curves.find((c) => c.id === curveId)
 
     if (!curve) return
@@ -536,7 +541,10 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
           newPosition.x,
           newPosition.y,
           {
-            maxIterations: 20,
+            // Banded barrier needs a few more iterations to converge per frame;
+            // dense primal-dual is capped lower. Both early-exit when converged.
+            maxIterations: solverMethod === 'barrier' ? 40 : 20,
+            method: solverMethod,
             // Weight the dragged point's target term high so it tracks the
             // cursor instead of being balanced equally against holding every
             // other CP put (which felt sluggish/"stuck"). The bound can still
@@ -1133,6 +1141,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   setPreserveInflections: (preserve) => set({ preserveInflections: preserve }),
   setDisableSliding: (disable) => set({ disableSliding: disable }),
   setAnchorWeight: (weight) => set({ anchorWeight: weight }),
+  setSolverMethod: (m) => set({ solverMethod: m }),
   snapshotDragStartCPs: (curveId) => {
     const curve = get().curves.find((c) => c.id === curveId)
     if (!curve) return
