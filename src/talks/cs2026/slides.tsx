@@ -4,6 +4,8 @@ import Math from '../framework/Math'
 import ExtremumSlidingDemo from './ExtremumSlidingDemo'
 import WithoutSlidingDemo from './WithoutSlidingDemo'
 import WithoutSlidingPanel from './WithoutSlidingPanel'
+import ExtremaFusionDemo from './ExtremaFusionDemo'
+import FusionPanel from './FusionPanel'
 
 /**
  * "Without Sliding" slide — owns the constraint-toggle state so the panel
@@ -19,6 +21,31 @@ function WithoutSlidingSlideContent() {
       </div>
       <div style={{ width: '68%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <WithoutSlidingDemo constrainExtrema={constrain} onBoundChange={setBound} />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * "Extrema Fusion" slide (beat c) — sliding active set, with a Reset that
+ * snaps the demo back to its initial polygon via a reset nonce.
+ */
+function ExtremaFusionSlideContent() {
+  const [constrain, setConstrain] = useState(true)
+  const [bound, setBound] = useState<number | null>(null)
+  const [resetNonce, setResetNonce] = useState(0)
+  return (
+    <div style={{ display: 'flex', height: '100%', gap: 0 }}>
+      <div style={{ width: '32%', paddingRight: 24, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <FusionPanel
+          constrainExtrema={constrain}
+          onToggle={setConstrain}
+          bound={bound}
+          onReset={() => setResetNonce((n) => n + 1)}
+        />
+      </div>
+      <div style={{ width: '68%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <ExtremaFusionDemo constrainExtrema={constrain} onBoundChange={setBound} resetNonce={resetNonce} />
       </div>
     </div>
   )
@@ -207,6 +234,11 @@ export const slides: SlideDefinition[] = [
         </div>
       </div>
     ),
+  },
+
+  {
+    type: 'content',
+    content: <ExtremaFusionSlideContent />,
   },
 
   {
