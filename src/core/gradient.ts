@@ -164,6 +164,98 @@ export function curvatureExtremaGradientPlanar(
   return { g, dx, dy }
 }
 
+/** One control point's ∂g column, kept LOCAL: nonzero spans [s0, s0+gx.numSpans). */
+export interface LocalGradientColumn {
+  s0: number
+  gx: BernsteinDecomposition
+  gy: BernsteinDecomposition
+}
+export interface PlanarCurvatureGradientLocal {
+  g: BernsteinDecomposition
+  gDeg: number
+  numSpans: number
+  /** Per control point. s0 < 0 means no support (empty column). */
+  cols: LocalGradientColumn[]
+}
+
+/**
+ * Same exact Jacobian as curvatureExtremaGradientPlanar, but each column is left
+ * in LOCAL form (its support spans only, no full-width padding). Lets callers
+ * assemble JᵀDJ in O(n·d²) instead of paying O(n·numSpans) per column — the key
+ * to a linear-in-#control-points interior-point step. Open (clamped) curves only.
+ */
+export function curvatureExtremaGradientPlanarLocal(
+  x: readonly number[],
+  y: readonly number[],
+  knots: readonly number[],
+  degree: number,
+): PlanarCurvatureGradientLocal {
+  const X1 = decomposeToBernstein(x, knots, degree).derivative()
+  const Y1 = decomposeToBernstein(y, knots, degree).derivative()
+  const X2 = X1.derivative()
+  const Y2 = Y1.derivative()
+  const X3 = X2.derivative()
+  const Y3 = Y2.derivative()
+
+  const g = gOverDuals(
+    new Dual(X1, zeroLike(X1)),
+    new Dual(Y1, zeroLike(Y1)),
+    new Dual(X2, zeroLike(X2)),
+    new Dual(Y2, zeroLike(Y2)),
+    new Dual(X3, zeroLike(X3)),
+    new Dual(Y3, zeroLike(Y3)),
+  ).v
+
+  const n = x.length
+  const empty = new BernsteinDecomposition([], [])
+  const cols: LocalGradientColumn[] = []
+  for (let i = 0; i < n; i++) {
+    const e = new Array<number>(n).fill(0)
+    e[i] = 1
+    const Ni = decomposeToBernstein(e, knots, degree)
+    let s0 = -1
+    let s1 = -1
+    for (let s = 0; s < Ni.numSpans; s++) {
+      if (Ni.coeffs[s].some((c) => Math.abs(c) > 1e-14)) {
+        if (s0 < 0) s0 = s
+        s1 = s
+      }
+    }
+    if (s0 < 0) {
+      cols.push({ s0: -1, gx: empty, gy: empty })
+      continue
+    }
+    s1 += 1
+    const Ni1 = Ni.derivative().subset(s0, s1)
+    const Ni2 = Ni.derivative().derivative().subset(s0, s1)
+    const Ni3 = Ni.derivative().derivative().derivative().subset(s0, s1)
+    const x1 = X1.subset(s0, s1)
+    const y1 = Y1.subset(s0, s1)
+    const x2 = X2.subset(s0, s1)
+    const y2 = Y2.subset(s0, s1)
+    const x3 = X3.subset(s0, s1)
+    const y3 = Y3.subset(s0, s1)
+    const gx = gOverDuals(
+      new Dual(x1, Ni1),
+      new Dual(y1, zeroLike(y1)),
+      new Dual(x2, Ni2),
+      new Dual(y2, zeroLike(y2)),
+      new Dual(x3, Ni3),
+      new Dual(y3, zeroLike(y3)),
+    ).t
+    const gy = gOverDuals(
+      new Dual(x1, zeroLike(x1)),
+      new Dual(y1, Ni1),
+      new Dual(x2, zeroLike(x2)),
+      new Dual(y2, Ni2),
+      new Dual(x3, zeroLike(x3)),
+      new Dual(y3, Ni3),
+    ).t
+    cols.push({ s0, gx, gy })
+  }
+  return { g, gDeg: g.degree, numSpans: g.numSpans, cols }
+}
+
 /**
  * g and its Jacobian for a CLOSED (periodic) planar B-spline curve. Same
  * forward-AD assembly; the seed is the periodic Dirac B-spline Nᵢ. Computed on

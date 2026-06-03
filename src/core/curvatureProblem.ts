@@ -12,6 +12,7 @@ import {
 import {
   curvatureExtremaGradientPlanar,
   curvatureExtremaGradientPlanarPeriodic,
+  curvatureExtremaGradientPlanarLocal,
   inflectionGradientPlanar,
   inflectionGradientPlanarPeriodic,
 } from './gradient'
@@ -332,6 +333,41 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
       this.cachedJac = rows
     }
     return this.cachedJac
+  }
+  /**
+   * Sparse per-active-constraint Jacobian: row k = {vars, vals} listing only the
+   * variables ∂c_k/∂var ≠ 0 (the d+1 control points supporting g_k's span ×
+   * x/y). Assembled in O(n·d²) from the LOCAL gradient — no full-width rows — so
+   * an interior-point step that uses it (the banded barrier) is linear in the
+   * number of control points. Open planar B-splines only (returns null otherwise).
+   */
+  computeConstraintJacobianLocal(): { vars: number[]; vals: number[] }[] | null {
+    if (this.closed || this.preserveInflections) return null
+    const grad = curvatureExtremaGradientPlanarLocal(this.cpX, this.cpY, this.knots, this.degree)
+    const gDeg1 = grad.gDeg + 1
+    const n = this.cpX.length
+    const activePos = new Map<number, number>()
+    this.activeIdx.forEach((flat, k) => activePos.set(flat, k))
+    const rows = this.activeIdx.map(() => ({ vars: [] as number[], vals: [] as number[] }))
+    for (let i = 0; i < n; i++) {
+      const col = grad.cols[i]
+      if (col.s0 < 0) continue
+      const gxc = col.gx.coeffs
+      const gyc = col.gy.coeffs
+      for (let ls = 0; ls < gxc.length; ls++) {
+        const s = col.s0 + ls
+        for (let c = 0; c <= grad.gDeg; c++) {
+          const k = activePos.get(s * gDeg1 + c)
+          if (k === undefined) continue
+          const inv = 1 / this.gScale[k]
+          const vx = gxc[ls][c]
+          const vy = gyc[ls][c]
+          if (vx !== 0) { rows[k].vars.push(i); rows[k].vals.push(vx * inv) }
+          if (vy !== 0) { rows[k].vars.push(n + i); rows[k].vals.push(vy * inv) }
+        }
+      }
+    }
+    return rows
   }
   getConstraintSigns(): number[] {
     return this.preserveInflections ? [...this.signs, ...this.fSigns] : this.signs

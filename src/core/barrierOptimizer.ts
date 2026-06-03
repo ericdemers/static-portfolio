@@ -66,21 +66,36 @@ export class BarrierOptimizer {
       return result(p, x, 'numericalError', false, me, ineq, signs)
     }
 
+    // Per-active-constraint sparse rows {idx, val} at the current point. Uses the
+    // O(n·d²) LOCAL Jacobian when the problem provides it (linear assembly); else
+    // gathers nonzeros from the full-width Jacobian (quadratic fallback).
+    const withLocal = p as OptimizationProblem & {
+      computeConstraintJacobianLocal?: () => { vars: number[]; vals: number[] }[] | null
+    }
+    const jacRows = (): { idx: number[]; val: number[] }[] => {
+      const local = withLocal.computeConstraintJacobianLocal?.()
+      if (local) return local.map((r) => ({ idx: r.vars, val: r.vals }))
+      const J = p.computeConstraintJacobian()
+      return ineq.map((j) => {
+        const idx: number[] = []
+        const val: number[] = []
+        const row = J[j]
+        for (let v = 0; v < nVar; v++) if (row[v] !== 0) { idx.push(v); val.push(row[v]) }
+        return { idx, val }
+      })
+    }
+
     // Bandwidth from the Jacobian sparsity (max interleaved spread within a row).
     let b = 1
     {
       p.setVariables(x)
-      const J = p.computeConstraintJacobian()
-      for (const j of ineq) {
+      for (const r of jacRows()) {
         let lo = Infinity
         let hi = -Infinity
-        const row = J[j]
-        for (let v = 0; v < nVar; v++) {
-          if (row[v] !== 0) {
-            const q = perm(v)
-            if (q < lo) lo = q
-            if (q > hi) hi = q
-          }
+        for (const v of r.idx) {
+          const q = perm(v)
+          if (q < lo) lo = q
+          if (q > hi) hi = q
         }
         if (hi >= lo) b = Math.max(b, hi - lo)
       }
@@ -106,7 +121,7 @@ export class BarrierOptimizer {
       p.setVariables(x)
       const gradf = p.computeObjectiveGradient()
       const H = p.computeObjectiveHessian ? p.computeObjectiveHessian() : null
-      const J = p.computeConstraintJacobian()
+      const rows = jacRows()
       w = slacksAt(x)
       if (ma > 0 && Math.min(...w) <= 0) break
 
@@ -131,11 +146,8 @@ export class BarrierOptimizer {
 
       for (let k = 0; k < ma; k++) {
         const j = ineq[k]
-        const row = J[j]
-        // local nonzeros
-        const idx: number[] = []
-        const val: number[] = []
-        for (let v = 0; v < nVar; v++) if (row[v] !== 0) { idx.push(v); val.push(row[v]) }
+        const idx = rows[k].idx
+        const val = rows[k].val
         const Dj = mu / (wEff[k] * wEff[k])
         const gj = mu * (signs[j] / wEff[k])
         for (let a = 0; a < idx.length; a++) {
