@@ -40,7 +40,7 @@ describe('banded barrier optimizer', () => {
     const tx = c.x[idx] + 70
     const ty = c.y[idx] - 50
 
-    const pd = slideCurve(c.x, c.y, knots, degree, idx, tx, ty, { maxIterations: 20, dragWeight: 25, constraintState: cs })
+    const pd = slideCurve(c.x, c.y, knots, degree, idx, tx, ty, { method: 'primal-dual', maxIterations: 20, dragWeight: 25, constraintState: cs })
     const ba = slideCurve(c.x, c.y, knots, degree, idx, tx, ty, { method: 'barrier', maxIterations: 40, dragWeight: 25, constraintState: cs })
 
     it(`${c.name}: barrier preserves the bound`, () => {

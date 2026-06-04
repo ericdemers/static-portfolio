@@ -546,11 +546,11 @@ export function slideCurve(
     dragWeight?: number
     constraintState?: CurvatureConstraintState
     /**
-     * Which optimizer to use. 'primal-dual'/'barrier' use the banded
-     * (near-linear) solvers — best for large curves and the method comparison.
-     * 'ipopt' uses the ported robust IPOPT-style solver (trust region, filter,
-     * feasibility restoration) — the editor's default for reliable, coordinated,
-     * never-bound-violating drags.
+     * Which optimizer to use. DEFAULTS to 'ipopt' — the ported robust IPOPT-style
+     * solver (trust region, filter, feasibility restoration) that gives reliable,
+     * coordinated, never-bound-violating drags. 'primal-dual'/'barrier' are opt-in:
+     * the banded (near-linear) solvers, best for large curves and the
+     * method-comparison demo, but they can let the bound grow on a quick drag.
      */
     method?: 'primal-dual' | 'barrier' | 'ipopt'
     /**
@@ -565,6 +565,11 @@ export function slideCurve(
     enableBFGS?: boolean
   } & Partial<OptimizerConfig> = {},
 ): { x: number[]; y: number[]; converged: boolean } {
+  // Default to the robust IPOPT solver — it is the curvature-bound invariant
+  // keeper. Banded/barrier are opt-in (the method-comparison demo). This used to
+  // default to banded: a safe-looking footgun for any caller that omits `method`
+  // (it can let the bound grow on a quick drag — see the design review).
+  const method = opts.method ?? 'ipopt'
   const problem = new PlanarCurvatureProblem(cpX, cpY, knots, degree, dragIndex, targetX, targetY, {
     disableSliding: opts.disableSliding,
     closed: opts.closed,
@@ -574,7 +579,7 @@ export function slideCurve(
     preserveInflections: opts.preserveInflections,
     dragWeight: opts.dragWeight,
     constraintState: opts.constraintState,
-    noScale: opts.method === 'ipopt',
+    noScale: method === 'ipopt',
   })
   // Symmetry is enforced inside the solve via variable reduction (the result
   // is symmetric AND constraint-feasible — no post-projection).
@@ -590,7 +595,7 @@ export function slideCurve(
   // closed/symmetric/reduced cases.
   const banded = !opts.symmetryMaps && !opts.closed
   let converged: boolean
-  if (opts.method === 'ipopt') {
+  if (method === 'ipopt') {
     // The robust IPOPT-style solver: trust region + filter + feasibility
     // restoration give gradual, coordinated drags. Works on any problem (dense
     // Jacobian), so it also serves the symmetry/closed cases when selected.
@@ -606,7 +611,7 @@ export function slideCurve(
     converged = r.converged
   } else {
     const optimizer =
-      opts.method === 'barrier' && banded
+      method === 'barrier' && banded
         ? new BarrierOptimizer(solved, { maxIterations: opts.maxIterations ?? 40, returnBestFeasible: true })
         : banded
           ? new BandedPrimalDualOptimizer(solved, { maxIterations: opts.maxIterations ?? 80, returnBestFeasible: true })

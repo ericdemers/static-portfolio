@@ -631,12 +631,11 @@ export function slideComplexRational(
     anchorWeight?: number
     dragWeight?: number
     /**
-     * 'primal-dual' (default) is the lean dense solver; 'ipopt' is the robust
-     * InteriorPointOptimizer (trust region + filter + feasibility restoration)
-     * the proven ../sketcher deck uses — it holds a near-zero g coefficient on
-     * its side of zero where the dense solver lets it slide across on a quick
-     * drag (adding a curvature extremum). Interactive complex-rational drags
-     * (the talk's slide 17) must pass 'ipopt'.
+     * DEFAULTS to 'ipopt' — the robust InteriorPointOptimizer (trust region +
+     * filter + feasibility restoration) the proven ../sketcher deck uses; it holds
+     * a near-zero g coefficient on its side of zero where the lean dense
+     * 'primal-dual' lets it slide across on a quick drag (adding a curvature
+     * extremum). 'primal-dual' is opt-in for the method-comparison case.
      */
     method?: 'primal-dual' | 'ipopt'
     /**
@@ -648,7 +647,7 @@ export function slideComplexRational(
     enableBFGS?: boolean
   } & Partial<OptimizerConfig> = {},
 ): { points: ComplexPoint[]; converged: boolean } {
-  const robust = opts.method === 'ipopt'
+  const robust = (opts.method ?? 'ipopt') === 'ipopt' // default to the bound-keeping solver
   const problem = new ComplexRationalProblem(controlPoints, knots, degree, dragIndex, targetX, targetY, {
     disableSliding: opts.disableSliding,
     anchorX: opts.anchorX,
