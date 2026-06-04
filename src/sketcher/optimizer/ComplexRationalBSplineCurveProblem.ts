@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 /**
  * Complex Rational B-Spline Curve Optimization Problem
@@ -39,14 +38,14 @@ import type { ComplexRationalBSplineCurve, ComplexPoint, Point2D } from '../type
 export class ComplexRationalBSplineCurveProblem implements OptimizationProblem {
   // For geometric formulation: coords (x, y, qx, qy) normalized by coordScale
   // For homogeneous formulation: coords (Z_re, Z_im) normalized by coordScale
-  private cpX: number[]
-  private cpY: number[]
-  private fpX: number[]   // Farin point x (geometric only)
-  private fpY: number[]   // Farin point y (geometric only)
-  private targetCpX: number[]
-  private targetCpY: number[]
-  private targetFpX: number[]
-  private targetFpY: number[]
+  private cpX!: number[]
+  private cpY!: number[]
+  private fpX!: number[]   // Farin point x (geometric only)
+  private fpY!: number[]   // Farin point y (geometric only)
+  private targetCpX!: number[]
+  private targetCpY!: number[]
+  private targetFpX!: number[]
+  private targetFpY!: number[]
   private degree: number
   private knots: number[]
   private period: number
@@ -91,7 +90,6 @@ export class ComplexRationalBSplineCurveProblem implements OptimizationProblem {
     forceGeometric?: boolean,
     fixedWeightClosed?: boolean
   ) {
-    const n = curve.controlPoints.length
     this.degree = curve.degree
     this.knots = [...curve.knots]
     this.period = 1.0
@@ -269,14 +267,6 @@ export class ComplexRationalBSplineCurveProblem implements OptimizationProblem {
       this.targetCpY[k] += delta_im
       this.targetCpX[k + 1] += delta_re
       this.targetCpY[k + 1] += delta_im
-    }
-  }
-
-  getConstraintState(): ComplexRationalConstraintState {
-    return {
-      signs: [...this.constraintSigns],
-      inactiveIndices: Array.from(this.inactiveConstraints),
-      gCPs: this.computeGCPs(),
     }
   }
 
@@ -905,20 +895,5 @@ export class ComplexRationalBSplineCurveProblem implements OptimizationProblem {
   }
 }
 
-// ============================================================================
-// Convenience Functions
-// ============================================================================
-
-export function computeComplexRationalConstraintState(
-  curve: ComplexRationalBSplineCurve
-): ComplexRationalConstraintState {
-  const cpX = curve.controlPoints.map(p => p.re)
-  const cpY = curve.controlPoints.map(p => p.im)
-
-  const problem = new ComplexRationalBSplineCurveProblem(
-    curve,
-    cpX[0], cpY[0],
-    0, 'controlPoint'
-  )
-  return problem.getConstraintState()
-}
+// (computeComplexRationalConstraintState removed — it was unused; the complex
+// constraint state for display comes from complexAlgebra's open/closed variants.)

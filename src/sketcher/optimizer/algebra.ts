@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 /**
  * B-Spline Algebra - Bernstein Decomposition and Algebraic Operations
@@ -16,13 +15,11 @@
 import {
   type BSpline,
   type BSpline2D,
-  type RationalBSpline2D,
   cpToArray,
   knotAt,
   cpAt,
   numCPs,
   mkOpenBSpline,
-  mkPeriodicBSpline,
   mkPeriodicBSplineWithKnots,
   bsplineDomain,
 } from './bsplineTypes'
@@ -1121,9 +1118,6 @@ export function computeInflectionJacobian(
   const syuu = decomposeToBernstein(simpleDifferentiate(simpleDifferentiate(sy)))
 
   // h4 = x'·y'' - y'·x''
-  const h4 = sxu.multiply(syuu).subtract(syu.multiply(sxuu))
-  const h4Degree = h4.degree
-  const cpsPerSpan = h4Degree + 1
 
   const numActive = activeConstraintIndices.length
   const jacobian: number[][] = []
@@ -1161,7 +1155,7 @@ export function computeInflectionJacobian(
  */
 export function computeCurvatureDerivativeNumeratorCPs(bs: BSpline2D): number[] {
   if (bs.knots.tag === 'periodic') {
-    return computePeriodicCurvatureDerivativeNumeratorCPs(bs.degree, cpToArray(bs.controlPointsX), cpToArray(bs.controlPointsY))
+    return computePeriodicCurvatureDerivativeNumeratorCPs(bs.degree, bs.knots.baseKnots, cpToArray(bs.controlPointsX), cpToArray(bs.controlPointsY), bs.knots.period)
   }
 
   // For open curves, use the array-based computation
@@ -2713,7 +2707,7 @@ function computePeriodicRationalDerivativesBD(
     ? wrapWeight / cpsW[0]
     : 1.0
 
-  let sxBD: BernsteinDecomposition, syBD: BernsteinDecomposition, swBD: BernsteinDecomposition
+  let sxBD!: BernsteinDecomposition, syBD!: BernsteinDecomposition, swBD!: BernsteinDecomposition
 
   if (Math.abs(ratio - 1.0) < 1e-12) {
     // No spiral, use standard periodic approach
@@ -2730,7 +2724,6 @@ function computePeriodicRationalDerivativesBD(
     const sw = mkPeriodicBSplineWithKnots(degree, [...knots], cpsW, period)
 
     const [tMin, tMax] = bsplineDomain(sx)
-    const invRatio = 1.0 / ratio
     const p = degree
     const n = cpsX.length
 

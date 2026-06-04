@@ -1,8 +1,6 @@
-// @ts-nocheck — bridges the legacy Sketcher engine (union-typed Curve) for a
 // migration equivalence check; the legacy side isn't type-clean under strict tsc.
 import { describe, it, expect } from 'vitest'
 import { slideCurve, curvatureExtremaNumeratorPlanar } from '../../core'
-// Legacy engine (imported, @ts-nocheck). This test pins that the migrated open
 // planar B-spline curvature drag (now on core/) behaves like the legacy path it
 // replaced: both keep the curvature-extrema bound and track the drag, and the
 // dragged point lands in the same neighbourhood.
@@ -39,8 +37,10 @@ describe('open planar B-spline drag: core/ migration matches legacy behavior', (
     curve,
     optimizeCurve(curve, targetX, targetY, dragIndex, { maxIterations: 20, enableBFGS: false }),
   )
-  const lx = legacyCurve.controlPoints.map((p: { x: number }) => p.x)
-  const ly = legacyCurve.controlPoints.map((p: { y: number }) => p.y)
+  // legacyCurve is a bspline (the fixture); narrow its control points off the Curve union.
+  const lcps = legacyCurve.controlPoints as { x: number; y: number }[]
+  const lx = lcps.map((p) => p.x)
+  const ly = lcps.map((p) => p.y)
 
   it('core keeps the curvature-extrema bound non-increasing', () => {
     expect(signChanges(core.x, core.y)).toBeLessThanOrEqual(before)

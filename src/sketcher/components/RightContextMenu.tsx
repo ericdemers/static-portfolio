@@ -1,6 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
-// Being migrated to core/ incrementally; remove this once a file is on core.
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSceneStore } from '../store/sceneStore'
 import { isClampedEndKnot } from '../utils/bspline'
@@ -24,8 +21,6 @@ export default function RightContextMenu() {
     startGenerate,
     generate,
   } = useSceneStore()
-
-  const [transformExpanded, setTransformExpanded] = useState(false)
 
   const selectedCurve = curves.find((c) => c.id === selectedCurveId)
 
@@ -77,7 +72,7 @@ export default function RightContextMenu() {
             Non-PH: the in-place Transform. */}
         {hasABPHMeta ? (
           <button
-            onClick={() => startGenerate(selectedCurveId)}
+            onClick={() => selectedCurveId && startGenerate(selectedCurveId)}
             className={`w-full h-8 rounded text-sm font-medium transition-colors ${inactiveBtn}`}
           >
             Generate
