@@ -892,6 +892,9 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
         drawnCircleArc: null,
         isCircleClosed: false,
         phMetadata: newPhMetadata,
+        // Freshly drawn PH curve: leave the curvature-extrema bound off so it's
+        // immediately shapeable (a near-straight fresh curve is otherwise frozen).
+        preserveCurvatureExtrema: false,
         ...(!s.toolLocked ? { activeTool: 'none' as DrawingTool, toolLocked: false } : {}),
       }))
       get().saveToHistory()
@@ -930,6 +933,11 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
         drawnCircleArc: null,
         isCircleClosed: false,
         phMetadata: newPhMetadata,
+        // A freshly drawn PH curve is a straight line (0 curvature extrema). With
+        // the bound ON it would be frozen straight — undeformable — which baffles
+        // a new user. Turn the curvature-extrema constraint off so they can shape
+        // it; they can re-enable the bound once it's a curve.
+        preserveCurvatureExtrema: false,
         ...(!s.toolLocked ? { activeTool: 'none' as DrawingTool, toolLocked: false } : {}),
       }))
       get().saveToHistory()
@@ -971,6 +979,11 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
         drawnCircleArc: null,
         isCircleClosed: false,
         phMetadata: newPhMetadata,
+        // A freshly drawn PH curve is a straight line (0 curvature extrema). With
+        // the bound ON it would be frozen straight — undeformable — which baffles
+        // a new user. Turn the curvature-extrema constraint off so they can shape
+        // it; they can re-enable the bound once it's a curve.
+        preserveCurvatureExtrema: false,
         ...(!s.toolLocked ? { activeTool: 'none' as DrawingTool, toolLocked: false } : {}),
       }))
       get().saveToHistory()
