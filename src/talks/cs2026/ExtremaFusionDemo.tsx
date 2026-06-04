@@ -312,6 +312,11 @@ export default function ExtremaFusionDemo({
 
         if (constrainExtrema) {
           // Sliding active set (no disableSliding). Engine: core/.
+          // method:'ipopt' is load-bearing: it is the robust solver the proven
+          // ../sketcher deck uses (optimizeCurve always runs InteriorPointOptimizer).
+          // The default banded solver under-converges on a quick drag and slides a
+          // near-zero g coefficient across zero — spuriously adding an extremum.
+          // See core/__tests__/boundPreservationSession.test.ts.
           try {
             const { x, y } = slideCurve(
               cps.map((p) => p.x * OPT_SCALE),
@@ -321,7 +326,7 @@ export default function ExtremaFusionDemo({
               dragIndex,
               targetX * OPT_SCALE,
               targetY * OPT_SCALE,
-              { maxIterations: 20 },
+              { method: 'ipopt', maxIterations: 20 },
             )
             setCps(x.map((xi, i) => ({ x: xi / OPT_SCALE, y: y[i] / OPT_SCALE })))
           } catch {

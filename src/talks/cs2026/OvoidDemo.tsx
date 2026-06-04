@@ -321,7 +321,11 @@ export default function OvoidDemo({ width = 580, height = 580 }: Props) {
             targetY,
             {
               closed: true,
-              maxIterations: 30,
+              // Robust solver (matches ../sketcher's optimizeCurve). The default
+              // dense primal-dual slides a symmetry-forced near-zero g coefficient
+              // across zero on a quick drag; ipopt's structural margins hold it.
+              method: 'ipopt',
+              maxIterations: 20, // Gauss-Newton converges fast; matches ../sketcher
               dragWeight: 25,
               symmetryMaps: SYMMETRY_MAPS,
               ...(anchor

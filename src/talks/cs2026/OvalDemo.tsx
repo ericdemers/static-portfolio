@@ -305,7 +305,12 @@ export default function OvalDemo({ width = 580, height = 580 }: Props) {
             targetY,
             {
               closed: true,
-              maxIterations: 30,
+              // Robust solver (../sketcher's optimizeCurve always uses it). The
+              // default dense primal-dual lacks structural margins, so the
+              // symmetry-forced exact-zero g/f coefficients sit on the constraint
+              // wall and a quick drag slides them across — adding extrema/inflections.
+              method: 'ipopt',
+              maxIterations: 20, // Gauss-Newton converges fast; matches ../sketcher
               // Weight the dragged point's target term high so it tracks the
               // cursor while the rest of the polygon adapts to keep the bounds.
               dragWeight: 25,

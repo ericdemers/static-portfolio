@@ -349,7 +349,11 @@ export default function AirfoilDemo({
             targetY,
             {
               closed: true,
-              maxIterations: 30,
+              // Robust solver (matches ../sketcher's optimizeCurve). The default
+              // dense primal-dual slides a symmetry-forced near-zero g coefficient
+              // across zero on a quick drag; ipopt's structural margins hold it.
+              method: 'ipopt',
+              maxIterations: 20, // Gauss-Newton converges fast; matches ../sketcher
               dragWeight: 25,
               ...(symmetricRef.current
                 ? { symmetryMaps: { mapX: MIRROR_MAP_X, mapY: null } }

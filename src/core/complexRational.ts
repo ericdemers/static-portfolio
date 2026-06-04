@@ -23,6 +23,8 @@ import { curvatureExtremaNumeratorComplexPeriodic } from './curvature'
 import type { Matrix } from './linalg'
 import type { OptimizationProblem, OptimizerConfig } from './optimize'
 import { PrimalDualOptimizer } from './optimize'
+import { InteriorPointOptimizer } from './ipopt/InteriorPointOptimizer'
+import { assignSignsNeighbor, structuralMargins } from './curvatureProblem'
 
 export interface ComplexRationalCurve {
   degree: number
@@ -442,6 +444,7 @@ export class ComplexRationalProblem implements OptimizationProblem {
   private anchorWeight: number
   private signs: number[]
   private activeIdx: number[]
+  private margins: number[]
   private cachedCons: number[] | null = null
   private cachedJac: Matrix | null = null
 
@@ -458,6 +461,14 @@ export class ComplexRationalProblem implements OptimizationProblem {
       anchorY?: number[]
       anchorWeight?: number
       dragWeight?: number
+      /**
+       * Robust regime (for the IPOPT solver): neighbour-aware signs + a tiny
+       * positive margin for near-zero coefficients, so a structurally-/numerically-
+       * zero g coefficient starts off the constraint wall instead of on it. Without
+       * it the dense primal-dual slides such a coefficient across zero on a quick
+       * drag and adds a curvature extremum (same failure the open curves had).
+       */
+      robust?: boolean
     } = {},
   ) {
     this.cpX = controlPoints.map((p) => p.re)
@@ -477,10 +488,11 @@ export class ComplexRationalProblem implements OptimizationProblem {
     this.anchorWeight = opts.anchorWeight ?? 0
 
     const gc = this.numerator()
-    const allSigns = gc.map((v) => (v > 0 ? -1 : 1))
+    const allSigns = opts.robust ? assignSignsNeighbor(gc) : gc.map((v) => (v > 0 ? -1 : 1))
     const inactive = opts.disableSliding ? new Set<number>() : computeInactiveSetPeriodic(gc)
     this.activeIdx = gc.map((_, i) => i).filter((i) => !inactive.has(i))
     this.signs = this.activeIdx.map((i) => allSigns[i])
+    this.margins = opts.robust ? structuralMargins(gc, this.activeIdx) : this.activeIdx.map(() => 0)
   }
 
   /** g's Bernstein coefficients for the current control-point positions (weights fixed). */
@@ -548,7 +560,7 @@ export class ComplexRationalProblem implements OptimizationProblem {
   computeConstraints(): number[] {
     if (!this.cachedCons) {
       const gc = this.numerator()
-      this.cachedCons = this.activeIdx.map((i) => gc[i])
+      this.cachedCons = this.activeIdx.map((i, k) => gc[i] - this.signs[k] * this.margins[k])
     }
     return this.cachedCons
   }
@@ -622,19 +634,43 @@ export function slideComplexRational(
     anchorY?: number[]
     anchorWeight?: number
     dragWeight?: number
+    /**
+     * 'primal-dual' (default) is the lean dense solver; 'ipopt' is the robust
+     * InteriorPointOptimizer (trust region + filter + feasibility restoration)
+     * the proven ../sketcher deck uses — it holds a near-zero g coefficient on
+     * its side of zero where the dense solver lets it slide across on a quick
+     * drag (adding a curvature extremum). Interactive complex-rational drags
+     * (the talk's slide 17) must pass 'ipopt'.
+     */
+    method?: 'primal-dual' | 'ipopt'
+    /**
+     * IPOPT only. The drag objective is exact least-squares, so Gauss-Newton
+     * (default) uses the true Hessian — faster and more accurate than BFGS, which
+     * would only approximate it. Feasibility (the curvature bound) is held by the
+     * barrier regardless. Matches ../sketcher's optimizeComplexRationalCurve.
+     */
+    enableBFGS?: boolean
   } & Partial<OptimizerConfig> = {},
 ): { points: ComplexPoint[]; converged: boolean } {
+  const robust = opts.method === 'ipopt'
   const problem = new ComplexRationalProblem(controlPoints, knots, degree, dragIndex, targetX, targetY, {
     disableSliding: opts.disableSliding,
     anchorX: opts.anchorX,
     anchorY: opts.anchorY,
     anchorWeight: opts.anchorWeight,
     dragWeight: opts.dragWeight,
+    robust,
   })
-  const optimizer = new PrimalDualOptimizer(problem, {
-    maxIterations: opts.maxIterations ?? 60,
-    returnBestFeasible: true,
-  })
+  const optimizer = robust
+    ? new InteriorPointOptimizer(problem, {
+        maxIterations: opts.maxIterations ?? 60,
+        enableBFGS: opts.enableBFGS ?? false,
+        returnBestFeasible: true,
+      })
+    : new PrimalDualOptimizer(problem, {
+        maxIterations: opts.maxIterations ?? 60,
+        returnBestFeasible: true,
+      })
   const result = optimizer.optimize()
   problem.setVariables(result.variables)
   const points: ComplexPoint[] = controlPoints.map((p, i) => ({

@@ -39,7 +39,7 @@ const SIGN_NOISE_REL = 1e-9
  * solve coordinates the neighbours to keep it feasible instead of letting it
  * slide across zero (a real extremum).
  */
-function assignSignsNeighbor(gc: number[]): number[] {
+export function assignSignsNeighbor(gc: number[]): number[] {
   const maxAbs = Math.max(1e-300, ...gc.map(Math.abs))
   const noise = SIGN_NOISE_REL * maxAbs
   const det = gc.map((v) => (Math.abs(v) <= noise ? 0 : v > 0 ? -1 : 1))
@@ -92,7 +92,7 @@ function computeInactiveSetBySign(signs: number[], absVal: number[]): Set<number
  *  sketcher's roundoff residual — instead of exactly 0 (a barrier wall). The
  *  excursion it permits is MARGIN_REL·max|g| ≈ noise, never a real extremum. */
 const MARGIN_REL = 1e-9
-function structuralMargins(gcAll: number[], activeIdx: number[]): number[] {
+export function structuralMargins(gcAll: number[], activeIdx: number[]): number[] {
   const maxAbs = Math.max(1e-300, ...gcAll.map(Math.abs))
   const noise = SIGN_NOISE_REL * maxAbs
   const margin = MARGIN_REL * maxAbs
@@ -546,6 +546,16 @@ export function slideCurve(
      * never-bound-violating drags.
      */
     method?: 'primal-dual' | 'barrier' | 'ipopt'
+    /**
+     * IPOPT only. The drag objective is exactly a weighted least-squares term,
+     * so its Hessian IS the (constant) identity-weighted diagonal — there is
+     * nothing for BFGS to approximate. Gauss-Newton (the default here) uses that
+     * exact Hessian: faster AND more accurate, converging in ~half the iterations
+     * (this is what the ../sketcher deck does). Set true only to fall back to the
+     * BFGS Lagrangian-Hessian approximation. Feasibility is enforced by the
+     * barrier, not the Hessian, so the curvature bound holds either way.
+     */
+    enableBFGS?: boolean
   } & Partial<OptimizerConfig> = {},
 ): { x: number[]; y: number[]; converged: boolean } {
   const problem = new PlanarCurvatureProblem(cpX, cpY, knots, degree, dragIndex, targetX, targetY, {
@@ -579,6 +589,9 @@ export function slideCurve(
     // Jacobian), so it also serves the symmetry/closed cases when selected.
     const ip = new InteriorPointOptimizer(solved, {
       maxIterations: opts.maxIterations ?? 80,
+      // Gauss-Newton by default (exact Hessian for the least-squares drag
+      // objective): full speed without giving up the feasibility guarantee.
+      enableBFGS: opts.enableBFGS ?? false,
       returnBestFeasible: true,
     })
     const r = ip.optimize()

@@ -404,6 +404,11 @@ export default function ComplexRationalDemo({ width = 580, height = 580, childre
             // Bound mode CP drag — core fixed-weight closed optimizer.
             const anchor = dragStartCpsRef.current
             const { points } = slideComplexRational(live, KNOTS, DEGREE, dragIndex, targetX, targetY, {
+              // Robust solver (matches ../sketcher's optimizeComplexRationalCurve,
+              // which always runs InteriorPointOptimizer). The dense primal-dual
+              // default slides a near-zero g coefficient across zero on a quick
+              // drag — adding a curvature extremum. Locked by the session test.
+              method: 'ipopt',
               maxIterations: 24,
               dragWeight: 25,
               ...(anchor

@@ -287,6 +287,17 @@ export default function WithoutSlidingDemo({
         if (constrainExtrema) {
           // Scale up to sketcher-pixel-like magnitudes for the optimizer's
           // tolerances, then scale back for display state. Engine: core/.
+          //
+          // method:'ipopt' is LOAD-BEARING, not a tuning knob. This is the exact
+          // solver the proven ../sketcher deck uses (its optimizeCurve always runs
+          // InteriorPointOptimizer). The default banded solver floors/scales the
+          // structurally-zero boundary coefficient of g and lets it slide across
+          // zero — which silently ADDS curvature extrema over a chained drag and
+          // recolors the sign dots. That is the regression locked by
+          // core/__tests__/boundPreservationSession.test.ts. anchorWeight pulls
+          // toward the drag-start polygon (Tikhonov drift resistance) for smooth,
+          // coordinated motion — also mirrored from ../sketcher.
+          const anchor = dragStartCpsRef.current
           try {
             const { x, y } = slideCurve(
               cps.map((p) => p.x * OPT_SCALE),
@@ -296,7 +307,18 @@ export default function WithoutSlidingDemo({
               dragIndex,
               targetX * OPT_SCALE,
               targetY * OPT_SCALE,
-              { disableSliding: true, maxIterations: 20 },
+              {
+                disableSliding: true,
+                method: 'ipopt',
+                maxIterations: 20,
+                ...(anchor
+                  ? {
+                      anchorWeight: 0.05,
+                      anchorX: anchor.map((p) => p.x * OPT_SCALE),
+                      anchorY: anchor.map((p) => p.y * OPT_SCALE),
+                    }
+                  : {}),
+              },
             )
             setCps(x.map((xi, i) => ({ x: xi / OPT_SCALE, y: y[i] / OPT_SCALE })))
           } catch {
