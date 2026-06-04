@@ -24,6 +24,8 @@ export interface CanvasConfig {
   hidePolygonOnDeselect?: boolean // default: false — when true, the control
   // polygon follows selection (clicking empty space hides it instead of
   // leaving it shown/greyed). Overrides showControlPolygon's always-on.
+  controlPointHitRadius?: number // px, default 15 — grab radius for control
+  // points; raise it for finger/touch (e.g. ~28 on the mobile editor).
 
   // Locked features (for Learn pages)
   lockedDegree?: number // prevent degree changes

@@ -109,7 +109,7 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
     smoothIterations,
   } = useSceneStore()
 
-  const { allowDrawing = true, allowSelection = true, showControlPolygon, hidePolygonOnDeselect } = config
+  const { allowDrawing = true, allowSelection = true, showControlPolygon, hidePolygonOnDeselect, controlPointHitRadius = 15 } = config
   const { t } = useTranslation()
 
   // Compute curvature extrema positions for selected curve when curvature panel or preserve toggle is active
@@ -361,7 +361,7 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
       if (!selectedCurve) return null
 
       const canvas = screenToCanvas(screenX, screenY)
-      const hitRadius = 15 / view.zoom
+      const hitRadius = controlPointHitRadius / view.zoom
 
       const points = getControlPointsAsPoints(selectedCurve)
       for (let i = 0; i < points.length; i++) {
@@ -374,7 +374,7 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
       }
       return null
     },
-    [screenToCanvas, view.zoom, curves, selectedCurveId]
+    [screenToCanvas, view.zoom, curves, selectedCurveId, controlPointHitRadius]
   )
 
   // Get curve ID at position (for selection)

@@ -19,6 +19,7 @@ const mobileConfig: CanvasConfig = {
   allowSelection: true,
   showControlPolygon: true,
   hidePolygonOnDeselect: true,
+  controlPointHitRadius: 28, // finger-sized grab target (desktop default is 15)
 }
 
 export default function MobileSketch() {
