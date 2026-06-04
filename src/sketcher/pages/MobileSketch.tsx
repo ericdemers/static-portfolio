@@ -20,6 +20,8 @@ const mobileConfig: CanvasConfig = {
   showControlPolygon: true,
   hidePolygonOnDeselect: true,
   controlPointHitRadius: 28, // finger-sized grab target (desktop default is 15)
+  alwaysShowCurvatureExtrema: true, // markers stay on for any selected curve,
+  // including 'Extrema: free' — the extrema are the point of the mobile editor.
 }
 
 export default function MobileSketch() {

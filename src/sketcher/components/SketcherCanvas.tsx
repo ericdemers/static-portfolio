@@ -109,12 +109,12 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
     smoothIterations,
   } = useSceneStore()
 
-  const { allowDrawing = true, allowSelection = true, showControlPolygon, hidePolygonOnDeselect, controlPointHitRadius = 15 } = config
+  const { allowDrawing = true, allowSelection = true, showControlPolygon, hidePolygonOnDeselect, controlPointHitRadius = 15, alwaysShowCurvatureExtrema = false } = config
   const { t } = useTranslation()
 
   // Compute curvature extrema positions for selected curve when curvature panel or preserve toggle is active
   const extremaPositions = useMemo(() => {
-    if ((!preserveCurvatureExtrema && panelView !== 'curvature') || !selectedCurveId) return []
+    if ((!preserveCurvatureExtrema && panelView !== 'curvature' && !alwaysShowCurvatureExtrema) || !selectedCurveId) return []
 
     const curve = curves.find((c) => c.id === selectedCurveId)
     if (!curve || (curve.kind !== 'bspline' && curve.kind !== 'rational' && curve.kind !== 'complex-rational')) return []
@@ -182,7 +182,7 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
     } catch {
       return []
     }
-  }, [preserveCurvatureExtrema, panelView, selectedCurveId, curves])
+  }, [preserveCurvatureExtrema, panelView, selectedCurveId, curves, alwaysShowCurvatureExtrema])
 
   // Compute inflection point positions for selected closed bspline curve
   const inflectionPositions = useMemo(() => {
@@ -1371,7 +1371,7 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
               />
 
               {/* Curvature extrema markers (when curvature panel or preserve extrema is active) */}
-              {isSelected && !smoothActive && (preserveCurvatureExtrema || panelView === 'curvature') && extremaPositions.length > 0 && (
+              {isSelected && !smoothActive && (preserveCurvatureExtrema || panelView === 'curvature' || alwaysShowCurvatureExtrema) && extremaPositions.length > 0 && (
                 <g>
                   {extremaPositions.map((pos, index) => (
                     <g key={`extrema-${index}`}>
