@@ -791,4 +791,60 @@ export const slides: SlideDefinition[] = [
       </>
     ),
   },
+
+  {
+    type: 'content',
+    content: (
+      <>
+        <h2>The PH curve we edit: A, B, S</h2>
+        <p>
+          <strong>Complex-rational Pythagorean-hodograph</strong> splines are defined by{' '}
+          <Math>{'z(t) = A(t)/B(t)'}</Math>, with <Math>{'A, B'}</Math> complex B-splines and a generator{' '}
+          <Math>{'S'}</Math> enforcing the <em>PH condition</em>:
+        </p>
+        <Math display>{"A'B - AB' = S^2"}</Math>
+        <p>
+          The hodograph <Math>{"z' = S^2/B^2"}</Math> is a perfect square, so the square root inside the
+          norm collapses:
+        </p>
+        <Math display>{"|z'| = \\sqrt{z'\\,\\overline{z'}} = \\sqrt{\\tfrac{S^2}{B^2}\\cdot\\tfrac{\\overline{S}^2}{\\overline{B}^2}} = \\sqrt{\\left(\\tfrac{S\\overline{S}}{B\\overline{B}}\\right)^2} = \\frac{S\\overline{S}}{B\\overline{B}}"}</Math>
+        <p>
+          The speed is <strong>rational</strong> — hence rational offsets.
+        </p>
+      </>
+    ),
+  },
+
+  {
+    type: 'content',
+    content: (
+      <>
+        <h2>Editing keeps it PH: a constrained solve</h2>
+        <p>
+          Both sides of the PH condition are degree <Math>{'2p-2'}</Math>, so they live in the same{' '}
+          <strong>Bernstein basis</strong>. Equality means matching coefficients — equivalently, the residual
+          must vanish:
+        </p>
+        <Math display>{"R = A'B - AB' - S^2 = 0 \\quad(\\text{every Bernstein coefficient})"}</Math>
+        <p>
+          So editing is a <strong>constrained optimization</strong>, not a formula. The control points{' '}
+          <Math>{'A, B, S'}</Math> are <em>all</em> free (one weight <Math>{'B_0'}</Math> pinned as a gauge),
+          and an interior-point solver moves them to:
+        </p>
+        <ul style={{ marginTop: '0.3em' }}>
+          <li>
+            <strong>minimize</strong> the distance from the dragged control point to the cursor,
+          </li>
+          <li style={{ marginTop: '0.25em' }}>
+            <strong>subject to</strong> <Math>{'R = 0'}</Math> (stays a PH curve) and the sign constraints{' '}
+            <Math>{'s_j\\, g_j \\ge 0'}</Math> (keeps the curvature-extrema count).
+          </li>
+        </ul>
+        <p style={{ marginTop: '0.3em' }}>
+          Letting <Math>{'S'}</Math> float alongside <Math>{'A, B'}</Math> is what lets the curve bend, rotate
+          and scale freely while never leaving the PH family.
+        </p>
+      </>
+    ),
+  },
 ]
