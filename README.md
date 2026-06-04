@@ -1,13 +1,9 @@
 # Numeric Elements
 
-The numericelements.com website — interactive B-spline curve design with
-control of curvature extrema and inflections.
+The [numericelements.com](https://numericelements.com) website — interactive
+B-spline curve design with control of curvature extrema.
 
-This is the `v2` rebuild: a clean, self-contained app that owns its own
-B-spline `core/` library. Curated pieces (the sketcher workbench, the
-Curves & Surfaces 2026 presentation, and selected labs) are ported in from
-the `../sketcher` research repo as they are cleaned up — this site depends on
-none of it.
+Try the B-spline sketcher editor → [**sketcher**&thinsp;<sup><small>b-spline</small></sup>](https://numericelements.com/sketcher)
 
 ## Stack
 
@@ -21,8 +17,3 @@ bun run dev      # http://localhost:5173
 bun run build    # type-check + production build to dist/
 bun run test     # unit tests
 ```
-
-## Deploy
-
-Deployed via AWS Amplify (Git-connected). The production branch is built with
-`vite build` and served from `dist/`.
