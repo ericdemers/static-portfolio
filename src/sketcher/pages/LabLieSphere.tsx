@@ -98,7 +98,9 @@ export default function LabLieSphere() {
   // Initial camera framing, computed ONCE from the first non-empty meridian so
   // the surface fits the view and the revolution axis is vertical (up = +Z,
   // matching the PH curve's z-up in the 2D editor). Frozen after first fit so
-  // dragging the curve doesn't yank the camera.
+  // dragging the curve doesn't yank the camera. Depend on the false→true
+  // transition only (a stable boolean, so the deps entry isn't an expression).
+  const meridianReady = meridian.length > 0
   const cameraInit = useMemo(() => {
     let rMax = 0, zMin = Infinity, zMax = -Infinity
     for (const m of meridian) {
@@ -118,9 +120,8 @@ export default function LabLieSphere() {
       position: [dist * 0.55, -dist * 0.78, zMid + dist * 0.35] as [number, number, number],
       target: [0, 0, zMid] as [number, number, number],
     }
-    // Depend on meridian.length>0 transition only (freeze after first fit).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meridian.length > 0])
+  }, [meridianReady])
 
   const transform = useMemo<Mat6>(
     () => compose6(liePoint(coeffs), accumulated),

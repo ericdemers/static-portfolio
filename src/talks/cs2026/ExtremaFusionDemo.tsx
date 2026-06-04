@@ -50,6 +50,11 @@ const COLORS = {
 
 const KNOTS = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
 const OPT_SCALE = 200
+// Layout + display ranges are prop-independent, so they live at module scope —
+// stable references for the memoized coordinate transforms.
+const margin = { top: 36, right: 40, bottom: 24, left: 48 }
+const cxRange: [number, number] = [-3, 4.5]
+const cyRange: [number, number] = [-1, 2.5]
 
 // Airfoil-like initial polygon: degree-4 Bezier with 5 CPs that yields
 // a curve with three curvature extrema. P4 starts just to the right of
@@ -199,12 +204,15 @@ export default function ExtremaFusionDemo({
   const [cps, setCps] = useState<{ x: number; y: number }[]>(INITIAL_CPS)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
 
-  // Reset CPs when parent bumps the nonce. The initial mount fires
-  // with nonce = 0 and sets cps to INITIAL_CPS (already its value),
-  // so it's a no-op the first time.
-  useEffect(() => {
+  // Reset CPs when the parent bumps the nonce. Adjusting state during render
+  // (tracking the previous nonce) is React's recommended alternative to a
+  // setState-in-effect — it avoids a cascading re-render. prevNonce starts at
+  // the initial nonce, so the first render is a no-op.
+  const [prevNonce, setPrevNonce] = useState(resetNonce)
+  if (prevNonce !== resetNonce) {
+    setPrevNonce(resetNonce)
     setCps(INITIAL_CPS)
-  }, [resetNonce])
+  }
   const dragStartCpsRef = useRef<{ x: number; y: number }[] | null>(null)
   const pendingTargetRef = useRef<{ x: number; y: number } | null>(null)
   const pendingRafRef = useRef<number | null>(null)
@@ -241,8 +249,7 @@ export default function ExtremaFusionDemo({
     return pts
   }, [cps])
 
-  // ===== Layout =====
-  const margin = { top: 36, right: 40, bottom: 24, left: 48 }
+  // ===== Layout ===== (margin, cxRange, cyRange are module constants)
   const curveFrac = 0.65
   const innerW = width - margin.left - margin.right
   const innerH = height - margin.top - margin.bottom
@@ -250,18 +257,19 @@ export default function ExtremaFusionDemo({
   const gTop = margin.top + curveH + 28
   const gH = innerH - curveH - 28
 
-  // Wide display range to give room for dragging P4 outward.
-  const cxRange: [number, number] = [-3, 4.5]
-  const cyRange: [number, number] = [-1, 2.5]
   const cxToPx = (x: number) =>
     margin.left + ((x - cxRange[0]) / (cxRange[1] - cxRange[0])) * innerW
   const cyToPx = (y: number) =>
     margin.top + curveH - ((y - cyRange[0]) / (cyRange[1] - cyRange[0])) * curveH
-  const pxToCx = (px: number) =>
-    cxRange[0] + ((px - margin.left) / innerW) * (cxRange[1] - cxRange[0])
-  const pxToCy = (py: number) =>
-    cyRange[0] +
-    ((margin.top + curveH - py) / curveH) * (cyRange[1] - cyRange[0])
+  // Memoized so they're stable deps for the pointer-move callback below.
+  const pxToCx = useCallback(
+    (px: number) => cxRange[0] + ((px - margin.left) / innerW) * (cxRange[1] - cxRange[0]),
+    [innerW],
+  )
+  const pxToCy = useCallback(
+    (py: number) => cyRange[0] + ((margin.top + curveH - py) / curveH) * (cyRange[1] - cyRange[0]),
+    [curveH],
+  )
 
   const gMaxAbs = Math.max(...gCoefs.map((v) => Math.abs(v)), 1)
   const gxToPx = (t: number) => margin.left + t * innerW
@@ -326,7 +334,7 @@ export default function ExtremaFusionDemo({
         }
       })
     },
-    [dragIndex, cps, constrainExtrema, width, height],
+    [dragIndex, cps, constrainExtrema, width, height, pxToCx, pxToCy],
   )
 
   const onSvgPointerUp = useCallback(

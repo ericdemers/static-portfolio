@@ -21,7 +21,12 @@ export function useReveal(options: UseRevealOptions = {}) {
   const containerRef = useRef<HTMLDivElement>(null)
   const deckRef = useRef<RevealDeck | null>(null)
   const onSlideChangeRef = useRef(options.onSlideChange)
-  onSlideChangeRef.current = options.onSlideChange
+  // Keep the ref pointing at the latest callback without re-running the
+  // deck-init effect below (which must run once). Updated in an effect rather
+  // than during render.
+  useEffect(() => {
+    onSlideChangeRef.current = options.onSlideChange
+  })
 
   useEffect(() => {
     if (!containerRef.current) return

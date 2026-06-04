@@ -42,6 +42,12 @@ const COLORS = {
 
 const KNOTS = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
 
+// Layout + display ranges are prop-independent, so they live at module scope —
+// stable references for the memoized coordinate transforms.
+const margin = { top: 36, right: 40, bottom: 24, left: 48 }
+const cxRange: [number, number] = [-1.15, 1.15]
+const cyRange: [number, number] = [-1.6, 0.5]
+
 // Internal-scale factor for the optimizer. CPs are stored in math units
 // (x ∈ [-1, 1]) but the interior-point optimizer's tolerances are tuned
 // for sketcher-pixel-like magnitudes (~hundreds). Multiply by this when
@@ -211,8 +217,7 @@ export default function WithoutSlidingDemo({
     return pts
   }, [cps])
 
-  // ===== Layout =====
-  const margin = { top: 36, right: 40, bottom: 24, left: 48 }
+  // ===== Layout ===== (margin, cxRange, cyRange are module constants)
   const curveFrac = 0.65
   const innerW = width - margin.left - margin.right
   const innerH = height - margin.top - margin.bottom
@@ -221,17 +226,19 @@ export default function WithoutSlidingDemo({
   const gH = innerH - curveH - 28
 
   // ===== Coordinate transforms =====
-  const cxRange: [number, number] = [-1.15, 1.15]
-  const cyRange: [number, number] = [-1.6, 0.5]
   const cxToPx = (x: number) =>
     margin.left + ((x - cxRange[0]) / (cxRange[1] - cxRange[0])) * innerW
   const cyToPx = (y: number) =>
     margin.top + curveH - ((y - cyRange[0]) / (cyRange[1] - cyRange[0])) * curveH
-  const pxToCx = (px: number) =>
-    cxRange[0] + ((px - margin.left) / innerW) * (cxRange[1] - cxRange[0])
-  const pxToCy = (py: number) =>
-    cyRange[0] +
-    ((margin.top + curveH - py) / curveH) * (cyRange[1] - cyRange[0])
+  // Memoized so they're stable deps for the pointer-move callback below.
+  const pxToCx = useCallback(
+    (px: number) => cxRange[0] + ((px - margin.left) / innerW) * (cxRange[1] - cxRange[0]),
+    [innerW],
+  )
+  const pxToCy = useCallback(
+    (py: number) => cyRange[0] + ((margin.top + curveH - py) / curveH) * (cyRange[1] - cyRange[0]),
+    [curveH],
+  )
 
   const gMaxAbs = Math.max(...gCoefs.map((v) => Math.abs(v)), 1)
   const gxToPx = (t: number) => margin.left + t * innerW
@@ -302,7 +309,7 @@ export default function WithoutSlidingDemo({
         }
       })
     },
-    [dragIndex, cps, constrainExtrema, width, height],
+    [dragIndex, cps, constrainExtrema, width, height, pxToCx, pxToCy],
   )
 
   const onSvgPointerUp = useCallback(

@@ -44,6 +44,11 @@ const COLORS = {
 
 const A_MIN = -0.85
 const A_MAX = 0.85
+// Layout + display ranges are prop-independent, so they live at module scope —
+// stable references for the memoized coordinate transforms / handlers.
+const margin = { top: 36, right: 40, bottom: 24, left: 48 }
+const cxRange: [number, number] = [-1.15, 1.15]
+const cyRange: [number, number] = [-1.6, 0.5]
 
 // Quartic perturbation magnitude: y = -u^2 + EPSILON · u^4. Keeps a comfortable
 // safety margin (~25%) before the secondary zeros of g at u^2 = (1+EPSILON) /
@@ -153,8 +158,7 @@ export default function ExtremumSlidingDemo({ width = 800, height = 580 }: Props
     return pts
   }, [cps])
 
-  // Layout
-  const margin = { top: 36, right: 40, bottom: 24, left: 48 }
+  // Layout (margin, cxRange, cyRange are module constants)
   const curveFrac = 0.65
   const innerW = width - margin.left - margin.right
   const innerH = height - margin.top - margin.bottom
@@ -163,8 +167,6 @@ export default function ExtremumSlidingDemo({ width = 800, height = 580 }: Props
   const gH = innerH - curveH - 28
 
   // Coordinate transforms — y-range tightened to the soft-bounded depth.
-  const cxRange: [number, number] = [-1.15, 1.15]
-  const cyRange: [number, number] = [-1.6, 0.5]
   const cxToPx = (x: number) =>
     margin.left + ((x - cxRange[0]) / (cxRange[1] - cxRange[0])) * innerW
   const cyToPx = (y: number) =>
