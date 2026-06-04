@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "pdf": "bun run build && bun scripts/make-pdf.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",

@@ -50,6 +50,9 @@ export function useReveal(options: UseRevealOptions = {}) {
 
     deck.initialize().then(() => {
       deckRef.current = deck
+      // Expose the deck on window so PDF export tooling (decktape's reveal
+      // plugin) can drive slide navigation. Harmless in normal use.
+      ;(window as unknown as { Reveal?: RevealDeck }).Reveal = deck
       deck.on('slidechanged', (event) => onSlideChangeRef.current?.(event.indexh))
       onSlideChangeRef.current?.(0)
     })
