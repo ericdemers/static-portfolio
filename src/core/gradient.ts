@@ -343,19 +343,67 @@ function scatterSpans(
 }
 
 /**
+ * Geometry-INDEPENDENT part of the periodic local gradient: for each control
+ * point, its (wrap-around) support spans and the seed Dirac B-spline derivatives
+ * Nᵢ′, Nᵢ″, Nᵢ‴ gathered on those spans. These depend only on (knots, degree, n),
+ * NOT on the control-point positions — so for an interactive drag they are
+ * computed ONCE and reused across every Jacobian build (the curve moves ~50×/frame
+ * but the seeds never change). Recomputing them each build was pure waste.
+ */
+export interface PeriodicSeeds {
+  numSpans: number
+  spans: number[][]
+  /** Nᵢ′, Nᵢ″, Nᵢ‴ gathered on spans[i] (n3 unused by the inflection gradient). */
+  n1: BernsteinDecomposition[]
+  n2: BernsteinDecomposition[]
+  n3: BernsteinDecomposition[]
+}
+
+export function precomputePeriodicSeeds(
+  knots: readonly number[],
+  degree: number,
+  n: number,
+): PeriodicSeeds {
+  const probe = decomposeToBernsteinPeriodic(new Array<number>(n).fill(0), knots, degree)
+  const numSpans = probe.numSpans
+  const spans: number[][] = []
+  const n1: BernsteinDecomposition[] = []
+  const n2: BernsteinDecomposition[] = []
+  const n3: BernsteinDecomposition[] = []
+  for (let i = 0; i < n; i++) {
+    const e = new Array<number>(n).fill(0)
+    e[i] = 1
+    const Ni = decomposeToBernsteinPeriodic(e, knots, degree)
+    const sp: number[] = []
+    for (let s = 0; s < numSpans; s++) {
+      if (Ni.coeffs[s].some((c) => Math.abs(c) > 1e-14)) sp.push(s)
+    }
+    const d1 = Ni.derivative()
+    const d2 = d1.derivative()
+    spans.push(sp)
+    n1.push(gatherSpans(d1, sp))
+    n2.push(gatherSpans(d2, sp))
+    n3.push(gatherSpans(d2.derivative(), sp))
+  }
+  return { numSpans, spans, n1, n2, n3 }
+}
+
+/**
  * Local (B-spline-locality) version of curvatureExtremaGradientPlanarPeriodic:
  * bit-identical {g, dx, dy}, but each Jacobian column is assembled only on its
  * control point's d+1 support spans (which WRAP across the periodic seam) instead
  * of the whole curve, then scattered back to full width. The non-support spans of
  * a dense column are structurally zero (the seed Nᵢ vanishes there), so dropping
- * them changes nothing — only the cost: O(n·d²) instead of O(n²). This is what
- * keeps the closed-curve drag interactive (the dense version was ~2 ms/build).
+ * them changes nothing — only the cost: O(n·d²) instead of O(n²). Pass `seeds`
+ * (precomputePeriodicSeeds) to skip rebuilding the geometry-independent seeds on
+ * every call — what keeps the closed-curve drag interactive.
  */
 export function curvatureExtremaGradientPlanarPeriodicLocal(
   x: readonly number[],
   y: readonly number[],
   knots: readonly number[],
   degree: number,
+  seeds: PeriodicSeeds = precomputePeriodicSeeds(knots, degree, x.length),
 ): PlanarCurvatureGradient {
   const X1 = decomposeToBernsteinPeriodic(x, knots, degree).derivative()
   const Y1 = decomposeToBernsteinPeriodic(y, knots, degree).derivative()
@@ -373,31 +421,22 @@ export function curvatureExtremaGradientPlanarPeriodicLocal(
     new Dual(Y3, zeroLike(Y3)),
   ).v
 
-  const numSpans = X1.numSpans
+  const numSpans = seeds.numSpans
   const spanDegree = g.degree
   const n = x.length
   const dx: BernsteinDecomposition[] = []
   const dy: BernsteinDecomposition[] = []
   for (let i = 0; i < n; i++) {
-    const e = new Array<number>(n).fill(0)
-    e[i] = 1
-    const Ni = decomposeToBernsteinPeriodic(e, knots, degree)
-    const spans: number[] = []
-    for (let s = 0; s < numSpans; s++) {
-      if (Ni.coeffs[s].some((c) => Math.abs(c) > 1e-14)) spans.push(s)
-    }
-    const Ni1 = Ni.derivative()
-    const Ni2 = Ni1.derivative()
-    const Ni3 = Ni2.derivative()
+    const spans = seeds.spans[i]
+    const n1 = seeds.n1[i]
+    const n2 = seeds.n2[i]
+    const n3 = seeds.n3[i]
     const x1 = gatherSpans(X1, spans)
     const y1 = gatherSpans(Y1, spans)
     const x2 = gatherSpans(X2, spans)
     const y2 = gatherSpans(Y2, spans)
     const x3 = gatherSpans(X3, spans)
     const y3 = gatherSpans(Y3, spans)
-    const n1 = gatherSpans(Ni1, spans)
-    const n2 = gatherSpans(Ni2, spans)
-    const n3 = gatherSpans(Ni3, spans)
     const gx = gOverDuals(
       new Dual(x1, n1), new Dual(y1, zeroLike(y1)),
       new Dual(x2, n2), new Dual(y2, zeroLike(y2)),
@@ -483,6 +522,7 @@ export function inflectionGradientPlanarPeriodicLocal(
   y: readonly number[],
   knots: readonly number[],
   degree: number,
+  seeds: PeriodicSeeds = precomputePeriodicSeeds(knots, degree, x.length),
 ): PlanarCurvatureGradient {
   const X1 = decomposeToBernsteinPeriodic(x, knots, degree).derivative()
   const Y1 = decomposeToBernsteinPeriodic(y, knots, degree).derivative()
@@ -493,27 +533,19 @@ export function inflectionGradientPlanarPeriodicLocal(
     new Dual(X2, zeroLike(X2)), new Dual(Y2, zeroLike(Y2)),
   ).v
 
-  const numSpans = X1.numSpans
+  const numSpans = seeds.numSpans
   const spanDegree = g.degree
   const n = x.length
   const dx: BernsteinDecomposition[] = []
   const dy: BernsteinDecomposition[] = []
   for (let i = 0; i < n; i++) {
-    const e = new Array<number>(n).fill(0)
-    e[i] = 1
-    const Ni = decomposeToBernsteinPeriodic(e, knots, degree)
-    const spans: number[] = []
-    for (let s = 0; s < numSpans; s++) {
-      if (Ni.coeffs[s].some((c) => Math.abs(c) > 1e-14)) spans.push(s)
-    }
-    const Ni1 = Ni.derivative()
-    const Ni2 = Ni1.derivative()
+    const spans = seeds.spans[i]
+    const n1 = seeds.n1[i]
+    const n2 = seeds.n2[i]
     const x1 = gatherSpans(X1, spans)
     const y1 = gatherSpans(Y1, spans)
     const x2 = gatherSpans(X2, spans)
     const y2 = gatherSpans(Y2, spans)
-    const n1 = gatherSpans(Ni1, spans)
-    const n2 = gatherSpans(Ni2, spans)
     const gx = fOverDuals(new Dual(x1, n1), new Dual(y1, zeroLike(y1)), new Dual(x2, n2), new Dual(y2, zeroLike(y2))).t
     const gy = fOverDuals(new Dual(x1, zeroLike(x1)), new Dual(y1, n1), new Dual(x2, zeroLike(x2)), new Dual(y2, n2)).t
     dx.push(scatterSpans(gx, spans, numSpans, spanDegree, g.breaks))

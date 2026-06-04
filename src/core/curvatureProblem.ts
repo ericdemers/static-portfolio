@@ -19,7 +19,9 @@ import {
   curvatureExtremaGradientPlanarLocal,
   inflectionGradientPlanar,
   inflectionGradientPlanarPeriodicLocal,
+  precomputePeriodicSeeds,
 } from './gradient'
+import type { PeriodicSeeds } from './gradient'
 import type { BernsteinDecomposition } from './bernstein'
 import type { PlanarCurvatureGradient } from './gradient'
 
@@ -249,6 +251,10 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
   private fMargins: number[] = []
   private cachedCons: number[] | null = null
   private cachedJac: Matrix | null = null
+  // Geometry-independent seeds for the periodic local gradient — depend only on
+  // (knots, degree, n), so precompute ONCE here and reuse across every Jacobian
+  // build of the drag (the curve moves ~50×/frame; the seeds never change).
+  private periodicSeeds: PeriodicSeeds | null = null
 
   constructor(
     cpX: readonly number[],
@@ -287,6 +293,7 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
     this.knots = [...knots]
     this.degree = degree
     this.closed = opts.closed ?? false
+    if (this.closed) this.periodicSeeds = precomputePeriodicSeeds(this.knots, this.degree, this.cpX.length)
     this.targetX = [...cpX]
     this.targetY = [...cpY]
     this.targetX[dragIndex] = targetX
@@ -355,7 +362,7 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
   }
   private gradient(): PlanarCurvatureGradient {
     return this.closed
-      ? curvatureExtremaGradientPlanarPeriodicLocal(this.cpX, this.cpY, this.knots, this.degree)
+      ? curvatureExtremaGradientPlanarPeriodicLocal(this.cpX, this.cpY, this.knots, this.degree, this.periodicSeeds!)
       : curvatureExtremaGradientPlanar(this.cpX, this.cpY, this.knots, this.degree)
   }
   private inflectionNumerator(): BernsteinDecomposition {
@@ -365,7 +372,7 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
   }
   private inflectionGrad(): PlanarCurvatureGradient {
     return this.closed
-      ? inflectionGradientPlanarPeriodicLocal(this.cpX, this.cpY, this.knots, this.degree)
+      ? inflectionGradientPlanarPeriodicLocal(this.cpX, this.cpY, this.knots, this.degree, this.periodicSeeds!)
       : inflectionGradientPlanar(this.cpX, this.cpY, this.knots, this.degree)
   }
   /** Build the variable-space rows (length 2m) for a gradient's coeff index. */
