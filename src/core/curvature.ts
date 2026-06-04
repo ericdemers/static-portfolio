@@ -342,8 +342,8 @@ export function precomputeComplexPeriodicSeeds(
  * re-evaluations, the Chen value terms (D1, D2, …, T) are computed ONCE and each
  * column is a per-control-point differential reusing them — the same hoisted-
  * forward structure as the planar gradient and as the reference sketcher's
- * computeFixedWeightClosedJacobian. Verified bit-equal (to round-off) against the
- * finite-difference Jacobian.
+ * computeFixedWeightClosedJacobian. Verified against a central-difference
+ * Jacobian (to FD truncation) by complexJacobianOracle.test.ts.
  *
  * Returns g and dx[i]=∂g/∂Re(zᵢ), dy[i]=∂g/∂Im(zᵢ) (real Bernstein functions).
  * Assumes ρ=1 (same monodromy assumption as curvatureExtremaNumeratorComplexPeriodic).
