@@ -777,7 +777,7 @@ function jointRecomposeBDs(bds: BernsteinDecomposition[]): { knots: number[]; cp
     if (continuity < 1) continue
 
     const breakpointValue = bd0.distinctKnots[s + 1]
-    let knotIdx = knots.indexOf(breakpointValue)
+    const knotIdx = knots.indexOf(breakpointValue)
 
     for (let r = 0; r < continuity; r++) {
       // Find the range of this knot value

@@ -92,7 +92,7 @@ export class PrimalDualOptimizer {
     p.setVariables(x)
     let cAll = p.computeConstraints()
     let w = wOf(cAll)
-    let y = w.map(() => 1)
+    const y = w.map(() => 1)
     const lam = new Array<number>(me).fill(0)
 
     let best = { x: [...x], f: Infinity }

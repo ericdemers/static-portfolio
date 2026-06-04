@@ -433,7 +433,7 @@ export class ComplexRationalBSplineCurveProblem implements OptimizationProblem {
     } else if (this.useGeometric) {
       const controlPoints = this.cpX.map((x, i) => ({ re: x, im: this.cpY[i] }))
       const farinPositions = this.fpX.map((x, i) => ({ x, y: this.fpY[i] }))
-      let fullJacobian = computeComplexGeometricJacobianAnalytical(
+      const fullJacobian = computeComplexGeometricJacobianAnalytical(
         this.degree, this.knots, controlPoints, farinPositions,
         activeIndices, this.period, this.closed
       )

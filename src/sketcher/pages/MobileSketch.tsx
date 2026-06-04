@@ -30,7 +30,6 @@ export default function MobileSketch() {
   const setToolLocked = useSceneStore((s) => s.setToolLocked)
   const preserve = useSceneStore((s) => s.preserveCurvatureExtrema)
   const setPreserve = useSceneStore((s) => s.setPreserveCurvatureExtrema)
-  const setSolverMethod = useSceneStore((s) => s.setSolverMethod)
   const clearAll = useSceneStore((s) => s.clearAll)
   const deleteCurve = useSceneStore((s) => s.deleteCurve)
   const curves = useSceneStore((s) => s.curves)
@@ -65,13 +64,10 @@ export default function MobileSketch() {
   }
   const enterEdit = () => setActiveTool('none')
 
-  // Start in draw mode with the curvature-extrema bound ON, using the robust
-  // 'ipopt' solver (trust region + filter + feasibility restoration — it
-  // coordinates the whole curve and never returns a bound-violating result).
-  // Reset the shared store on the way out so nothing leaks into /sketcher.
+  // Start in draw mode with the curvature-extrema bound ON. Reset the shared
+  // store on the way out so nothing leaks into /sketcher.
   useEffect(() => {
     setPreserve(true)
-    setSolverMethod('ipopt')
     enterDraw()
 
     // Lock the page so iOS Safari can't rubber-band / scroll the canvas while a

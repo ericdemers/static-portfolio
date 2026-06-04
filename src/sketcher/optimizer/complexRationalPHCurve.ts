@@ -182,9 +182,9 @@ export function computeComplexRationalPHFromSD(
     const dImCoeffs = dBD.im.controlPointsArray[spanIdx]
 
     // Degree-elevate D coefficients if needed to match
-    let dPReCoeffs = spanIdx < dPrimeBD.re.controlPointsArray.length
+    const dPReCoeffs = spanIdx < dPrimeBD.re.controlPointsArray.length
       ? dPrimeBD.re.controlPointsArray[spanIdx] : [0]
-    let dPImCoeffs = spanIdx < dPrimeBD.im.controlPointsArray.length
+    const dPImCoeffs = spanIdx < dPrimeBD.im.controlPointsArray.length
       ? dPrimeBD.im.controlPointsArray[spanIdx] : [0]
 
     // For single-span case, solve the linear system directly

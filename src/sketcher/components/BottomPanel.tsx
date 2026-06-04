@@ -640,7 +640,7 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
     smoothActive, smoothWindow, smoothAmount, smoothEnergy, smoothMode, smoothIterations,
     enterSmooth, cancelSmooth, applySmooth, setSmoothWindow, setSmoothAmount,
     setSmoothMode, setSmoothIterations,
-    disableSliding, solverMethod,
+    disableSliding,
   } = useSceneStore()
   const isOpenBspline = curve.kind === 'bspline' && !curve.closed
 
@@ -749,14 +749,14 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
           curve.controlPoints.map((p) => p.y),
           curve.knots,
           curve.degree,
-          { disableSliding, robust: solverMethod === 'ipopt' },
+          { disableSliding, robust: true }, // robust (IPOPT) sign assignment
         )
       }
     } catch (e) {
       console.error('constraintState computation failed:', e)
       return null
     }
-  }, [curve, preserveCurvatureExtrema, disableSliding, solverMethod])
+  }, [curve, preserveCurvatureExtrema, disableSliding])
 
   // Current bound S(b): the number of sign changes of g = the curvature-extrema
   // count being held. Shown next to the toggle, mirroring the cs2026 talk slide.

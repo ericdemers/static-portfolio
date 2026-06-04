@@ -106,7 +106,7 @@ export class BandedPrimalDualOptimizer {
       return wOf(p.computeConstraints())
     }
     let w = slacksAt(x)
-    let y = w.map(() => 1)
+    const y = w.map(() => 1)
 
     let best = { x: [...x], f: Infinity }
     let reason: OptimizerResult['terminationReason'] = 'maxIterations'

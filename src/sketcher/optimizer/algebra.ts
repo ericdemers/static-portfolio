@@ -698,7 +698,7 @@ export function decomposeClampedRegion(open: BSpline, tMin: number, tMax: number
   const p = open.degree
 
   // Insert boundary knots to reach multiplicity p+1
-  let refined = insertBoundaryKnots(open, tMin, tMax, p)
+  const refined = insertBoundaryKnots(open, tMin, tMax, p)
 
   if (refined.knots.tag !== 'open') {
     throw new Error('Expected open B-spline after knot insertion')
@@ -992,7 +992,7 @@ export function recomposeBD(bd: BernsteinDecomposition, maxContinuity?: number):
     const breakpointValue = bd.distinctKnots[s + 1]
 
     // Find the first occurrence of this knot in the current knot vector
-    let knotIdx = knots.indexOf(breakpointValue)
+    const knotIdx = knots.indexOf(breakpointValue)
 
     for (let r = 0; r < continuity; r++) {
       // Find the last occurrence (remove from the "middle" for stability)

@@ -113,10 +113,6 @@ interface SketcherState {
   anchorWeight: number  // 0 = disabled, >0 = anchor undragged CPs to drag-start positions
   dragStartCPsX: number[] | null
   dragStartCPsY: number[] | null
-  /** Legacy core-solver selector (kept for the mobile editor's setter); the open
-   *  B-spline drag now uses optimizeCurve regardless. */
-  solverMethod: 'primal-dual' | 'barrier' | 'ipopt'
-  setSolverMethod: (m: 'primal-dual' | 'barrier' | 'ipopt') => void
 
   // Generate session: apply a (planar) Lie-sphere transform to a PH curve to
   // PRODUCE A NEW curve. accumulated = baked transform; sliders = the live one;
@@ -349,7 +345,6 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   anchorWeight: 0,
   dragStartCPsX: null,
   dragStartCPsY: null,
-  solverMethod: 'ipopt',
   generate: null,
 
   view: {
@@ -1055,7 +1050,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
 
           // Simplify the trimmed (clean) points
           const simplified = simplifyPointsCurvatureAdaptive(trimmedPoints)
-          let closedPoints = simplified
+          const closedPoints = simplified
 
           const degree = Math.min(3, closedPoints.length - 1)
 
@@ -1157,7 +1152,6 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   setPreserveInflections: (preserve) => set({ preserveInflections: preserve }),
   setDisableSliding: (disable) => set({ disableSliding: disable }),
   setAnchorWeight: (weight) => set({ anchorWeight: weight }),
-  setSolverMethod: (m) => set({ solverMethod: m }),
 
   // ----- Generate (Lie-sphere transform → new curve) -----
   _refreshGeneratePreview: () => {
