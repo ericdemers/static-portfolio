@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 /**
  * Interior Point Optimizer with IPOPT-inspired features
@@ -40,7 +39,6 @@ import {
   identityMatrix,
   matScale,
   matVec,
-  zerosMatrix,
   atDiagA,
   choleskySolve,
   solveTrustRegion,
@@ -1044,7 +1042,6 @@ export class InteriorPointOptimizer {
 
   private initializeState(): OptimizationState {
     const problem = this.problem
-    const config = this.config
     const numEq = problem.numEqualityConstraints
 
     const x = problem.getVariables()

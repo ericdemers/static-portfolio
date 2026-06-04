@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 /**
  * PH (Pythagorean Hodograph) Curve Support
@@ -13,12 +12,11 @@
  */
 
 import type { Point2D, WeightedPoint2D } from '../types/curve'
-import { type Complex, cmult, cadd, cdiv, cnorm } from '../utils/complex'
+import { type Complex, cmult, cdiv, cnorm } from '../utils/complex'
 import {
   decomposeToBernstein,
   integrateBD,
   recomposeBD,
-  BernsteinDecomposition,
 } from './algebra'
 import type { ABPHMetadata } from './abPHCurve'
 

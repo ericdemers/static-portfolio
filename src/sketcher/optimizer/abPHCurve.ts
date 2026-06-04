@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 /**
  * (A, B, S) Parameterization for Complex Rational PH Curves
@@ -13,7 +12,7 @@
 
 import type { ComplexPoint, Point2D } from '../types/curve'
 import type { MobiusTransform } from '../utils/transforms'
-import { cadd, cmult, csub, cdiv } from '../utils/complex'
+import { cadd, cmult, csub } from '../utils/complex'
 import { decomposeToBernstein, recomposeBD } from './algebra'
 import {
   type ComplexBD,
@@ -92,7 +91,7 @@ export function computeABPHCurve(metadata: ABPHMetadata): ABPHCurveResult {
  * If the PH condition holds, all coefficients should be zero.
  */
 export function computePHResidualCoeffs(metadata: ABPHMetadata): { re: number[]; im: number[] } {
-  const { aReCPs, aImCPs, bReCPs, bImCPs, sReCPs, sImCPs, knots, sKnots, degree } = metadata
+  const { aReCPs, aImCPs, bReCPs, bImCPs, sReCPs, sImCPs, knots, sKnots } = metadata
 
   // Build SimpleBSplines for A and B
   const aRe: SimpleBSpline = { knots: [...knots], controlPoints: [...aReCPs] }

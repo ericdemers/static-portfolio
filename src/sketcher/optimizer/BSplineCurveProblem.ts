@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 /**
  * B-Spline Curve Optimization Problem
@@ -405,14 +404,6 @@ export function computeOpenCurveConstraintState(
   controlPointsX: number[],
   controlPointsY: number[]
 ): OpenCurveConstraintState {
-  const degree = knots.length - controlPointsX.length - 1
-  const curve: BSpline2D = {
-    degree,
-    knots: { tag: 'open', knots },
-    controlPointsX: { tag: 'open', cps: controlPointsX },
-    controlPointsY: { tag: 'open', cps: controlPointsY },
-  }
-
   // Compute curvature derivative numerator via Bernstein decomposition
   const gBD = computeCurvatureDerivativeNumeratorBD(knots, controlPointsX, controlPointsY)
   const gCPs = gBD.flattenControlPoints()

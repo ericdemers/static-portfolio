@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 /**
  * Rational B-Spline Curve Optimization Problem (Open Curves)
@@ -425,7 +424,6 @@ export class RationalBSplineCurveProblem implements OptimizationProblem {
       return { x: [...this.eucX], y: [...this.eucY] }
     }
     // Convert from homogeneous
-    const n = this.cpX.length
     return {
       x: this.cpX.map((X, i) => X / this.cpW[i]),
       y: this.cpY.map((Y, i) => Y / this.cpW[i]),

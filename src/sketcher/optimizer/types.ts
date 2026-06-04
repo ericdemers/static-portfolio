@@ -11,6 +11,7 @@
  */
 
 import type { Matrix } from './linearAlgebra'
+export type { Matrix }
 
 // ============================================================================
 // Optimization Problem Interface

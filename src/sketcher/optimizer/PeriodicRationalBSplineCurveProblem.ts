@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 /**
  * Periodic Rational B-Spline Curve Optimization Problem (Closed Curves)
@@ -24,7 +23,6 @@
 
 import {
   computePeriodicRationalConstraintCPsFromCache,
-  computePeriodicRationalCurvatureDerivativeNumeratorCPs,
   computePeriodicRationalCurvatureDerivativeNumeratorBD,
   computePeriodicRationalExplicitJacobian,
   precomputePeriodicRationalBasisDerivatives,
@@ -106,7 +104,6 @@ export class PeriodicRationalBSplineCurveProblem implements OptimizationProblem 
     this.knots = periodicKnots.baseKnots
     this.period = periodicKnots.period
 
-    const n = this.cpX.length
     this.targetX = [...this.cpX]
     this.targetY = [...this.cpY]
     this.targetW = [...this.cpW]

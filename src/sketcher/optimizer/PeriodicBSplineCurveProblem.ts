@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 /**
  * Periodic B-Spline Curve Optimization Problem
@@ -14,7 +13,6 @@
 
 import {
   computePeriodicConstraintCPsFromCache,
-  computePeriodicCurvatureDerivativeNumeratorCPs,
   computePeriodicCurvatureDerivativeNumeratorBDWithKnots,
   computePeriodicExplicitJacobian,
   computePeriodicInflectionCPsFromCache,

@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 /**
  * Real Rational PH Curve Support
@@ -19,7 +18,6 @@ import { decomposeToBernstein, recomposeBD } from './algebra'
 import {
   type ABPHMetadata,
   computeABPHCurve,
-  computePHResidualCoeffs,
 } from './abPHCurve'
 import { createABPHFromTwoPoints } from './abPHCurve'
 
