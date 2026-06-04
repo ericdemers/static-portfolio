@@ -1,4 +1,3 @@
-// @ts-nocheck — Generate session UI: the 8 Lie-sphere generators as sliders.
 import { useSceneStore } from '../store/sceneStore'
 import { SHAPE_GENERATORS } from '../lab/lieSphere/lieAlgebra2D'
 
@@ -13,7 +12,7 @@ export default function GeneratePanel() {
   const subtle = 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
 
   // group the generators in order, keeping their global index for the coeff vector
-  const groups = []
+  const groups: { group: string; items: { gen: typeof SHAPE_GENERATORS[number]; i: number }[] }[] = []
   SHAPE_GENERATORS.forEach((gen, i) => {
     let g = groups[groups.length - 1]
     if (!g || g.group !== gen.group) { g = { group: gen.group, items: [] }; groups.push(g) }
@@ -27,7 +26,7 @@ export default function GeneratePanel() {
 
       {groups.map((g) => (
         <div key={g.group} className="mb-2">
-          <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">{GROUP_LABEL[g.group]}</div>
+          <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">{GROUP_LABEL[g.group as keyof typeof GROUP_LABEL]}</div>
           {g.items.map(({ gen, i }) => (
             <div key={gen.key} className="mb-1.5">
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">

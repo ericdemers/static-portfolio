@@ -10,9 +10,10 @@ import { evaluateCurve } from '../../utils/bspline/core'
 import { abPHToLieCurve, lieCurveHomogeneous, identity5 } from './lieCurve2D'
 import type { ComplexRationalBSplineCurve } from '../../types/curve'
 import type { ComplexRationalPHMetadata } from '../../optimizer/phCurve'
+import type { ABPHMetadata } from '../../optimizer/abPHCurve'
 
 // Mirror of sceneStore's abShapeForGenerate for a (S, D) curve.
-function abShape(curve: ComplexRationalBSplineCurve, meta: ComplexRationalPHMetadata) {
+function abShape(curve: ComplexRationalBSplineCurve, meta: ComplexRationalPHMetadata): ABPHMetadata {
   const { aRe, aIm, bRe, bIm } = convertComplexPointsToAB(curve.controlPoints)
   return {
     kind: 'ab-complex-rational',

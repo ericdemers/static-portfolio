@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Planar Lie-sphere transform of an AB-PH curve → an EXACT rational B-spline (NURBS).
 //
 // Pipeline (per the lab's Legendre lift, one dimension down — oriented circles in
@@ -19,7 +18,10 @@
 //   n_poly = [X·ReG+Y·ImG,  −(X·ReG+Y·ImG),  W·ReG,  W·ImG,  W²σ]      G = i·S²·B̄²
 // with homogeneous point (X,Y,W)=(Re(A B̄),Im(A B̄),|B|²), σ=|S|², for z=A/B, gen S.
 import { decomposeToBernstein } from '../../optimizer/algebra'
+import type { BernsteinDecomposition } from '../../optimizer/algebra'
 import { fitRealRational } from './rationalFit'
+import type { ABPHMetadata } from '../../optimizer/abPHCurve'
+import type { WeightedPoint2D } from '../../types/curve'
 
 export type Mat5 = number[][] // 5×5, row-major. Index map: [s0, s1, x, y, r].
 
@@ -77,13 +79,13 @@ export function slidersToMat5(s: GenerateSliders): Mat5 {
 }
 
 // --- Bernstein Vec5 helpers ---
-function elevateAll(bds) {
+function elevateAll(bds: BernsteinDecomposition[]) {
   let maxDeg = 0
   for (const b of bds) maxDeg = Math.max(maxDeg, b.degree)
-  const zero = bds.find((b) => b.degree === maxDeg).multiplyByScalar(0)
+  const zero = bds.find((b) => b.degree === maxDeg)!.multiplyByScalar(0)
   return bds.map((b) => zero.add(b)) // .add elevates the lower-degree operand
 }
-function applyMat5BD(M: Mat5, v) {
+function applyMat5BD(M: Mat5, v: BernsteinDecomposition[]) {
   const out = []
   for (let i = 0; i < 5; i++) {
     let acc = v[0].multiplyByScalar(0)
@@ -98,7 +100,7 @@ function applyMat5BD(M: Mat5, v) {
  * planar point is (X/W, Y/W). Split out so the math can be tested by direct BD
  * evaluation, independent of the recompose-to-B-spline step.
  */
-export function lieCurveHomogeneous(meta, M: Mat5): { X; Y; W } {
+export function lieCurveHomogeneous(meta: ABPHMetadata, M: Mat5): { X: BernsteinDecomposition; Y: BernsteinDecomposition; W: BernsteinDecomposition } {
   const aRe = decomposeToBernstein({ knots: meta.knots, controlPoints: meta.aReCPs })
   const aIm = decomposeToBernstein({ knots: meta.knots, controlPoints: meta.aImCPs })
   const bRe = decomposeToBernstein({ knots: meta.knots, controlPoints: meta.bReCPs })
@@ -157,7 +159,7 @@ export function lieCurveHomogeneous(meta, M: Mat5): { X; Y; W } {
  * real, so we fit a REAL rational curve (real weights) — a clean NURBS, not a
  * complex-weight curve with a strange control polygon.
  */
-export function abPHToLieCurve(meta, M: Mat5): { controlPoints; knots: number[]; degree: number } {
+export function abPHToLieCurve(meta: ABPHMetadata, M: Mat5): { controlPoints: WeightedPoint2D[]; knots: number[]; degree: number } {
   const h = lieCurveHomogeneous(meta, M)
   const degree = 2 * meta.degree
   const m = Math.max(2 * degree + 6, 24)
