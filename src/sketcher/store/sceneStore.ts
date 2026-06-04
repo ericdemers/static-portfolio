@@ -259,7 +259,7 @@ const MAX_HISTORY = 50
 // points are F_i/D_i with weights D_i, so A_i = F_i (= pos·weight) and B_i = D_i,
 // and the stored S is the generator. This adapter lets Generate / offset work on
 // both representations. Returns the metadata unchanged for an AB curve.
-function abShapeForGenerate(curve: Curve, meta: any): any {
+function abShapeForGenerate(curve, meta) {
   if (!meta || meta.kind === 'ab-complex-rational') return meta
   if (meta.kind === 'complex-rational') {
     const { aRe, aIm, bRe, bIm } = convertComplexPointsToAB(curve.controlPoints as ComplexPoint[])
