@@ -317,6 +317,103 @@ export function curvatureExtremaGradientPlanarPeriodic(
   return { g, dx, dy }
 }
 
+/** Gather the listed spans (any order; periodic support may wrap) into a compact
+ *  BD. Breaks are placeholders — downstream only multiplies/adds (per-span, breaks-
+ *  independent) and reads coeffs, so the values don't matter, only the count. */
+function gatherSpans(bd: BernsteinDecomposition, spans: number[]): BernsteinDecomposition {
+  const breaks = spans.map((_, k) => k)
+  breaks.push(spans.length)
+  return new BernsteinDecomposition(spans.map((s) => bd.coeffs[s]), breaks)
+}
+
+/** Scatter a compact per-span-list result back to full width (zeros elsewhere). */
+function scatterSpans(
+  sub: BernsteinDecomposition,
+  spans: number[],
+  numSpans: number,
+  spanDegree: number,
+  breaks: number[],
+): BernsteinDecomposition {
+  const coeffs: number[][] = []
+  for (let s = 0; s < numSpans; s++) coeffs.push(new Array<number>(spanDegree + 1).fill(0))
+  spans.forEach((s, k) => {
+    coeffs[s] = sub.coeffs[k]
+  })
+  return new BernsteinDecomposition(coeffs, breaks)
+}
+
+/**
+ * Local (B-spline-locality) version of curvatureExtremaGradientPlanarPeriodic:
+ * bit-identical {g, dx, dy}, but each Jacobian column is assembled only on its
+ * control point's d+1 support spans (which WRAP across the periodic seam) instead
+ * of the whole curve, then scattered back to full width. The non-support spans of
+ * a dense column are structurally zero (the seed Nᵢ vanishes there), so dropping
+ * them changes nothing — only the cost: O(n·d²) instead of O(n²). This is what
+ * keeps the closed-curve drag interactive (the dense version was ~2 ms/build).
+ */
+export function curvatureExtremaGradientPlanarPeriodicLocal(
+  x: readonly number[],
+  y: readonly number[],
+  knots: readonly number[],
+  degree: number,
+): PlanarCurvatureGradient {
+  const X1 = decomposeToBernsteinPeriodic(x, knots, degree).derivative()
+  const Y1 = decomposeToBernsteinPeriodic(y, knots, degree).derivative()
+  const X2 = X1.derivative()
+  const Y2 = Y1.derivative()
+  const X3 = X2.derivative()
+  const Y3 = Y2.derivative()
+
+  const g = gOverDuals(
+    new Dual(X1, zeroLike(X1)),
+    new Dual(Y1, zeroLike(Y1)),
+    new Dual(X2, zeroLike(X2)),
+    new Dual(Y2, zeroLike(Y2)),
+    new Dual(X3, zeroLike(X3)),
+    new Dual(Y3, zeroLike(Y3)),
+  ).v
+
+  const numSpans = X1.numSpans
+  const spanDegree = g.degree
+  const n = x.length
+  const dx: BernsteinDecomposition[] = []
+  const dy: BernsteinDecomposition[] = []
+  for (let i = 0; i < n; i++) {
+    const e = new Array<number>(n).fill(0)
+    e[i] = 1
+    const Ni = decomposeToBernsteinPeriodic(e, knots, degree)
+    const spans: number[] = []
+    for (let s = 0; s < numSpans; s++) {
+      if (Ni.coeffs[s].some((c) => Math.abs(c) > 1e-14)) spans.push(s)
+    }
+    const Ni1 = Ni.derivative()
+    const Ni2 = Ni1.derivative()
+    const Ni3 = Ni2.derivative()
+    const x1 = gatherSpans(X1, spans)
+    const y1 = gatherSpans(Y1, spans)
+    const x2 = gatherSpans(X2, spans)
+    const y2 = gatherSpans(Y2, spans)
+    const x3 = gatherSpans(X3, spans)
+    const y3 = gatherSpans(Y3, spans)
+    const n1 = gatherSpans(Ni1, spans)
+    const n2 = gatherSpans(Ni2, spans)
+    const n3 = gatherSpans(Ni3, spans)
+    const gx = gOverDuals(
+      new Dual(x1, n1), new Dual(y1, zeroLike(y1)),
+      new Dual(x2, n2), new Dual(y2, zeroLike(y2)),
+      new Dual(x3, n3), new Dual(y3, zeroLike(y3)),
+    ).t
+    const gy = gOverDuals(
+      new Dual(x1, zeroLike(x1)), new Dual(y1, n1),
+      new Dual(x2, zeroLike(x2)), new Dual(y2, n2),
+      new Dual(x3, zeroLike(x3)), new Dual(y3, n3),
+    ).t
+    dx.push(scatterSpans(gx, spans, numSpans, spanDegree, g.breaks))
+    dy.push(scatterSpans(gy, spans, numSpans, spanDegree, g.breaks))
+  }
+  return { g, dx, dy }
+}
+
 /** Inflection numerator f = c′×c″ assembled over Duals. */
 function fOverDuals(x1: Dual, y1: Dual, x2: Dual, y2: Dual): Dual {
   return x1.mul(y2).sub(y1.mul(x2))
@@ -371,6 +468,56 @@ function inflectionGradient(
     const Ni2 = Ni1.derivative()
     dx.push(fOverDuals(new Dual(X1, Ni1), new Dual(Y1, zeroLike(Y1)), new Dual(X2, Ni2), new Dual(Y2, zeroLike(Y2))).t)
     dy.push(fOverDuals(new Dual(X1, zeroLike(X1)), new Dual(Y1, Ni1), new Dual(X2, zeroLike(X2)), new Dual(Y2, Ni2)).t)
+  }
+  return { g, dx, dy }
+}
+
+/**
+ * Local (B-spline-locality) inflection gradient for a CLOSED periodic curve —
+ * bit-identical to inflectionGradientPlanarPeriodic, each column assembled only
+ * on its wrap-around support spans. Companion to
+ * curvatureExtremaGradientPlanarPeriodicLocal.
+ */
+export function inflectionGradientPlanarPeriodicLocal(
+  x: readonly number[],
+  y: readonly number[],
+  knots: readonly number[],
+  degree: number,
+): PlanarCurvatureGradient {
+  const X1 = decomposeToBernsteinPeriodic(x, knots, degree).derivative()
+  const Y1 = decomposeToBernsteinPeriodic(y, knots, degree).derivative()
+  const X2 = X1.derivative()
+  const Y2 = Y1.derivative()
+  const g = fOverDuals(
+    new Dual(X1, zeroLike(X1)), new Dual(Y1, zeroLike(Y1)),
+    new Dual(X2, zeroLike(X2)), new Dual(Y2, zeroLike(Y2)),
+  ).v
+
+  const numSpans = X1.numSpans
+  const spanDegree = g.degree
+  const n = x.length
+  const dx: BernsteinDecomposition[] = []
+  const dy: BernsteinDecomposition[] = []
+  for (let i = 0; i < n; i++) {
+    const e = new Array<number>(n).fill(0)
+    e[i] = 1
+    const Ni = decomposeToBernsteinPeriodic(e, knots, degree)
+    const spans: number[] = []
+    for (let s = 0; s < numSpans; s++) {
+      if (Ni.coeffs[s].some((c) => Math.abs(c) > 1e-14)) spans.push(s)
+    }
+    const Ni1 = Ni.derivative()
+    const Ni2 = Ni1.derivative()
+    const x1 = gatherSpans(X1, spans)
+    const y1 = gatherSpans(Y1, spans)
+    const x2 = gatherSpans(X2, spans)
+    const y2 = gatherSpans(Y2, spans)
+    const n1 = gatherSpans(Ni1, spans)
+    const n2 = gatherSpans(Ni2, spans)
+    const gx = fOverDuals(new Dual(x1, n1), new Dual(y1, zeroLike(y1)), new Dual(x2, n2), new Dual(y2, zeroLike(y2))).t
+    const gy = fOverDuals(new Dual(x1, zeroLike(x1)), new Dual(y1, n1), new Dual(x2, zeroLike(x2)), new Dual(y2, n2)).t
+    dx.push(scatterSpans(gx, spans, numSpans, spanDegree, g.breaks))
+    dy.push(scatterSpans(gy, spans, numSpans, spanDegree, g.breaks))
   }
   return { g, dx, dy }
 }

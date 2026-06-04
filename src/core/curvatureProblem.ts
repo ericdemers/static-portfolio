@@ -15,10 +15,10 @@ import {
 } from './curvature'
 import {
   curvatureExtremaGradientPlanar,
-  curvatureExtremaGradientPlanarPeriodic,
+  curvatureExtremaGradientPlanarPeriodicLocal,
   curvatureExtremaGradientPlanarLocal,
   inflectionGradientPlanar,
-  inflectionGradientPlanarPeriodic,
+  inflectionGradientPlanarPeriodicLocal,
 } from './gradient'
 import type { BernsteinDecomposition } from './bernstein'
 import type { PlanarCurvatureGradient } from './gradient'
@@ -355,7 +355,7 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
   }
   private gradient(): PlanarCurvatureGradient {
     return this.closed
-      ? curvatureExtremaGradientPlanarPeriodic(this.cpX, this.cpY, this.knots, this.degree)
+      ? curvatureExtremaGradientPlanarPeriodicLocal(this.cpX, this.cpY, this.knots, this.degree)
       : curvatureExtremaGradientPlanar(this.cpX, this.cpY, this.knots, this.degree)
   }
   private inflectionNumerator(): BernsteinDecomposition {
@@ -365,7 +365,7 @@ export class PlanarCurvatureProblem implements OptimizationProblem {
   }
   private inflectionGrad(): PlanarCurvatureGradient {
     return this.closed
-      ? inflectionGradientPlanarPeriodic(this.cpX, this.cpY, this.knots, this.degree)
+      ? inflectionGradientPlanarPeriodicLocal(this.cpX, this.cpY, this.knots, this.degree)
       : inflectionGradientPlanar(this.cpX, this.cpY, this.knots, this.degree)
   }
   /** Build the variable-space rows (length 2m) for a gradient's coeff index. */
