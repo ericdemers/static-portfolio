@@ -302,6 +302,113 @@ function complexChenG(Z: ComplexBD, W: ComplexBD): BernsteinDecomposition {
 }
 
 /**
+ * Geometry-independent seeds for the complex-rational gradient: the periodic
+ * Dirac B-splines Nᵢ and their derivatives (real). Depend only on (knots, degree,
+ * n), so precompute ONCE per problem and reuse across every Jacobian build.
+ */
+export interface ComplexPeriodicSeeds {
+  N: BernsteinDecomposition[]
+  N1: BernsteinDecomposition[]
+  N2: BernsteinDecomposition[]
+  N3: BernsteinDecomposition[]
+}
+export function precomputeComplexPeriodicSeeds(
+  knots: readonly number[],
+  degree: number,
+  n: number,
+): ComplexPeriodicSeeds {
+  const N: BernsteinDecomposition[] = []
+  const N1: BernsteinDecomposition[] = []
+  const N2: BernsteinDecomposition[] = []
+  const N3: BernsteinDecomposition[] = []
+  for (let i = 0; i < n; i++) {
+    const e = new Array<number>(n).fill(0)
+    e[i] = 1
+    const Ni = decomposeToBernsteinPeriodic(e, knots, degree)
+    const d1 = Ni.derivative()
+    const d2 = d1.derivative()
+    N.push(Ni)
+    N1.push(d1)
+    N2.push(d2)
+    N3.push(d2.derivative())
+  }
+  return { N, N1, N2, N3 }
+}
+
+/**
+ * Exact analytic Jacobian of the closed complex-rational curvature numerator g
+ * w.r.t. the control points, with the WEIGHTS HELD FIXED (the editor's bound
+ * mode). Replaces the finite-difference Jacobian: instead of 2·2n full-numerator
+ * re-evaluations, the Chen value terms (D1, D2, …, T) are computed ONCE and each
+ * column is a per-control-point differential reusing them — the same hoisted-
+ * forward structure as the planar gradient and as the reference sketcher's
+ * computeFixedWeightClosedJacobian. Verified bit-equal (to round-off) against the
+ * finite-difference Jacobian.
+ *
+ * Returns g and dx[i]=∂g/∂Re(zᵢ), dy[i]=∂g/∂Im(zᵢ) (real Bernstein functions).
+ * Assumes ρ=1 (same monodromy assumption as curvatureExtremaNumeratorComplexPeriodic).
+ */
+export function curvatureExtremaGradientComplexPeriodicFixedWeight(
+  zre: readonly number[],
+  zim: readonly number[],
+  wre: readonly number[],
+  wim: readonly number[],
+  knots: readonly number[],
+  degree: number,
+  seeds: ComplexPeriodicSeeds = precomputeComplexPeriodicSeeds(knots, degree, zre.length),
+): { g: BernsteinDecomposition; dx: BernsteinDecomposition[]; dy: BernsteinDecomposition[] } {
+  const n = zre.length
+  const Zre = zre.map((zr, i) => zr * wre[i] - zim[i] * wim[i])
+  const Zim = zre.map((zr, i) => zr * wim[i] + zim[i] * wre[i])
+  const Z = new ComplexBD(decomposeToBernsteinPeriodic(Zre, knots, degree), decomposeToBernsteinPeriodic(Zim, knots, degree))
+  const W = new ComplexBD(decomposeToBernsteinPeriodic([...wre], knots, degree), decomposeToBernsteinPeriodic([...wim], knots, degree))
+
+  // ── Value terms (computed ONCE) ──
+  const Zu = Z.derivative(), Zuu = Zu.derivative(), Zuuu = Zuu.derivative()
+  const Wu = W.derivative(), Wuu = Wu.derivative(), Wuuu = Wuu.derivative()
+  const D1 = Zu.mul(W).sub(Z.mul(Wu))
+  const D2 = Zuu.mul(W).sub(Z.mul(Wuu))
+  const D3 = Zuuu.mul(W).sub(Z.mul(Wuuu))
+  const D21 = Zuu.mul(Wu).sub(Zu.mul(Wuu))
+  const D1c = D1.conj()
+  const D1c2 = D1c.mul(D1c)
+  const bracket = D3.mul(D1).add(D1.mul(D21)).sub(D2.mul(D2).scale(1.5))
+  const T = W.mul(bracket).add(D1.mul(Wu.mul(D2).sub(Wuu.mul(D1))).scale(2))
+  const Wbar = W.conj()
+  const g = D1c2.mul(T).mul(Wbar).im
+  // Reusable value products for the per-column differential.
+  const T_Wbar = T.mul(Wbar) // for d(D1c²)·T·W̄
+  const D1c2_Wbar = D1c2.mul(Wbar) // for D1c²·dT·W̄
+  const WuD2_WuuD1 = Wu.mul(D2).sub(Wuu.mul(D1)) // value part of the T tail
+
+  // ── Per-column differential. δW = 0 (weights fixed). For Re(zᵢ): δZ = wᵢ·Nᵢ;
+  //    for Im(zᵢ): δZ = i·wᵢ·Nᵢ. δZ⁽ᵏ⁾ = (complex const)·Nᵢ⁽ᵏ⁾. ──
+  const dx: BernsteinDecomposition[] = []
+  const dy: BernsteinDecomposition[] = []
+  const cplx = (re: BernsteinDecomposition, cr: number, ci: number) => new ComplexBD(re.scale(cr), re.scale(ci))
+  const column = (i: number, cr: number, ci: number): BernsteinDecomposition => {
+    const dZ = cplx(seeds.N[i], cr, ci)
+    const dZu = cplx(seeds.N1[i], cr, ci)
+    const dZuu = cplx(seeds.N2[i], cr, ci)
+    const dZuuu = cplx(seeds.N3[i], cr, ci)
+    const dD1 = dZu.mul(W).sub(dZ.mul(Wu))
+    const dD2 = dZuu.mul(W).sub(dZ.mul(Wuu))
+    const dD3 = dZuuu.mul(W).sub(dZ.mul(Wuuu))
+    const dD21 = dZuu.mul(Wu).sub(dZu.mul(Wuu))
+    const dbracket = dD3.mul(D1).add(D3.mul(dD1)).add(dD1.mul(D21)).add(D1.mul(dD21)).sub(D2.mul(dD2).scale(3))
+    const dD1c2 = D1c.mul(dD1.conj()).scale(2) // d(D1c²) = 2·D1c·conj(dD1)
+    const dT = W.mul(dbracket).add(dD1.mul(WuD2_WuuD1).add(D1.mul(Wu.mul(dD2).sub(Wuu.mul(dD1)))).scale(2))
+    const dP = dD1c2.mul(T_Wbar).add(D1c2_Wbar.mul(dT))
+    return dP.im
+  }
+  for (let i = 0; i < n; i++) {
+    dx.push(column(i, wre[i], wim[i])) // δZ = wᵢ·Nᵢ
+    dy.push(column(i, -wim[i], wre[i])) // δZ = i·wᵢ·Nᵢ
+  }
+  return { g, dx, dy }
+}
+
+/**
  * Curvature-extrema numerator for a CLOSED (periodic) planar complex-rational
  * B-spline curve. Same Chen reduction as the open case but with a periodic
  * Bernstein decomposition of the homogeneous functions Z = w·z and W = w.

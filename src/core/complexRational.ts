@@ -19,7 +19,12 @@
 
 import type { Point2D, ComplexPoint } from './types'
 import { type Complex, cadd, csub, cmul, cdiv, cnorm } from './complex'
-import { curvatureExtremaNumeratorComplexPeriodic } from './curvature'
+import {
+  curvatureExtremaNumeratorComplexPeriodic,
+  curvatureExtremaGradientComplexPeriodicFixedWeight,
+  precomputeComplexPeriodicSeeds,
+} from './curvature'
+import type { ComplexPeriodicSeeds } from './curvature'
 import type { Matrix } from './linalg'
 import type { OptimizationProblem, OptimizerConfig } from './optimize'
 import { PrimalDualOptimizer } from './optimize'
@@ -445,6 +450,8 @@ export class ComplexRationalProblem implements OptimizationProblem {
   private signs: number[]
   private activeIdx: number[]
   private margins: number[]
+  // Geometry-independent seeds for the analytic Jacobian — reused across builds.
+  private seeds: ComplexPeriodicSeeds
   private cachedCons: number[] | null = null
   private cachedJac: Matrix | null = null
 
@@ -477,6 +484,7 @@ export class ComplexRationalProblem implements OptimizationProblem {
     this.wim = controlPoints.map((p) => p.w_im)
     this.knots = [...knots]
     this.degree = degree
+    this.seeds = precomputeComplexPeriodicSeeds(this.knots, degree, this.cpX.length)
     this.targetX = [...this.cpX]
     this.targetY = [...this.cpY]
     this.targetX[dragIndex] = targetX
@@ -565,36 +573,29 @@ export class ComplexRationalProblem implements OptimizationProblem {
     return this.cachedCons
   }
   /**
-   * ∂g/∂(control point coordinate) by central finite differences — faithful to
-   * the sketcher's complex Jacobian (the complex g has no cheap analytic sparse
-   * derivative). m control points × 2 coords = 2m columns; rows = active g coeffs.
+   * Exact analytic ∂g/∂(control point) with weights fixed (the bound-mode drag).
+   * The Chen value terms are computed once and each column is a differential
+   * reusing them (curvatureExtremaGradientComplexPeriodicFixedWeight) — replaces
+   * the old central-difference Jacobian (2·2m full-numerator re-evaluations per
+   * build). m control points × 2 coords = 2m columns; rows = active g coeffs.
    */
   computeConstraintJacobian(): Matrix {
     if (this.cachedJac) return this.cachedJac
     const m = this.cpX.length
-    const scale = Math.max(1, ...this.cpX.map(Math.abs), ...this.cpY.map(Math.abs))
-    const eps = 1e-5 * scale
-    const rows: number[][] = this.activeIdx.map(() => new Array<number>(2 * m).fill(0))
-
-    const perturbed = (idx: number, delta: number): number[] =>
-      curvatureExtremaNumeratorComplexPeriodic(
-        idx < m ? bump(this.cpX, idx, delta) : this.cpX,
-        idx < m ? this.cpY : bump(this.cpY, idx - m, delta),
-        this.wre,
-        this.wim,
-        this.knots,
-        this.degree,
-      ).flatCoeffs()
-    for (let v = 0; v < 2 * m; v++) {
-      const gp = perturbed(v, eps)
-      const gm = perturbed(v, -eps)
-      for (let r = 0; r < this.activeIdx.length; r++) {
-        const idx = this.activeIdx[r]
-        rows[r][v] = (gp[idx] - gm[idx]) / (2 * eps)
+    const grad = curvatureExtremaGradientComplexPeriodicFixedWeight(
+      this.cpX, this.cpY, this.wre, this.wim, this.knots, this.degree, this.seeds,
+    )
+    const dxf = grad.dx.map((b) => b.flatCoeffs())
+    const dyf = grad.dy.map((b) => b.flatCoeffs())
+    this.cachedJac = this.activeIdx.map((idx) => {
+      const row = new Array<number>(2 * m).fill(0)
+      for (let j = 0; j < m; j++) {
+        row[j] = dxf[j][idx]
+        row[m + j] = dyf[j][idx]
       }
-    }
-    this.cachedJac = rows
-    return rows
+      return row
+    })
+    return this.cachedJac
   }
   getConstraintSigns(): number[] {
     return this.signs
@@ -610,11 +611,6 @@ export class ComplexRationalProblem implements OptimizationProblem {
   }
 }
 
-function bump(arr: number[], i: number, delta: number): number[] {
-  const out = arr.slice()
-  out[i] += delta
-  return out
-}
 
 /**
  * Drag control point `dragIndex` of a closed complex-rational curve toward
