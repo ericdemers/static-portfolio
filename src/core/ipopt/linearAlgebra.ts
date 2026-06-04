@@ -1,4 +1,3 @@
-// @ts-nocheck — faithful port of the sketcher's proven IPOPT-style solver; types to be tightened later.
 /**
  * Linear Algebra Utilities for Interior Point Optimizer
  *

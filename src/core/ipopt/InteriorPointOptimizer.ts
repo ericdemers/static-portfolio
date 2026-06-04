@@ -1,4 +1,3 @@
-// @ts-nocheck — faithful port of the sketcher's proven IPOPT-style solver; types to be tightened later.
 /**
  * Interior Point Optimizer with IPOPT-inspired features
  *
@@ -39,7 +38,6 @@ import {
   identityMatrix,
   matScale,
   matVec,
-  zerosMatrix,
   atDiagA,
   choleskySolve,
   solveTrustRegion,
@@ -1089,7 +1087,6 @@ export class InteriorPointOptimizer {
 
   private initializeState(): OptimizationState {
     const problem = this.problem
-    const config = this.config
     const numEq = problem.numEqualityConstraints
 
     const x = problem.getVariables()
