@@ -16,7 +16,6 @@ import { optimizeCurve, applyOptimizeResult, applyOptimizeRationalResult, optimi
 // MIGRATION: open planar B-spline curvature-extrema drag now runs on the clean
 // core/ engine. Closed bsplines (periodic-junction knots) + rational stay on
 // the legacy optimizer until core covers those conventions.
-import { slideCurve as coreSlideCurve, curvatureExtremaNumeratorPlanar as coreCurvatureNumerator, planarCurvatureConstraintState as coreConstraintState } from '../../core'
 import { abPHToLieCurve, identity5, compose5, scaling5, translation5 } from '../lab/lieSphere/lieCurve2D'
 import { liePoint5, SHAPE_GENERATORS } from '../lab/lieSphere/lieAlgebra2D'
 import { computeRationalFarinPoints, updateWeightsFromRationalFarin, updateWeightsFromComplexFarin, projectPointOntoEdge, moveComplexControlPointKeepingFarinFixed, initializeFarinPositionsFromComplexWeights } from '../utils/farinPoints'
@@ -114,11 +113,8 @@ interface SketcherState {
   anchorWeight: number  // 0 = disabled, >0 = anchor undragged CPs to drag-start positions
   dragStartCPsX: number[] | null
   dragStartCPsY: number[] | null
-  /** Curvature-extrema constraint state fixed at drag start (open B-spline);
-   *  reused for every frame so the sign assignment is followed, not recomputed. */
-  dragConstraintState: import('../../core').CurvatureConstraintState | null
-  /** Which curvature-extrema optimizer the open B-spline drag uses. 'barrier'
-   *  is the banded (near-linear) interior-point; 'primal-dual' is the dense one. */
+  /** Legacy core-solver selector (kept for the mobile editor's setter); the open
+   *  B-spline drag now uses optimizeCurve regardless. */
   solverMethod: 'primal-dual' | 'barrier' | 'ipopt'
   setSolverMethod: (m: 'primal-dual' | 'barrier' | 'ipopt') => void
 
@@ -353,7 +349,6 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   anchorWeight: 0,
   dragStartCPsX: null,
   dragStartCPsY: null,
-  dragConstraintState: null,
   solverMethod: 'ipopt',
   generate: null,
 
@@ -390,12 +385,14 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     if (!curve || curve.kind !== 'bspline' || curve.closed) return
     const t0 = curve.knots[curve.degree]
     const t1 = curve.knots[curve.controlPoints.length]
-    const mid = (t0 + t1) / 2, half = (t1 - t0) * 0.25
+    const mid = (t0 + t1) / 2
     set({
       smoothActive: true,
       smoothPrevBound: state.preserveCurvatureExtrema,
       preserveCurvatureExtrema: false, // smoothing does not apply the bound
-      smoothWindow: [mid - half, mid + half],
+      // First boundary at the curve start (t0 = 0 for a clamped B-spline); the
+      // second at the midpoint.
+      smoothWindow: [t0, mid],
       smoothAmount: 0,
       smoothIterations: 0,
       smoothEnergy: defaultEnergyForDegree(curve.degree),
@@ -452,7 +449,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   },
 
   moveControlPoint: (curveId, pointIndex, newPosition) => {
-    const { preserveCurvatureExtrema, preserveInflections, disableSliding, symmetryMaps, curves, phMetadata, anchorWeight, dragStartCPsX, dragStartCPsY, dragConstraintState, solverMethod } = get()
+    const { preserveCurvatureExtrema, preserveInflections, disableSliding, symmetryMaps, curves, phMetadata, anchorWeight, dragStartCPsX, dragStartCPsY } = get()
     const curve = curves.find((c) => c.id === curveId)
 
     if (!curve) return
@@ -565,72 +562,11 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
       }
     }
 
-    // MIGRATED → core/: open planar B-spline curvature-extrema drag.
-    // core's slideCurve (PlanarCurvatureProblem on the primal-dual optimizer)
-    // returns best-feasible control points, so we always apply the result —
-    // staying on the constrained side rather than falling through to an
-    // unconstrained direct move. symmetryMaps is already the {mapX,mapY} shape
-    // core expects; the only rename is anchorCPsX/Y → anchorX/Y.
-    if (preserveCurvatureExtrema && curve.kind === 'bspline' && !curve.closed) {
-      try {
-        const { x, y } = coreSlideCurve(
-          curve.controlPoints.map((p) => p.x),
-          curve.controlPoints.map((p) => p.y),
-          curve.knots,
-          curve.degree,
-          pointIndex,
-          newPosition.x,
-          newPosition.y,
-          {
-            // 'ipopt' is the robust solver (trust region + filter + feasibility
-            // restoration): it coordinates the other control points to keep the
-            // curvature-extrema bound and never returns a violating curve, like
-            // the reference sketcher. 'primal-dual'/'barrier' are the near-linear
-            // banded solvers, kept for comparison.
-            maxIterations: solverMethod === 'ipopt' ? 60 : solverMethod === 'barrier' ? 40 : 20,
-            method: solverMethod,
-            // ipopt: equal weights so the whole curve moves together (the
-            // coordinated feel). The banded solvers weight the dragged point
-            // high so it tracks the cursor instead of being held equally.
-            ...(solverMethod === 'ipopt' ? {} : { dragWeight: 25 }),
-            // Follow the sign assignment fixed at drag start (set above), rather
-            // than re-deriving signs each frame.
-            ...(dragConstraintState ? { constraintState: dragConstraintState } : {}),
-            ...(symmetryMaps ? { symmetryMaps } : {}),
-            ...(preserveInflections ? { preserveInflections } : {}),
-            ...(disableSliding ? { disableSliding } : {}),
-            ...(anchorWeight > 0 && dragStartCPsX && dragStartCPsY
-              ? { anchorWeight, anchorX: dragStartCPsX, anchorY: dragStartCPsY }
-              : {}),
-          },
-        )
-        const optimizedCurve = { ...curve, controlPoints: x.map((xi, i) => ({ x: xi, y: y[i] })) } as Curve
-        // DEV self-capture: log ONLY a genuine bound violation — a single drag
-        // frame that raises S⁻ (core's Bernstein sign-change count, the bound the
-        // theorem preserves and the optimizer constrains). The markers (now also
-        // from core) can legitimately rise within a preserved bound, so they are
-        // NOT a trigger. Stripped in prod.
-        if (import.meta.env.DEV) {
-          const bx = curve.controlPoints.map((p) => p.x)
-          const by = curve.controlPoints.map((p) => p.y)
-          const sBefore = coreCurvatureNumerator(bx, by, curve.knots, curve.degree).signChanges()
-          const sAfter = coreCurvatureNumerator(x, y, curve.knots, curve.degree).signChanges()
-          if (sAfter > sBefore) {
-            console.warn(
-              `[bound-violation] S⁻ ${sBefore}→${sAfter} dragging cp${pointIndex} → ` +
-                `(${newPosition.x.toFixed(3)},${newPosition.y.toFixed(3)})\nINPUT:`,
-              JSON.stringify({ kind: 'bspline', degree: curve.degree, closed: false, knots: curve.knots, controlPoints: curve.controlPoints }),
-            )
-          }
-        }
-        set((state) => ({
-          curves: state.curves.map((c) => (c.id === curveId ? optimizedCurve : c)),
-        }))
-        return
-      } catch (e) {
-        console.warn('Curvature optimizer (core) failed:', e)
-      }
-    }
+    // Open planar B-splines use the sketcher's own optimizeCurve (below) — it
+    // gives the smoother editing feel: the soft curvature constraint resists a
+    // bound-violating drag without core slideCurve's hard bisect-back guard
+    // (which clamps the dragged point and feels "stuck"). The clean core engine
+    // still backs the presentation demos directly.
 
     // Use optimizer if preserveCurvatureExtrema is enabled and curve is compatible
     // (closed bsplines + rational — not yet migrated to core/).
@@ -1299,32 +1235,14 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     const curve = get().curves.find((c) => c.id === curveId)
     if (!curve) return
     const cps = curve.controlPoints
-    // Fix the sliding-mechanism sign assignment ONCE, here at drag start, for
-    // open planar B-splines. Every frame of this drag then follows these signs
-    // (the optimizer AND the constraint-bar display), so a near-zero coefficient
-    // can't flicker sign and destabilize the bound or the coloring.
-    let dragConstraintState = null
-    if (get().preserveCurvatureExtrema && curve.kind === 'bspline' && !curve.closed) {
-      try {
-        dragConstraintState = coreConstraintState(
-          cps.map((p) => p.x),
-          cps.map((p) => p.y),
-          curve.knots,
-          curve.degree,
-          // Match the solver regime: 'ipopt' uses neighbour-aware signs that keep
-          // the structurally-zero boundary coefficient active (so the fixed signs
-          // agree with the optimizer's constraint set and the bar display).
-          { disableSliding: get().disableSliding, robust: get().solverMethod === 'ipopt' },
-        )
-      } catch { /* leave null → per-frame recompute fallback */ }
-    }
+    // Snapshot the drag-start control points — used as the anchor (drift
+    // resistance) when anchorWeight > 0.
     set({
       dragStartCPsX: cps.map((p) => p.x),
       dragStartCPsY: cps.map((p) => p.y),
-      dragConstraintState,
     })
   },
-  clearDragStartCPs: () => set({ dragStartCPsX: null, dragStartCPsY: null, dragConstraintState: null }),
+  clearDragStartCPs: () => set({ dragStartCPsX: null, dragStartCPsY: null }),
 
   // View actions
   setZoom: (zoom) =>

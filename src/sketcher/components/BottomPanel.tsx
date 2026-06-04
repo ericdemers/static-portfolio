@@ -640,8 +640,7 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
     smoothActive, smoothWindow, smoothAmount, smoothEnergy, smoothMode, smoothIterations,
     enterSmooth, cancelSmooth, applySmooth, setSmoothWindow, setSmoothAmount,
     setSmoothMode, setSmoothIterations,
-    dragConstraintState, disableSliding,
-    solverMethod, setSolverMethod,
+    disableSliding, solverMethod,
   } = useSceneStore()
   const isOpenBspline = curve.kind === 'bspline' && !curve.closed
 
@@ -743,26 +742,21 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
           curve.degree
         )
       } else {
-        // Open planar B-spline → core. During a drag, use the constraint state
-        // FIXED at drag start (so the coloring follows the assigned signs and
-        // doesn't flicker as near-zero coefficients wobble); at rest, compute
-        // fresh from the current curve.
-        return (
-          dragConstraintState ??
-          coreConstraintState(
-            curve.controlPoints.map((p) => p.x),
-            curve.controlPoints.map((p) => p.y),
-            curve.knots,
-            curve.degree,
-            { disableSliding, robust: solverMethod === 'ipopt' },
-          )
+        // Open planar B-spline: the constraint-bar coloring computes g's sign
+        // assignment fresh from the current curve.
+        return coreConstraintState(
+          curve.controlPoints.map((p) => p.x),
+          curve.controlPoints.map((p) => p.y),
+          curve.knots,
+          curve.degree,
+          { disableSliding, robust: solverMethod === 'ipopt' },
         )
       }
     } catch (e) {
       console.error('constraintState computation failed:', e)
       return null
     }
-  }, [curve, preserveCurvatureExtrema, dragConstraintState, disableSliding, solverMethod])
+  }, [curve, preserveCurvatureExtrema, disableSliding, solverMethod])
 
   // Current bound S(b): the number of sign changes of g = the curvature-extrema
   // count being held. Shown next to the toggle, mirroring the cs2026 talk slide.
@@ -924,27 +918,6 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
                     </span>
                   )}
                 </label>
-              )}
-              {/* Optimizer toggle (open B-spline): 'Robust' is the IPOPT-style
-                  solver (coordinated, never violates the bound — the default);
-                  PD/Barrier are the near-linear banded solvers, for comparison. */}
-              {isCompatible && isOpenBspline && preserveCurvatureExtrema && (
-                <div className="flex items-center gap-1 text-xs">
-                  <span className="text-gray-400">solver</span>
-                  {(['ipopt', 'primal-dual', 'barrier'] as const).map((m) => (
-                    <button
-                      key={m}
-                      onClick={() => setSolverMethod(m)}
-                      className={`px-1.5 py-0.5 rounded border ${
-                        solverMethod === m
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'border-gray-300 text-gray-600 dark:text-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      {m === 'ipopt' ? 'Robust' : m === 'primal-dual' ? 'PD' : 'Barrier'}
-                    </button>
-                  ))}
-                </div>
               )}
               {smoothEligible && (
                 <button
