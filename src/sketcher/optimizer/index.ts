@@ -757,6 +757,6 @@ export { computeOpenComplexCurvatureExtremaParameters, computeClosedComplexCurva
 export type { ComplexRationalConstraintState } from './complexAlgebra'
 export type { PHMetadata, PHCurveResult, ComplexRationalPHMetadata, ComplexRationalPHCurveResult } from './phCurve'
 export { computePHCurveFromUV, createDefaultSpiral } from './phCurve'
-export { createComplexRationalPHFromTwoPoints, computeComplexRationalPHFromSD } from './complexRationalPHCurve'
+export { createComplexRationalPHFromTwoPoints, createStraightComplexRationalPH, computeComplexRationalPHFromSD } from './complexRationalPHCurve'
 export type { ABPHMetadata, ABPHCurveResult } from './abPHCurve'
 export { createABPHFromTwoPoints, computeABPHCurve } from './abPHCurve'

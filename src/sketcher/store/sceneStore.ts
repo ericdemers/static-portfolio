@@ -7,8 +7,8 @@ import { computeRegionPreview, defaultEnergyForDegree, type SmoothMode } from '.
 import { createBSpline, elevateDegree, insertKnot, moveKnot, removeKnot, getControlPointsAsPoints, toRationalBSpline, toComplexRationalBSpline, toBSpline, periodicKnotsWithJunction, uniformPeriodicKnots, generateCurveId, findKnotSpan, isClampedEndKnot } from '../utils/bspline'
 import { createLine, createCircularArc, createFullCircle } from '../utils/shapes'
 import { createDefaultSpiral, createSpiralFromTwoPoints, computePHCurveFromUV, computePHOffset, type PHMetadata, type ComplexRationalPHMetadata } from '../optimizer/phCurve'
-import { createComplexRationalPHFromTwoPoints } from '../optimizer/complexRationalPHCurve'
-import { createABPHFromTwoPoints, createStraightABPH, computeABPHCurve, computeABPHOffset, applyMobiusToABPH, type ABPHMetadata, evaluateABPHNormal, evaluateABPHCurveAtParam } from '../optimizer/abPHCurve'
+import { createComplexRationalPHFromTwoPoints, createStraightComplexRationalPH } from '../optimizer/complexRationalPHCurve'
+import { createABPHFromTwoPoints, createStraightABPH, computeABPHCurve, computeABPHOffset, applyMobiusToABPH, convertComplexPointsToAB, type ABPHMetadata, evaluateABPHNormal, evaluateABPHCurveAtParam } from '../optimizer/abPHCurve'
 import { createRealRationalPHFromTwoPoints, computeRealRationalPHCurve, computeRealRationalPHOffset, type RealRationalPHMetadata } from '../optimizer/realRationalPHCurve'
 import { insertKnot1D, elevateDegree1D, removeKnot1D } from '../optimizer/phBSplineOps'
 import { weightedAveragePhi, threeArcPointsFromNoisyPoints, circleArcFromThreePoints, type CircleArcGeometry } from '../utils/circleArc'
@@ -253,6 +253,26 @@ interface SketcherState {
 }
 
 const MAX_HISTORY = 50
+
+// The Lie-sphere converter (abPHToLieCurve) consumes the (A, B, S) shape. A
+// (S, D) complex-rational PH curve carries the same information: its control
+// points are F_i/D_i with weights D_i, so A_i = F_i (= pos·weight) and B_i = D_i,
+// and the stored S is the generator. This adapter lets Generate / offset work on
+// both representations. Returns the metadata unchanged for an AB curve.
+function abShapeForGenerate(curve: Curve, meta: any): any {
+  if (!meta || meta.kind === 'ab-complex-rational') return meta
+  if (meta.kind === 'complex-rational') {
+    const { aRe, aIm, bRe, bIm } = convertComplexPointsToAB(curve.controlPoints as ComplexPoint[])
+    return {
+      kind: 'ab-complex-rational',
+      degree: curve.degree,
+      aReCPs: aRe, aImCPs: aIm, bReCPs: bRe, bImCPs: bIm,
+      sReCPs: meta.sUControlPoints, sImCPs: meta.sVControlPoints,
+      knots: curve.knots, sKnots: meta.sKnots,
+    }
+  }
+  return meta
+}
 
 function createHistoryEntry(curves: Curve[], spatialCurves: Curve3D[], selectedCurveId: string | null): HistoryEntry {
   return {
@@ -720,6 +740,11 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
         const aImCPs = meta.aImCPs.map((a, i) => a + dx * meta.bImCPs[i] + dy * meta.bReCPs[i])
         phMetadata = new Map(phMetadata)
         phMetadata.set(curveId, { ...meta, aReCPs, aImCPs })
+      } else if (meta && meta.kind === 'complex-rational') {
+        // (S, D) form: translation only shifts the integration constant (origin);
+        // S and D are translation-invariant.
+        phMetadata = new Map(phMetadata)
+        phMetadata.set(curveId, { ...meta, origin: { x: meta.origin.x + dx, y: meta.origin.y + dy } })
       }
       return {
       phMetadata,
@@ -983,9 +1008,12 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
       const dist = Math.sqrt(dx * dx + dy * dy)
 
       const defaultSize = 50 / zoom
+      // (S, D) parameterization — PH by construction, so dragging (via
+      // optimizeComplexRationalPHCurve) moves all control points smoothly, with
+      // no PH equality constraints to crawl along. Mirrors the Lie-sphere lab.
       const phResult = (points.length <= 1 || dist < 1e-6)
-        ? createStraightABPH(points[0].x, points[0].y, points[0].x + defaultSize, points[0].y)
-        : createStraightABPH(points[0].x, points[0].y, last.x, last.y)
+        ? createStraightComplexRationalPH(points[0].x, points[0].y, points[0].x + defaultSize, points[0].y)
+        : createStraightComplexRationalPH(points[0].x, points[0].y, last.x, last.y)
       const curveId = generateCurveId()
       const curve: Curve = {
         id: curveId,
@@ -1188,10 +1216,12 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     if (!g) return
     const meta = get().phMetadata.get(g.originalCurveId)
     if (!meta) return
+    const origCurve = get().curves.find((c) => c.id === g.originalCurveId)
+    if (!origCurve) return
     // Conjugate by the normalize/denormalize similarity so the generators act
     // on the unit-scale, origin-centred curve (uniform, sensible slider feel).
     const M = compose5(g.denorm, g.accumulated, liePoint5(g.coeffs), g.norm)
-    const res = abPHToLieCurve(meta, M)
+    const res = abPHToLieCurve(abShapeForGenerate(origCurve, meta), M)
     set((s) => ({
       curves: s.curves.map((c) =>
         c.id === g.previewCurveId
@@ -1203,7 +1233,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   startGenerate: (curveId) => {
     if (get().generate) return
     const meta = get().phMetadata.get(curveId)
-    if (!meta || meta.kind !== 'ab-complex-rational') return
+    if (!meta || (meta.kind !== 'ab-complex-rational' && meta.kind !== 'complex-rational')) return
     const curve = get().curves.find((c) => c.id === curveId)
     // Centre + unit-scale similarity from the curve's bounding box, so the Lie
     // generators act at unit scale (uniform slider sensitivity).
@@ -1219,7 +1249,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     const denorm = compose5(translation5(cx, cy), scaling5(L))
 
     const previewCurveId = generateCurveId()
-    const res = abPHToLieCurve(meta, identity5())
+    const res = abPHToLieCurve(abShapeForGenerate(curve, meta), identity5())
     const preview = {
       id: previewCurveId, kind: 'rational', degree: res.degree,
       knots: res.knots, controlPoints: res.controlPoints, closed: false,
@@ -2096,6 +2126,19 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     if (rawMetadata.kind === 'ab-complex-rational') {
       // AB PH: exact complex-rational offset (accounts for B rotation)
       const offset = computeABPHOffset(rawMetadata, distance)
+      curve = {
+        id: generateCurveId(),
+        kind: 'complex-rational',
+        degree: offset.degree,
+        knots: offset.knots,
+        controlPoints: offset.controlPoints,
+        closed: false,
+      }
+    } else if (rawMetadata.kind === 'complex-rational') {
+      // (S, D) PH: adapt to (A, B, S) and reuse the exact AB offset.
+      const srcCurve = state.curves.find((c) => c.id === sourceCurveId)
+      if (!srcCurve) return
+      const offset = computeABPHOffset(abShapeForGenerate(srcCurve, rawMetadata), distance)
       curve = {
         id: generateCurveId(),
         kind: 'complex-rational',

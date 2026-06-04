@@ -507,6 +507,40 @@ export function createComplexRationalPHFromTwoPoints(
   )
 }
 
+/**
+ * A STRAIGHT-LINE complex-rational PH curve in the (S, D) parameterization.
+ * A line is the simplest PH curve: z(t) = (1−t)·P₀ + t·P₁, so the hodograph
+ * z' = P₁−P₀ is constant. Choosing S ≡ √(P₁−P₀) gives H = S² = P₁−P₀ and a
+ * constant denominator D ≡ 1, the Wronskian collapses to F' = S², so
+ * F = (P₁−P₀)t + P₀ — the straight line. We use it as the freshly-drawn PH
+ * curve: draw a line, then bend it via dragging (the (S,D) optimizer) or
+ * Generate. This mirrors the Lie-sphere lab's construction (PH by construction,
+ * no equality constraints), giving smooth control-point motion while editing.
+ */
+export function createStraightComplexRationalPH(
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+): ComplexRationalPHCurveResult {
+  const dx = endX - startX, dy = endY - startY
+  const mag = Math.hypot(dx, dy)
+  // S ≡ √(P₁−P₀) (principal complex square root), constant ⇒ S² = P₁−P₀.
+  const sr = Math.sqrt(Math.max(0, (mag + dx) / 2))
+  const si = (dy >= 0 ? 1 : -1) * Math.sqrt(Math.max(0, (mag - dx) / 2))
+  // S as a degree-2 complex B-spline (3 equal CPs) — same DOF as the lab, so
+  // dragging has room to bend the line into a curve.
+  const uCPs = [sr, sr, sr], vCPs = [si, si, si]
+  const sKnots = [0, 0, 0, 1, 1, 1], sDegree = 2
+  // D ≡ 1 (constant) ⇒ a polynomial PH curve (unit weights), degree 5.
+  const dReCPs = [1], dImCPs = [0], dKnots = [0, 1], dDegree = 0
+  return computeComplexRationalPHFromSD(
+    uCPs, vCPs, sKnots, sDegree,
+    dReCPs, dImCPs, dKnots, dDegree,
+    startX, startY,
+  )
+}
+
 function createDefaultComplexRationalPH(
   centerX: number,
   centerY: number,

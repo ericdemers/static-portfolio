@@ -41,7 +41,9 @@ export default function RightContextMenu() {
 
   // Check if the selected curve has PH metadata
   const hasPHMeta = selectedCurveId ? phMetadata.get(selectedCurveId) : null
-  const hasABPHMeta = hasPHMeta && hasPHMeta.kind === 'ab-complex-rational'
+  // Both PH representations get Generate: (A,B,S) curves and the (S,D)
+  // complex-rational PH curves drawn by the pencil.
+  const hasABPHMeta = hasPHMeta && (hasPHMeta.kind === 'ab-complex-rational' || hasPHMeta.kind === 'complex-rational')
 
   const inactiveBtn = 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
   const activeBtn = 'bg-purple-500 text-white'

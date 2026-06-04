@@ -762,31 +762,108 @@ export const slides: SlideDefinition[] = [
       <>
         <h1 style={{ fontSize: '1.6em' }}>Backup</h1>
         <div className="event" style={{ marginTop: '1em' }}>
-          Exact sparse Jacobian of g — how editing stays interactive
+          The exact sparse Jacobian of g · the PH curves we edit (A, B, S and S, D)
         </div>
       </>
     ),
   },
 
+  // Backup 1: Differentiating w.r.t. a control point (the Dirac B-spline)
   {
     type: 'content',
     content: (
       <>
         <h2>Differentiating with Respect to a Control Point</h2>
         <p>
-          A B-spline curve is <Math>{'\\mathbf{c}(t) = \\sum_j \\mathbf{P}_j \\, N_j(t)'}</Math>. Differentiate
-          with respect to control point <Math>{'\\mathbf{P}_i'}</Math>:
+          A B-spline curve is <Math>{'\\mathbf{c}(t) = \\sum_j \\mathbf{P}_j \\, N_j(t)'}</Math>.
         </p>
-        <Math display>{'\\frac{\\partial \\mathbf{c}(t)}{\\partial \\mathbf{P}_i} = N_i(t)'}</Math>
-        <p>
-          This is itself a B-spline — same knots and degree, control points{' '}
-          <Math>{'0,\\dots,0,1,0,\\dots,0'}</Math>. Its derivatives are lower-degree B-splines, nonzero on
-          only <Math>{'d{+}1'}</Math> spans, computed once and cached.
+        <p style={{ marginTop: '0.6em' }}>
+          Differentiate with respect to control point <Math>{'\\mathbf{P}_i'}</Math>:
+        </p>
+        <p style={{ textAlign: 'center', margin: '0.6em 0' }}>
+          <Math display>{'\\frac{\\partial \\mathbf{c}(t)}{\\partial \\mathbf{P}_i} = N_i(t)'}</Math>
         </p>
         <p>
-          So <Math>{'\\partial g/\\partial \\mathbf{P}_i'}</Math> multiplies only on those{' '}
-          <Math>{'d{+}1'}</Math> spans — exact, and 3–5× faster than automatic differentiation, which does not
-          know what is zero. (Forward-mode AD over the Bernstein algebra in <code>core/gradient.ts</code>.)
+          This is itself a B-spline — with the same knot vector
+          and degree, but with control points:
+        </p>
+        <p style={{ textAlign: 'center', margin: '0.6em 0', fontFamily: 'monospace', fontSize: '1.1em', letterSpacing: '0.15em' }}>
+          0, 0, ..., 0, <strong>1</strong>, 0, ..., 0
+        </p>
+        <p>
+          A single nonzero control point at position <Math>{'i'}</Math>.
+          Almost entirely zero.
+        </p>
+      </>
+    ),
+  },
+
+  // Backup 2: Derivatives are lower-degree B-splines
+  {
+    type: 'content',
+    content: (
+      <>
+        <h2>Derivatives Are B-Splines Too</h2>
+        <p>
+          Differentiate <Math>{'N_i(t)'}</Math> with respect to <Math>{'t'}</Math>:
+        </p>
+        <ul>
+          <li>
+            <Math>{"N'_i(t)"}</Math> is a B-spline of degree <Math>{'d{-}1'}</Math>
+          </li>
+          <li>
+            <Math>{"N''_i(t)"}</Math> is a B-spline of degree <Math>{'d{-}2'}</Math>
+          </li>
+          <li>
+            <Math>{"N'''_i(t)"}</Math> is a B-spline of degree <Math>{'d{-}3'}</Math>
+          </li>
+        </ul>
+        <p style={{ marginTop: '0.6em' }}>
+          All have the <strong>same local support</strong> — nonzero
+          on only <Math>{'d{+}1'}</Math> consecutive spans
+          out of <Math>{'n'}</Math>.
+        </p>
+        <p style={{ marginTop: '0.6em' }}>
+          And they depend only on the knot vector and degree,
+          not on the control point positions. Computed <strong>once</strong>,
+          cached for all optimization iterations.
+        </p>
+      </>
+    ),
+  },
+
+  // Backup 3: No need to multiply zeros (exact sparse Jacobian)
+  {
+    type: 'content',
+    content: (
+      <>
+        <h2>No Need to Multiply Zeros</h2>
+        <p>
+          To compute <Math>{'\\partial g / \\partial x_i'}</Math>,
+          apply the product rule to <Math>{'g'}</Math>.
+          Each term is a product of:
+        </p>
+        <ul>
+          <li>
+            Intermediate products already computed for <Math>{'g'}</Math> — defined
+            on all <Math>{'n'}</Math> spans, <strong>shared</strong> across all columns
+          </li>
+          <li>
+            A cached basis derivative <Math>{"N'_i"}</Math> or <Math>{"N''_i"}</Math> or <Math>{"N'''_i"}</Math> — nonzero
+            on only <Math>{'d{+}1'}</Math> spans
+          </li>
+        </ul>
+        <p style={{ marginTop: '0.6em' }}>
+          Multiply only on the <Math>{'d{+}1'}</Math> nonzero spans.
+          Skip the rest.
+        </p>
+        <p style={{ marginTop: '0.6em' }}>
+          For <Math>{'n = 100'}</Math>, <Math>{'d = 3'}</Math>: each
+          Jacobian column requires work on <strong>4 spans</strong> instead of 97.
+        </p>
+        <p style={{ marginTop: '0.8em' }}>
+          Result: exact Jacobian, <strong>3–5× faster</strong> than
+          automatic differentiation — which does not know what is zero.
         </p>
       </>
     ),
@@ -843,6 +920,26 @@ export const slides: SlideDefinition[] = [
         <p style={{ marginTop: '0.3em' }}>
           Letting <Math>{'S'}</Math> float alongside <Math>{'A, B'}</Math> is what lets the curve bend, rotate
           and scale freely while never leaving the PH family.
+        </p>
+      </>
+    ),
+  },
+
+  {
+    type: 'content',
+    content: (
+      <>
+        <h2>Or: PH by construction — the (S, D) form</h2>
+        <p>
+          A second route drops the constraint entirely. Write <Math>{'z = F/D'}</Math> and choose the{' '}
+          <strong>generator <Math>{'S'}</Math></strong> and denominator <Math>{'D'}</Math> as the free
+          variables. The hodograph numerator is fixed to a square by <em>fiat</em>:
+        </p>
+        <Math display>{"H = S^2 \\quad\\Longrightarrow\\quad F'D - FD' = S^2 \\;\\text{(Wronskian)}"}</Math>
+        <p>
+          This is <strong>linear in <Math>{'F'}</Math></strong>, so the numerator is simply{' '}
+          <em>recovered</em> — by integration when <Math>{'D'}</Math> is constant
+          (<Math>{'F = \\int (S/D)^2'}</Math>), or a small per-span linear solve otherwise.
         </p>
       </>
     ),
