@@ -3,12 +3,13 @@
 // finger, move its control points, and toggle the curvature-extrema bound.
 // Nothing else. Reuses SketcherCanvas (with chrome stripped via config) and the
 // scene store; the freehand 'draw' tool already fits a degree-3 B-spline.
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import '../i18n' // SketcherCanvas uses react-i18next; init it (we bypass ../index)
 import { useSceneStore } from '../store/sceneStore'
 import SketcherCanvas from '../components/SketcherCanvas'
 import type { CanvasConfig } from '../types/canvas'
+import { curvatureExtremaNumeratorPlanar, curvatureExtremaNumeratorPlanarPeriodic } from '../../core'
 
 // Strip all chrome; SketcherCanvas reads allowDrawing/allowSelection +
 // the control-polygon flags. The page renders no menus/bars at all.
@@ -28,8 +29,29 @@ export default function MobileSketch() {
   const setPreserve = useSceneStore((s) => s.setPreserveCurvatureExtrema)
   const setSolverMethod = useSceneStore((s) => s.setSolverMethod)
   const clearAll = useSceneStore((s) => s.clearAll)
+  const curves = useSceneStore((s) => s.curves)
+  const selectedCurveId = useSceneStore((s) => s.selectedCurveId)
 
   const drawing = activeTool === 'draw'
+
+  // The curvature-extrema bound S⁻: the number of sign changes of g's Bernstein
+  // coefficients — an upper bound on the curve's curvature extrema, and the
+  // quantity the 'ipopt' solver keeps from increasing. Recomputed live so it
+  // ticks down as extrema annihilate while dragging.
+  const boundS = useMemo(() => {
+    const c = curves.find((x) => x.id === selectedCurveId)
+    if (!c || c.kind !== 'bspline') return null
+    try {
+      const x = c.controlPoints.map((p) => p.x)
+      const y = c.controlPoints.map((p) => p.y)
+      const g = c.closed
+        ? curvatureExtremaNumeratorPlanarPeriodic(x, y, c.knots, c.degree)
+        : curvatureExtremaNumeratorPlanar(x, y, c.knots, c.degree)
+      return g.signChanges()
+    } catch {
+      return null
+    }
+  }, [curves, selectedCurveId])
 
   // Draw mode: keep the 'draw' tool locked so every finger stroke makes a new
   // degree-3 curve. Edit mode ('none'): a finger drags control points instead.
@@ -78,7 +100,9 @@ export default function MobileSketch() {
           preserve ? 'bg-amber-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
         }`}
       >
-        {preserve ? 'Extrema: bound' : 'Extrema: free'}
+        {preserve
+          ? `Extrema: bound${boundS !== null ? ` · S = ${boundS}` : ''}`
+          : 'Extrema: free'}
       </button>
 
       {/* Bottom toolbar — thumb-reachable */}
