@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 /**
  * Laguerre Transformation for AB PH Curves
@@ -28,7 +27,6 @@ import {
   recomposeBD,
   derivativeBD,
 } from './algebra'
-import type { SimpleBSpline } from './complexAlgebra'
 
 // ============================================================================
 // Types
@@ -51,8 +49,6 @@ export interface LieCoordinates {
 // ============================================================================
 // 5×5 Matrix Utilities (Lie algebra o(3,2))
 // ============================================================================
-
-const G_METRIC = [-1, 1, 1, 1, -1] // Diagonal of metric tensor
 
 function identity5(): number[][] {
   const I: number[][] = Array(5).fill(0).map(() => Array(5).fill(0))
@@ -80,56 +76,6 @@ function matVec(A: number[][], v: number[]): number[] {
     result[i] = s
   }
   return result
-}
-
-function matExp(A: number[][]): number[][] {
-  let norm = 0
-  for (let i = 0; i < 5; i++)
-    for (let j = 0; j < 5; j++) norm += A[i][j] * A[i][j]
-  norm = Math.sqrt(norm)
-
-  let s = 0
-  while (norm > 0.5) {
-    norm /= 2
-    s++
-  }
-
-  const scaleFactor = Math.pow(2, -s)
-  const Ascaled = A.map(row => row.map(x => x * scaleFactor))
-
-  let result = identity5()
-  let term = identity5()
-  let factorial = 1
-
-  for (let n = 1; n <= 20; n++) {
-    term = matMul(term, Ascaled)
-    factorial *= n
-    const factor = 1.0 / factorial
-
-    let maxTerm = 0
-    for (let i = 0; i < 5; i++) {
-      for (let j = 0; j < 5; j++) {
-        const val = term[i][j] * factor
-        result[i][j] += val
-        maxTerm = Math.max(maxTerm, Math.abs(val))
-      }
-    }
-    if (n > 5 && maxTerm < 1e-12) break
-  }
-
-  for (let i = 0; i < s; i++) result = matMul(result, result)
-  return result
-}
-
-/**
- * Generator: antisymmetric matrix for o(3,2)
- * G[i][j] = sign * g[j], G[j][i] = -sign * g[i]
- */
-function generator(i: number, j: number, sign: number = 1): number[][] {
-  const G: number[][] = Array(5).fill(0).map(() => Array(5).fill(0))
-  G[i][j] = sign * G_METRIC[j]
-  G[j][i] = -sign * G_METRIC[i]
-  return G
 }
 
 // ============================================================================
@@ -198,7 +144,6 @@ export function computeLaguerreMatrix(
   // Solve 3×3 system for (tx, ty, δ) using the Euclidean+offset model
   // After transform: d' = d + tx·cos(θ') + ty·sin(θ') - δ
   // So: tx·cos(θ') + ty·sin(θ') - δ = d' - d
-  const phi = meanAngleDiff
   const A = [
     [Math.cos(targAngles[0]), Math.sin(targAngles[0]), -1],
     [Math.cos(targAngles[1]), Math.sin(targAngles[1]), -1],
@@ -466,7 +411,6 @@ export function liftTangentLinesToLie(meta: ABPHMetadata): LieCoordinates {
   const conjAconjB_Im = aReBD.multiply(bImBD).add(aImBD.multiply(bReBD)).multiplyByScalar(-1)
 
   // S²·conj(A)·conj(B) = (s2Re + i·s2Im)(conjAconjB_Re + i·conjAconjB_Im)
-  const s2AbarBbar_Re = s2Re.multiply(conjAconjB_Re).subtract(s2Im.multiply(conjAconjB_Im))
   const s2AbarBbar_Im = s2Re.multiply(conjAconjB_Im).add(s2Im.multiply(conjAconjB_Re))
 
   // L₀ = Im(S²·conj(A)·conj(B))

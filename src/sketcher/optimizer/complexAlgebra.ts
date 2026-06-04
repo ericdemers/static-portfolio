@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 /**
  * Complex Bernstein Decomposition Algebra for Complex-Rational B-Splines
@@ -627,7 +626,6 @@ export function computeComplexHomogeneousJacobian(
   activeConstraintIndices: number[]
 ): number[][] {
   const n = precomputed.numControlPoints
-  const numSpans = precomputed.numSpans
 
   // Build current derivatives and Chen terms using precomputed basis
   const { derivatives, chenTerms } = computeComplexCurveStateFromCache(
@@ -776,7 +774,6 @@ export function computeComplexGeometricJacobianFD(
   const h = 1e-7
 
   // Compute g(t) CPs at current state
-  const gCPs0 = computeGCPsFromGeometric(degree, knots, controlPoints, farinPositions, period, closed)
 
   // Perturb each variable and compute finite difference
   for (let v = 0; v < numVars; v++) {
@@ -1303,14 +1300,6 @@ function computePartialG_fromChenPartials(
   const wuuD1 = complexBDMul(wuu_sub, D1sub)
   const innerTerm = complexBDSub(wuD2, wuuD1)
 
-  const dInnerTerm = complexBDAdd(
-    complexBDSub(
-      complexBDAdd(complexBDMul(dwu, D2sub), complexBDMul(wu_sub, dD2)),
-      complexBDAdd(complexBDMul(dwuu, D1sub), complexBDMul(wuu_sub, dD1))
-    ),
-    { re: zeroBD(dD1_re), im: zeroBD(dD1_re) } // placeholder for zero addition
-  )
-  // Actually, let me simplify: dInnerTerm = dwu*D2 + wu*dD2 - dwuu*D1 - wuu*dD1
   const dInnerTermActual = complexBDSub(
     complexBDAdd(complexBDMul(dwu, D2sub), complexBDMul(wu_sub, dD2)),
     complexBDAdd(complexBDMul(dwuu, D1sub), complexBDMul(wuu_sub, dD1))
@@ -1358,7 +1347,7 @@ function computePartialG_fromChenPartialsWim(
   D3_re: BernsteinDecomposition, D3_im: BernsteinDecomposition,
   D21_re: BernsteinDecomposition, D21_im: BernsteinDecomposition,
   ct: ComplexChenTerms, start: number, end: number,
-  Ni: BernsteinDecomposition, Ni_u: BernsteinDecomposition, Ni_uu: BernsteinDecomposition,
+  Ni: BernsteinDecomposition, _Ni_u: BernsteinDecomposition, _Ni_uu: BernsteinDecomposition,
 ): number[] {
   // Same as computePartialG_fromChenPartials but with dw_im = Ni, dwu_im = Ni_u, dwuu_im = Ni_uu
   return computePartialG_fromChenPartials(

@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 import { useRef, useEffect, useState } from 'react'
 import { useSceneStore } from '../store/sceneStore'
@@ -33,12 +32,6 @@ const pinIcon = (filled: boolean) => (
       strokeLinejoin="round"
       d="M16 3l-4 4-4-1-4 4 6 6-4 4h2l3-3 3 3v2l4-4-6-6 4-4 1 4 4-4-2-2z"
     />
-  </svg>
-)
-
-const chevronIcon = (expanded: boolean) => (
-  <svg className={`w-4 h-4 transition-transform ${expanded ? 'rotate-90' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
   </svg>
 )
 
@@ -97,9 +90,9 @@ const tools: { tool: DrawingTool; label: string; icon: React.ReactNode }[] = [
 ]
 
 export default function PencilTool({ className }: { className?: string }) {
-  const { pencilExpanded, setPencilExpanded, activeTool, setActiveTool, toolLocked, setToolLocked, curves, phMetadata, selectedCurveId, setOffsetSourceCurveId } = useSceneStore()
+  const { pencilExpanded, setPencilExpanded, activeTool, setActiveTool, toolLocked, setToolLocked, curves } = useSceneStore()
   const menuRef = useRef<HTMLDivElement>(null)
-  const [phExpanded, setPhExpanded] = useState(false)
+  const [, setPhExpanded] = useState(false)
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -136,7 +129,6 @@ export default function PencilTool({ className }: { className?: string }) {
 
   const hasCurves = curves.length > 0
   const isSelectionMode = activeTool === 'none'
-  const isPHToolActive = activeTool === 'spiral' || activeTool === 'rational-spiral' || activeTool === 'complex-spiral' || activeTool === 'offset'
 
   return (
     <div className={className ?? "absolute top-3 right-3 z-50 flex gap-2"} ref={menuRef}>
