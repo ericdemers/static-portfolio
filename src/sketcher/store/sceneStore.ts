@@ -1390,30 +1390,36 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     const curve = state.curves.find((c) => c.id === id)
     if (!curve) return
 
-    // PH curve: elevate u,v degree and recompute curve
+    // Polynomial PH curve: elevate u,v degree and recompute. Only polynomial PH
+    // metadata carries u/v control points — guard on meta.kind (not just has(id)),
+    // or ab/real/complex-rational kinds enter this branch and read undefined
+    // fields. Other kinds fall through to the kind-aware generic elevateDegree
+    // (matches insertKnotAtCurve).
     if (state.phMetadata.has(id)) {
       const meta = state.phMetadata.get(id)!
-      const uResult = elevateDegree1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree)
-      const vResult = elevateDegree1D(meta.vControlPoints, meta.uvKnots, meta.uvDegree)
-      const newUVDegree = meta.uvDegree + 1
+      if (meta.kind === 'polynomial') {
+        const uResult = elevateDegree1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree)
+        const vResult = elevateDegree1D(meta.vControlPoints, meta.uvKnots, meta.uvDegree)
+        const newUVDegree = meta.uvDegree + 1
 
-      const phResult = computePHCurveFromUV(
-        uResult.controlPoints, vResult.controlPoints, uResult.knots, newUVDegree, meta.origin.x, meta.origin.y
-      )
+        const phResult = computePHCurveFromUV(
+          uResult.controlPoints, vResult.controlPoints, uResult.knots, newUVDegree, meta.origin.x, meta.origin.y
+        )
 
-      const newPhMetadata = new Map(state.phMetadata)
-      newPhMetadata.set(id, phResult.metadata)
+        const newPhMetadata = new Map(state.phMetadata)
+        newPhMetadata.set(id, phResult.metadata)
 
-      set((s) => ({
-        curves: s.curves.map((c) =>
-          c.id === id
-            ? { ...c, controlPoints: phResult.controlPoints, knots: phResult.knots, degree: phResult.degree } as Curve
-            : c
-        ),
-        phMetadata: newPhMetadata,
-      }))
-      get().saveToHistory()
-      return
+        set((s) => ({
+          curves: s.curves.map((c) =>
+            c.id === id
+              ? { ...c, controlPoints: phResult.controlPoints, knots: phResult.knots, degree: phResult.degree } as Curve
+              : c
+          ),
+          phMetadata: newPhMetadata,
+        }))
+        get().saveToHistory()
+        return
+      }
     }
 
     const elevated = elevateDegree(curve)
@@ -1556,32 +1562,36 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     const curve = state.curves.find((c) => c.id === id)
     if (!curve) return
 
-    // PH curve: remove knot from u,v and recompute curve
+    // Polynomial PH curve: remove knot from u,v and recompute. Guard on meta.kind
+    // (not just has(id)) — ab/real/complex-rational kinds lack u/v fields and would
+    // read undefined here; they fall through to the kind-aware generic removeKnot.
     if (state.phMetadata.has(id)) {
       const meta = state.phMetadata.get(id)!
-      const uResult = removeKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, knotIndex)
-      if (!uResult) return
-      const vResult = removeKnot1D(meta.vControlPoints, meta.uvKnots, meta.uvDegree, knotIndex)
-      if (!vResult) return
+      if (meta.kind === 'polynomial') {
+        const uResult = removeKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, knotIndex)
+        if (!uResult) return
+        const vResult = removeKnot1D(meta.vControlPoints, meta.uvKnots, meta.uvDegree, knotIndex)
+        if (!vResult) return
 
-      const phResult = computePHCurveFromUV(
-        uResult.controlPoints, vResult.controlPoints, uResult.knots, meta.uvDegree, meta.origin.x, meta.origin.y
-      )
+        const phResult = computePHCurveFromUV(
+          uResult.controlPoints, vResult.controlPoints, uResult.knots, meta.uvDegree, meta.origin.x, meta.origin.y
+        )
 
-      const newPhMetadata = new Map(state.phMetadata)
-      newPhMetadata.set(id, phResult.metadata)
+        const newPhMetadata = new Map(state.phMetadata)
+        newPhMetadata.set(id, phResult.metadata)
 
-      set((s) => ({
-        curves: s.curves.map((c) =>
-          c.id === id
-            ? { ...c, controlPoints: phResult.controlPoints, knots: phResult.knots, degree: phResult.degree } as Curve
-            : c
-        ),
-        phMetadata: newPhMetadata,
-        selectedKnotIndex: null,
-      }))
-      get().saveToHistory()
-      return
+        set((s) => ({
+          curves: s.curves.map((c) =>
+            c.id === id
+              ? { ...c, controlPoints: phResult.controlPoints, knots: phResult.knots, degree: phResult.degree } as Curve
+              : c
+          ),
+          phMetadata: newPhMetadata,
+          selectedKnotIndex: null,
+        }))
+        get().saveToHistory()
+        return
+      }
     }
 
     const updated = removeKnot(curve, knotIndex)
@@ -1718,9 +1728,17 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
         break
     }
 
+    // The converted curve is a plain bspline/rational/complex-rational, not a PH
+    // curve — drop any stale defining-coefficient metadata so a later has(id)
+    // doesn't read it against the wrong kind.
+    const clearedPhMetadata = state.phMetadata.has(id)
+      ? new Map([...state.phMetadata].filter(([key]) => key !== id))
+      : null
+
     set((s) => ({
       curves: s.curves.map((c) => (c.id === id ? converted : c)),
       selectedFarinPointIndex: null,
+      ...(clearedPhMetadata ? { phMetadata: clearedPhMetadata } : {}),
     }))
     get().saveToHistory()
   },
