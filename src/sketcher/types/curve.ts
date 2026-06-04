@@ -1,4 +1,7 @@
-// Being migrated to core/ incrementally; remove this once a file is on core.
+import type { PHMetadata, ComplexRationalPHMetadata } from '../optimizer/phCurve'
+import type { ABPHMetadata } from '../optimizer/abPHCurve'
+import type { RealRationalPHMetadata } from '../optimizer/realRationalPHCurve'
+
 // Point types
 export interface Point2D {
   x: number
@@ -87,9 +90,21 @@ export interface EditorState {
   activeTool: DrawingTool
 }
 
+/** The defining coefficients for a PH / AB / rational / complex-rational curve,
+ *  held in a side-map keyed by curve id (sceneStore.phMetadata). */
+export type PHMetadataAny =
+  | PHMetadata
+  | ComplexRationalPHMetadata
+  | ABPHMetadata
+  | RealRationalPHMetadata
+
 // History entry for undo/redo
 export interface HistoryEntry {
   curves: Curve[]
   spatialCurves: Curve3D[]
   selectedCurveId: string | null
+  // Snapshotted alongside geometry so undo/redo can't desync a curve's defining
+  // coefficients from its control points. (TODO: co-locate onto the curve during
+  // the sceneStore typing pass — see the design review.)
+  phMetadata: Map<string, PHMetadataAny>
 }

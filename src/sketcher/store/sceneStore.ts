@@ -1,7 +1,7 @@
 // @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 import { create } from 'zustand'
-import type { Curve, CurveKind, Point2D, Point3D, Curve3D, DrawingTool, HistoryEntry } from '../types/curve'
+import type { Curve, CurveKind, Point2D, Point3D, Curve3D, DrawingTool, HistoryEntry, PHMetadataAny } from '../types/curve'
 import type { FairnessEnergyType } from '../lab/optimizer/jerkEnergy'
 import { computeRegionPreview, defaultEnergyForDegree, type SmoothMode } from '../utils/regionSmooth'
 import { createBSpline, elevateDegree, insertKnot, moveKnot, removeKnot, getControlPointsAsPoints, toRationalBSpline, toComplexRationalBSpline, toBSpline, periodicKnotsWithJunction, uniformPeriodicKnots, generateCurveId, findKnotSpan, isClampedEndKnot } from '../utils/bspline'
@@ -266,7 +266,7 @@ function abShapeForGenerate(curve, meta) {
   return meta
 }
 
-function createHistoryEntry(curves: Curve[], spatialCurves: Curve3D[], selectedCurveId: string | null): HistoryEntry {
+function createHistoryEntry(curves: Curve[], spatialCurves: Curve3D[], selectedCurveId: string | null, phMetadata: Map<string, PHMetadataAny>): HistoryEntry {
   return {
     curves: curves.map((c) => {
       // Deep copy based on curve kind to maintain proper typing
@@ -296,6 +296,9 @@ function createHistoryEntry(curves: Curve[], spatialCurves: Curve3D[], selectedC
       knots: [...c.knots],
     })),
     selectedCurveId,
+    // shallow Map clone: metadata objects are replaced wholesale (never mutated
+    // in place), so the entries stay valid snapshots.
+    phMetadata: new Map(phMetadata),
   }
 }
 
@@ -353,7 +356,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     panY: 0,
   },
 
-  history: [createHistoryEntry([], [], null)],
+  history: [createHistoryEntry([], [], null, new Map())],
   historyIndex: 0,
 
   // Curve actions
@@ -1329,7 +1332,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   // History actions
   saveToHistory: () => {
     const state = get()
-    const entry = createHistoryEntry(state.curves, state.spatialCurves, state.selectedCurveId)
+    const entry = createHistoryEntry(state.curves, state.spatialCurves, state.selectedCurveId, state.phMetadata)
 
     // Truncate future history if we're not at the end
     const newHistory = state.history.slice(0, state.historyIndex + 1)
@@ -1355,6 +1358,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
       curves: entry.curves,
       spatialCurves: entry.spatialCurves,
       selectedCurveId: entry.selectedCurveId,
+      phMetadata: new Map(entry.phMetadata), // keep coefficients in sync with restored geometry
       historyIndex: state.historyIndex - 1,
     })
   },
@@ -1368,6 +1372,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
       curves: entry.curves,
       spatialCurves: entry.spatialCurves,
       selectedCurveId: entry.selectedCurveId,
+      phMetadata: new Map(entry.phMetadata), // keep coefficients in sync with restored geometry
       historyIndex: state.historyIndex + 1,
     })
   },
