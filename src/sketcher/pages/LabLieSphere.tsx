@@ -27,6 +27,10 @@ const GROUP_LABELS: Record<GeneratorGroup, string> = {
   lie: 'Lie mix',
 }
 const GROUP_ORDER: GeneratorGroup[] = ['conformal', 'laguerre', 'lie']
+// Per-group slider half-range. The inversive (conformal) and Lie-mix generators
+// are strong — a small coefficient already distorts the surface a lot — so give
+// them a tighter range for gentler, finer control; Laguerre keeps the full ±1.
+const GROUP_RANGE: Record<GeneratorGroup, number> = { conformal: 0.3, laguerre: 1, lie: 0.3 }
 
 const MERIDIAN_CURVE_ID = 'lie-sphere-meridian'
 const MERIDIAN_SAMPLES = 200
@@ -372,9 +376,9 @@ export default function LabLieSphere() {
                       <span className="w-24 truncate">{g.label}</span>
                       <input
                         type="range"
-                        min={-1}
-                        max={1}
-                        step={0.02}
+                        min={-GROUP_RANGE[grp]}
+                        max={GROUP_RANGE[grp]}
+                        step={GROUP_RANGE[grp] / 50}
                         value={coeffs[i]}
                         onChange={(e) => setCoeff(i, parseFloat(e.target.value))}
                         className="flex-1 min-w-0"
