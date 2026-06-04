@@ -41,5 +41,31 @@
   "hints": {
     "drawToStart": "描いて始める",
     "touchToDraw": "どこでもタッチして描く"
+  },
+  "generate": {
+    "title": "生成",
+    "subtitle": "リー球変換 → 新しい曲線",
+    "groups": {
+      "conformal": "共形 (メビウス)",
+      "laguerre": "ラゲール",
+      "lie": "リー"
+    },
+    "generators": {
+      "scale": "拡大縮小",
+      "rotation": "回転",
+      "sct-x": "反転ベンド X",
+      "sct-y": "反転ベンド Y",
+      "boost-x": "ラゲールブースト X",
+      "boost-y": "ラゲールブースト Y",
+      "offset": "オフセット",
+      "lie-mix": "リーミックス"
+    },
+    "buttons": {
+      "apply": "適用",
+      "reset": "リセット",
+      "done": "完了",
+      "cancel": "キャンセル"
+    },
+    "applyTitle": "現在の変換を確定して合成を続ける"
   }
 }

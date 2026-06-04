@@ -41,5 +41,31 @@
   "hints": {
     "drawToStart": "Zeichnen um zu beginnen",
     "touchToDraw": "Berühre irgendwo um zu zeichnen"
+  },
+  "generate": {
+    "title": "Erzeugen",
+    "subtitle": "Lie-Kugel-Transformation → neue Kurve",
+    "groups": {
+      "conformal": "Konform (Möbius)",
+      "laguerre": "Laguerre",
+      "lie": "Lie"
+    },
+    "generators": {
+      "scale": "Skalierung",
+      "rotation": "Rotation",
+      "sct-x": "Inversive Biegung X",
+      "sct-y": "Inversive Biegung Y",
+      "boost-x": "Laguerre-Boost X",
+      "boost-y": "Laguerre-Boost Y",
+      "offset": "Versatz",
+      "lie-mix": "Lie-Mischung"
+    },
+    "buttons": {
+      "apply": "Anwenden",
+      "reset": "Zurücksetzen",
+      "done": "Fertig",
+      "cancel": "Abbrechen"
+    },
+    "applyTitle": "Aktuelle Transformation übernehmen; weiter komponieren"
   }
 }

@@ -41,5 +41,31 @@
   "hints": {
     "drawToStart": "Desenhe para começar",
     "touchToDraw": "Toque em qualquer lugar para desenhar"
+  },
+  "generate": {
+    "title": "Gerar",
+    "subtitle": "Transformação de Lie-esfera → nova curva",
+    "groups": {
+      "conformal": "Conforme (Möbius)",
+      "laguerre": "Laguerre",
+      "lie": "Lie"
+    },
+    "generators": {
+      "scale": "Escala",
+      "rotation": "Rotação",
+      "sct-x": "Curvatura inversiva X",
+      "sct-y": "Curvatura inversiva Y",
+      "boost-x": "Impulso de Laguerre X",
+      "boost-y": "Impulso de Laguerre Y",
+      "offset": "Deslocamento",
+      "lie-mix": "Mistura de Lie"
+    },
+    "buttons": {
+      "apply": "Aplicar",
+      "reset": "Redefinir",
+      "done": "Concluído",
+      "cancel": "Cancelar"
+    },
+    "applyTitle": "Fixar a transformação atual; continuar compondo"
   }
 }

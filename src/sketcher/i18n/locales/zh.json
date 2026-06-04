@@ -41,5 +41,31 @@
   "hints": {
     "drawToStart": "绘制以开始",
     "touchToDraw": "点击任意位置开始绘制"
+  },
+  "generate": {
+    "title": "生成",
+    "subtitle": "李球变换 → 新曲线",
+    "groups": {
+      "conformal": "共形 (莫比乌斯)",
+      "laguerre": "拉盖尔",
+      "lie": "李"
+    },
+    "generators": {
+      "scale": "缩放",
+      "rotation": "旋转",
+      "sct-x": "反演弯曲 X",
+      "sct-y": "反演弯曲 Y",
+      "boost-x": "拉盖尔推动 X",
+      "boost-y": "拉盖尔推动 Y",
+      "offset": "偏移",
+      "lie-mix": "李混合"
+    },
+    "buttons": {
+      "apply": "应用",
+      "reset": "重置",
+      "done": "完成",
+      "cancel": "取消"
+    },
+    "applyTitle": "固定当前变换；继续组合"
   }
 }

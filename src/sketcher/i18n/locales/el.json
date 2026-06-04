@@ -41,5 +41,31 @@
   "hints": {
     "drawToStart": "Σχεδιάστε για να ξεκινήσετε",
     "touchToDraw": "Αγγίξτε οπουδήποτε για να σχεδιάσετε"
+  },
+  "generate": {
+    "title": "Δημιουργία",
+    "subtitle": "Μετασχηματισμός σφαίρας Lie → νέα καμπύλη",
+    "groups": {
+      "conformal": "Σύμμορφος (Möbius)",
+      "laguerre": "Laguerre",
+      "lie": "Lie"
+    },
+    "generators": {
+      "scale": "Κλίμακα",
+      "rotation": "Περιστροφή",
+      "sct-x": "Αντιστροφική κάμψη X",
+      "sct-y": "Αντιστροφική κάμψη Y",
+      "boost-x": "Ώθηση Laguerre X",
+      "boost-y": "Ώθηση Laguerre Y",
+      "offset": "Μετατόπιση",
+      "lie-mix": "Μείξη Lie"
+    },
+    "buttons": {
+      "apply": "Εφαρμογή",
+      "reset": "Επαναφορά",
+      "done": "Έγινε",
+      "cancel": "Άκυρο"
+    },
+    "applyTitle": "Παγίωση του τρέχοντος μετασχηματισμού· συνέχεια σύνθεσης"
   }
 }

@@ -41,5 +41,31 @@
   "hints": {
     "drawToStart": "Draw to start",
     "touchToDraw": "Touch anywhere to draw"
+  },
+  "generate": {
+    "title": "Generate",
+    "subtitle": "Lie-sphere transform → new curve",
+    "groups": {
+      "conformal": "Conformal (Möbius)",
+      "laguerre": "Laguerre",
+      "lie": "Lie"
+    },
+    "generators": {
+      "scale": "Scale",
+      "rotation": "Rotation",
+      "sct-x": "Inversive bend X",
+      "sct-y": "Inversive bend Y",
+      "boost-x": "Laguerre boost X",
+      "boost-y": "Laguerre boost Y",
+      "offset": "Offset",
+      "lie-mix": "Lie mix"
+    },
+    "buttons": {
+      "apply": "Apply",
+      "reset": "Reset",
+      "done": "Done",
+      "cancel": "Cancel"
+    },
+    "applyTitle": "Bake the current transform; keep composing"
   }
 }

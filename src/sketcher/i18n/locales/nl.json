@@ -41,5 +41,31 @@
   "hints": {
     "drawToStart": "Teken om te beginnen",
     "touchToDraw": "Raak ergens aan om te tekenen"
+  },
+  "generate": {
+    "title": "Genereren",
+    "subtitle": "Lie-bol-transformatie → nieuwe kromme",
+    "groups": {
+      "conformal": "Conform (Möbius)",
+      "laguerre": "Laguerre",
+      "lie": "Lie"
+    },
+    "generators": {
+      "scale": "Schaal",
+      "rotation": "Rotatie",
+      "sct-x": "Inversieve buiging X",
+      "sct-y": "Inversieve buiging Y",
+      "boost-x": "Laguerre-boost X",
+      "boost-y": "Laguerre-boost Y",
+      "offset": "Verschuiving",
+      "lie-mix": "Lie-mix"
+    },
+    "buttons": {
+      "apply": "Toepassen",
+      "reset": "Opnieuw instellen",
+      "done": "Klaar",
+      "cancel": "Annuleren"
+    },
+    "applyTitle": "De huidige transformatie vastleggen; blijven samenstellen"
   }
 }

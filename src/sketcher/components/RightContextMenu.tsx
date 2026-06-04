@@ -75,7 +75,7 @@ export default function RightContextMenu() {
             onClick={() => selectedCurveId && startGenerate(selectedCurveId)}
             className={`w-full h-8 rounded text-sm font-medium transition-colors ${inactiveBtn}`}
           >
-            Generate
+            {t('generate.title')}
           </button>
         ) : (
           <button

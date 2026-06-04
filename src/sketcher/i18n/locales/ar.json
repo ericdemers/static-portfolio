@@ -41,5 +41,31 @@
   "hints": {
     "drawToStart": "ارسم للبدء",
     "touchToDraw": "المس في أي مكان للرسم"
+  },
+  "generate": {
+    "title": "إنشاء",
+    "subtitle": "تحويل كرة لي → منحنى جديد",
+    "groups": {
+      "conformal": "تطابقي (موبيوس)",
+      "laguerre": "لاغير",
+      "lie": "لي"
+    },
+    "generators": {
+      "scale": "تحجيم",
+      "rotation": "تدوير",
+      "sct-x": "انحناء انعكاسي X",
+      "sct-y": "انحناء انعكاسي Y",
+      "boost-x": "دفع لاغير X",
+      "boost-y": "دفع لاغير Y",
+      "offset": "إزاحة",
+      "lie-mix": "مزيج لي"
+    },
+    "buttons": {
+      "apply": "تطبيق",
+      "reset": "إعادة تعيين",
+      "done": "تم",
+      "cancel": "إلغاء"
+    },
+    "applyTitle": "تثبيت التحويل الحالي؛ متابعة التركيب"
   }
 }

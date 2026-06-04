@@ -41,5 +41,31 @@
   "hints": {
     "drawToStart": "Dessinez pour commencer",
     "touchToDraw": "Touchez n'importe où pour dessiner"
+  },
+  "generate": {
+    "title": "Générer",
+    "subtitle": "Transformation de Lie-sphère → nouvelle courbe",
+    "groups": {
+      "conformal": "Conforme (Möbius)",
+      "laguerre": "Laguerre",
+      "lie": "Lie"
+    },
+    "generators": {
+      "scale": "Échelle",
+      "rotation": "Rotation",
+      "sct-x": "Courbure inversive X",
+      "sct-y": "Courbure inversive Y",
+      "boost-x": "Boost de Laguerre X",
+      "boost-y": "Boost de Laguerre Y",
+      "offset": "Décalage",
+      "lie-mix": "Mélange de Lie"
+    },
+    "buttons": {
+      "apply": "Appliquer",
+      "reset": "Réinitialiser",
+      "done": "Terminé",
+      "cancel": "Annuler"
+    },
+    "applyTitle": "Figer la transformation actuelle ; continuer à composer"
   }
 }

@@ -41,5 +41,31 @@
   "hints": {
     "drawToStart": "그려서 시작하세요",
     "touchToDraw": "아무 곳이나 터치해서 그리기"
+  },
+  "generate": {
+    "title": "생성",
+    "subtitle": "리 구면 변환 → 새 곡선",
+    "groups": {
+      "conformal": "등각 (뫼비우스)",
+      "laguerre": "라게르",
+      "lie": "리"
+    },
+    "generators": {
+      "scale": "크기 조절",
+      "rotation": "회전",
+      "sct-x": "반전 굽힘 X",
+      "sct-y": "반전 굽힘 Y",
+      "boost-x": "라게르 부스트 X",
+      "boost-y": "라게르 부스트 Y",
+      "offset": "오프셋",
+      "lie-mix": "리 혼합"
+    },
+    "buttons": {
+      "apply": "적용",
+      "reset": "재설정",
+      "done": "완료",
+      "cancel": "취소"
+    },
+    "applyTitle": "현재 변환을 적용하고 계속 합성"
   }
 }
