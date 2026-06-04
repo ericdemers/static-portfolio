@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest'
 import { createABPHFromTwoPoints } from '../../optimizer/abPHCurve'
 import { fitComplexRational, evalComplexRational } from './rationalFit'
@@ -8,11 +7,11 @@ import { SHAPE_GENERATORS, liePoint5, expm5 } from './lieAlgebra2D'
 const meta = createABPHFromTwoPoints(0, 0, 100, 40).metadata
 const n = meta.degree
 const U = [0.1, 0.3, 0.5, 0.7, 0.9]
-const idx = (key) => SHAPE_GENERATORS.findIndex((g) => g.key === key)
-function coeffsWith(key, v) { const c = new Array(8).fill(0); c[idx(key)] = v; return c }
-function pt(M, u) { const h = lieCurveHomogeneous(meta, M); const w = h.W.evaluate(u); return { x: h.X.evaluate(u) / w, y: h.Y.evaluate(u) / w } }
-function orig(u) { return pt(expm5(SHAPE_GENERATORS[0].X.map((r) => r.map(() => 0))), u) } // identity
-const close = (a, b, t = 1e-5) => expect(Math.abs(a - b)).toBeLessThan(t)
+const idx = (key: string) => SHAPE_GENERATORS.findIndex((g) => g.key === key)
+function coeffsWith(key: string, v: number) { const c = new Array(8).fill(0); c[idx(key)] = v; return c }
+function pt(M: number[][], u: number) { const h = lieCurveHomogeneous(meta, M); const w = h.W.evaluate(u); return { x: h.X.evaluate(u) / w, y: h.Y.evaluate(u) / w } }
+function orig(u: number) { return pt(expm5(SHAPE_GENERATORS[0].X.map((r) => r.map(() => 0))), u) } // identity
+const close = (a: number, b: number, t = 1e-5) => expect(Math.abs(a - b)).toBeLessThan(t)
 
 describe('o(3,2) generators', () => {
   it('scale generator scales the point by e^s', () => {

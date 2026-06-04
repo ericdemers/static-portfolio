@@ -1,4 +1,3 @@
-// @ts-nocheck
 // The pencil tool now draws (S, D) complex-rational PH curves (PH by
 // construction, like the lab). This checks (a) the freshly-drawn curve is an
 // exact straight line, and (b) the Generate path still works: the (S, D) curve
@@ -9,9 +8,11 @@ import { createStraightComplexRationalPH } from '../../optimizer/complexRational
 import { convertComplexPointsToAB } from '../../optimizer/abPHCurve'
 import { evaluateCurve } from '../../utils/bspline/core'
 import { abPHToLieCurve, lieCurveHomogeneous, identity5 } from './lieCurve2D'
+import type { ComplexRationalBSplineCurve } from '../../types/curve'
+import type { ComplexRationalPHMetadata } from '../../optimizer/phCurve'
 
 // Mirror of sceneStore's abShapeForGenerate for a (S, D) curve.
-function abShape(curve, meta) {
+function abShape(curve: ComplexRationalBSplineCurve, meta: ComplexRationalPHMetadata) {
   const { aRe, aIm, bRe, bIm } = convertComplexPointsToAB(curve.controlPoints)
   return {
     kind: 'ab-complex-rational',
@@ -24,7 +25,7 @@ function abShape(curve, meta) {
 
 describe('straight (S, D) PH curve', () => {
   const res = createStraightComplexRationalPH(10, 20, 110, 60)
-  const curve = { kind: 'complex-rational', degree: res.degree, knots: res.knots, controlPoints: res.controlPoints, closed: false }
+  const curve: ComplexRationalBSplineCurve = { id: 'test', kind: 'complex-rational', degree: res.degree, knots: res.knots, controlPoints: res.controlPoints, closed: false }
 
   it('evaluates exactly on the line P0→P1', () => {
     for (const t of [0, 0.15, 0.4, 0.5, 0.73, 1]) {

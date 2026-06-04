@@ -1,4 +1,3 @@
-// @ts-nocheck — the minimal rational degree of a Lie-transformed PH curve stays ≤ 2n
 // (the classic PH-offset bound). Confirms a degree-2n fit always suffices and the
 // symbolic lift's high degree is pure removable redundancy.
 import { describe, it, expect } from 'vitest'
@@ -10,14 +9,14 @@ const meta = createABPHFromTwoPoints(0, 0, 100, 40).metadata
 const n = meta.degree
 
 // Exact transformed point (X/W, Y/W) at parameter u, via the symbolic converter.
-function exactPoint(M, u) {
+function exactPoint(M: number[][], u: number) {
   const h = lieCurveHomogeneous(meta, M)
   const w = h.W.evaluate(u)
   return { re: h.X.evaluate(u) / w, im: h.Y.evaluate(u) / w }
 }
 
 // Minimal complex-rational degree (residual-drop detection, like the lab's detectDegU).
-function detectDegree(M) {
+function detectDegree(M: number[][]) {
   const fitU = Array.from({ length: 60 }, (_, i) => (i + 0.5) / 60) // fit samples
   const testU = Array.from({ length: 41 }, (_, i) => 0.01 + (0.98 * i) / 40) // dense test
   const samples = fitU.map((u) => ({ u, ...exactPoint(M, u) }))

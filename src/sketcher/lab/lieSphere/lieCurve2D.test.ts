@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest'
 import { createABPHFromTwoPoints, evaluateABPHCurveAtParam } from '../../optimizer/abPHCurve'
 import { decomposeToBernstein } from '../../optimizer/algebra'
@@ -12,14 +11,14 @@ const meta = createABPHFromTwoPoints(0, 0, 100, 40).metadata
 const SAMPLES = [0.05, 0.2, 0.4, 0.5, 0.6, 0.8, 0.95]
 
 // transformed point via the converter: (X/W, Y/W) by direct BD evaluation.
-function lieAt(M, t) {
+function lieAt(M: number[][], t: number) {
   const h = lieCurveHomogeneous(meta, M)
   const w = h.W.evaluate(t)
   return { x: h.X.evaluate(t) / w, y: h.Y.evaluate(t) / w }
 }
 
 // offset direction N = i·S²·B̄ / (B·σ) at t (exactly the lift's normal & the offset oracle).
-function normalAt(t) {
+function normalAt(t: number) {
   const u = decomposeToBernstein({ knots: meta.sKnots, controlPoints: meta.sReCPs }).evaluate(t)
   const v = decomposeToBernstein({ knots: meta.sKnots, controlPoints: meta.sImCPs }).evaluate(t)
   const bRe = decomposeToBernstein({ knots: meta.knots, controlPoints: meta.bReCPs }).evaluate(t)
@@ -34,7 +33,7 @@ function normalAt(t) {
   return { nx: (numRe * bRe + numIm * bIm) / (sigma * W), ny: (numIm * bRe - numRe * bIm) / (sigma * W) }
 }
 
-const close = (a, b, tol = 1e-6) => expect(Math.abs(a - b)).toBeLessThan(tol)
+const close = (a: number, b: number, tol = 1e-6) => expect(Math.abs(a - b)).toBeLessThan(tol)
 
 describe('planar Lie-sphere curve converter (exact, symbolic Bernstein)', () => {
   it('identity reproduces the original curve', () => {

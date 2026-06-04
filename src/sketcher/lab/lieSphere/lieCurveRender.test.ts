@@ -1,8 +1,8 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest'
 import { createABPHFromTwoPoints, evaluateABPHCurveAtParam } from '../../optimizer/abPHCurve'
 import { evaluateCurve } from '../../utils/bspline/core'
 import { abPHToLieCurve, identity5, scaling5, offset5, compose5 } from './lieCurve2D'
+import type { Curve } from '../../types/curve'
 
 // The OUTPUT curve (a fitted rational NURBS) must RENDER correctly — i.e.
 // evaluateCurve on the produced control points/knots reproduces the transform.
@@ -10,10 +10,10 @@ import { abPHToLieCurve, identity5, scaling5, offset5, compose5 } from './lieCur
 const meta = createABPHFromTwoPoints(0, 0, 100, 40).metadata
 const U = [0.07, 0.2, 0.35, 0.5, 0.65, 0.8, 0.93]
 
-function asCurve(res) {
-  return { kind: 'rational', degree: res.degree, knots: res.knots, controlPoints: res.controlPoints, closed: false }
+function asCurve(res: ReturnType<typeof abPHToLieCurve>): Curve {
+  return { id: 'test', kind: 'rational', degree: res.degree, knots: res.knots, controlPoints: res.controlPoints, closed: false }
 }
-const close = (a, b, t = 1e-4) => expect(Math.abs(a - b)).toBeLessThan(t)
+const close = (a: number, b: number, t = 1e-4) => expect(Math.abs(a - b)).toBeLessThan(t)
 
 describe('abPHToLieCurve renders correctly', () => {
   it('identity output coincides with the original curve', () => {
