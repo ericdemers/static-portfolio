@@ -334,14 +334,25 @@ export default function LabLieSphere() {
             <ambientLight intensity={0.45} />
             <directionalLight position={[3, 4, 5]} intensity={0.8} />
             <directionalLight position={[-3, -2, -3]} intensity={0.3} />
-            {meridian.length > 0 && (
-              <RevolutionSurface
-                meridian={meridian}
-                ridgeIndices={ridgeIndices}
-                transform={transform}
-              />
-            )}
-            {nurbs && <ControlNet nurbs={nurbs} />}
+            {/* Display-only 180° ROTATION about the horizontal X axis through the
+                surface centre (z = zMid). The surface is built z-up but the 2D
+                meridian editor is Y-down, so without this it reads upside-down vs
+                the curve. A rotation (not a z-reflection) leaves the surface math
+                and its handedness untouched under Lie transforms. Pivot at the
+                centre (nested translate/rotate/translate) so the camera stays
+                framed. */}
+            <group position={[0, 0, cameraInit.target[2]]} rotation-x={Math.PI}>
+              <group position={[0, 0, -cameraInit.target[2]]}>
+                {meridian.length > 0 && (
+                  <RevolutionSurface
+                    meridian={meridian}
+                    ridgeIndices={ridgeIndices}
+                    transform={transform}
+                  />
+                )}
+                {nurbs && <ControlNet nurbs={nurbs} />}
+              </group>
+            </group>
             <TrackballControls target={cameraInit.target} />
           </Canvas>
 
