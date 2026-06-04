@@ -1,14 +1,12 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
-// Being migrated to core/ incrementally; remove this once a file is on core.
 import { create } from 'zustand'
-import type { Curve, CurveKind, Point2D, Point3D, Curve3D, DrawingTool, HistoryEntry, PHMetadataAny } from '../types/curve'
+import type { Curve, CurveKind, Point2D, Point3D, Curve3D, DrawingTool, HistoryEntry, PHMetadataAny, ComplexPoint } from '../types/curve'
 import type { FairnessEnergyType } from '../lab/optimizer/jerkEnergy'
 import { computeRegionPreview, defaultEnergyForDegree, type SmoothMode } from '../utils/regionSmooth'
 import { createBSpline, elevateDegree, insertKnot, moveKnot, removeKnot, getControlPointsAsPoints, toRationalBSpline, toComplexRationalBSpline, toBSpline, periodicKnotsWithJunction, uniformPeriodicKnots, generateCurveId, findKnotSpan, isClampedEndKnot } from '../utils/bspline'
 import { createLine, createCircularArc, createFullCircle } from '../utils/shapes'
-import { createDefaultSpiral, createSpiralFromTwoPoints, computePHCurveFromUV, computePHOffset, type PHMetadata, type ComplexRationalPHMetadata } from '../optimizer/phCurve'
-import { createComplexRationalPHFromTwoPoints, createStraightComplexRationalPH } from '../optimizer/complexRationalPHCurve'
-import { createABPHFromTwoPoints, createStraightABPH, computeABPHCurve, computeABPHOffset, applyMobiusToABPH, convertComplexPointsToAB, type ABPHMetadata, evaluateABPHNormal, evaluateABPHCurveAtParam } from '../optimizer/abPHCurve'
+import { createSpiralFromTwoPoints, computePHCurveFromUV, computePHOffset, type PHMetadata, type ComplexRationalPHMetadata } from '../optimizer/phCurve'
+import { createStraightComplexRationalPH } from '../optimizer/complexRationalPHCurve'
+import { computeABPHCurve, computeABPHOffset, applyMobiusToABPH, convertComplexPointsToAB, type ABPHMetadata } from '../optimizer/abPHCurve'
 import { createRealRationalPHFromTwoPoints, computeRealRationalPHCurve, computeRealRationalPHOffset, type RealRationalPHMetadata } from '../optimizer/realRationalPHCurve'
 import { insertKnot1D, elevateDegree1D, removeKnot1D } from '../optimizer/phBSplineOps'
 import { weightedAveragePhi, threeArcPointsFromNoisyPoints, circleArcFromThreePoints, type CircleArcGeometry } from '../utils/circleArc'
@@ -36,7 +34,7 @@ import {
   getProjectiveReferencePoints,
 } from '../utils/transforms'
 import { type OrientedLine, computeLaguerreMatrix, applyLaguerreToABPH } from '../optimizer/laguerrePH'
-import { laguerreWidgetFromBBox, linesToHandlePoints, handlePointsToLines, orientedLineFromPoints } from '../utils/laguerreWidget'
+import { laguerreWidgetFromBBox, linesToHandlePoints, handlePointsToLines } from '../utils/laguerreWidget'
 import { elevateDegreeBy1BSpline3D } from '../utils/curve3d'
 
 // Snap threshold for closing curves (in screen pixels)
@@ -131,6 +129,8 @@ interface SketcherState {
   resetGenerate: () => void
   doneGenerate: () => void
   cancelGenerate: () => void
+  /** Internal: recompute the live Generate (Lie-transform) preview curve. */
+  _refreshGeneratePreview: () => void
 
   // Transform widget
   transformActive: boolean
@@ -251,8 +251,8 @@ const MAX_HISTORY = 50
 // points are F_i/D_i with weights D_i, so A_i = F_i (= pos·weight) and B_i = D_i,
 // and the stored S is the generator. This adapter lets Generate / offset work on
 // both representations. Returns the metadata unchanged for an AB curve.
-function abShapeForGenerate(curve, meta) {
-  if (!meta || meta.kind === 'ab-complex-rational') return meta
+function abShapeForGenerate(curve: Curve, meta: PHMetadataAny): ABPHMetadata {
+  if (meta.kind === 'ab-complex-rational') return meta
   if (meta.kind === 'complex-rational') {
     const { aRe, aIm, bRe, bIm } = convertComplexPointsToAB(curve.controlPoints as ComplexPoint[])
     return {
@@ -263,7 +263,9 @@ function abShapeForGenerate(curve, meta) {
       knots: curve.knots, sKnots: meta.sKnots,
     }
   }
-  return meta
+  // Generate/offset only run on ab/complex-rational curves (callers guard on
+  // meta.kind); polynomial/real-rational PH can't be expressed as an AB shape.
+  throw new Error(`abShapeForGenerate: unsupported metadata kind '${meta.kind}'`)
 }
 
 function createHistoryEntry(curves: Curve[], spatialCurves: Curve3D[], selectedCurveId: string | null, phMetadata: Map<string, PHMetadataAny>): HistoryEntry {
@@ -656,6 +658,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
             ...(result.wrapWeight ? { wrapWeight: result.wrapWeight } : {}),
           }
         }
+        return c // unreachable (kinds above are exhaustive); satisfies the Curve return type
       }),
     }))
   },
@@ -1169,9 +1172,12 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     const M = compose5(g.denorm, g.accumulated, liePoint5(g.coeffs), g.norm)
     const res = abPHToLieCurve(abShapeForGenerate(origCurve, meta), M)
     set((s) => ({
-      curves: s.curves.map((c) =>
+      curves: s.curves.map((c): Curve =>
+        // The preview is always a fresh open rational curve — build it explicitly
+        // rather than spreading c (whose complex-rational fields, e.g. a {re,im}
+        // wrapWeight, would conflict with the rational shape).
         c.id === g.previewCurveId
-          ? { ...c, kind: 'rational', degree: res.degree, knots: res.knots, controlPoints: res.controlPoints }
+          ? { id: c.id, kind: 'rational', degree: res.degree, knots: res.knots, controlPoints: res.controlPoints, closed: false }
           : c,
       ),
     }))
@@ -1181,11 +1187,12 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     const meta = get().phMetadata.get(curveId)
     if (!meta || (meta.kind !== 'ab-complex-rational' && meta.kind !== 'complex-rational')) return
     const curve = get().curves.find((c) => c.id === curveId)
+    if (!curve) return
     // Centre + unit-scale similarity from the curve's bounding box, so the Lie
     // generators act at unit scale (uniform slider sensitivity).
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
     for (const p of curve.controlPoints) {
-      const x = p.re ?? p.x, y = p.im ?? p.y
+      const x = 're' in p ? p.re : p.x, y = 'im' in p ? p.im : p.y
       minX = Math.min(minX, x); maxX = Math.max(maxX, x)
       minY = Math.min(minY, y); maxY = Math.max(maxY, y)
     }
@@ -1196,7 +1203,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
 
     const previewCurveId = generateCurveId()
     const res = abPHToLieCurve(abShapeForGenerate(curve, meta), identity5())
-    const preview = {
+    const preview: Curve = {
       id: previewCurveId, kind: 'rational', degree: res.degree,
       knots: res.knots, controlPoints: res.controlPoints, closed: false,
     }
@@ -1248,8 +1255,8 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     // Snapshot the drag-start control points — used as the anchor (drift
     // resistance) when anchorWeight > 0.
     set({
-      dragStartCPsX: cps.map((p) => p.x),
-      dragStartCPsY: cps.map((p) => p.y),
+      dragStartCPsX: cps.map((p) => ('re' in p ? p.re : p.x)),
+      dragStartCPsY: cps.map((p) => ('im' in p ? p.im : p.y)),
     })
   },
   clearDragStartCPs: () => set({ dragStartCPsX: null, dragStartCPsY: null }),
