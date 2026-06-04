@@ -412,14 +412,26 @@ export function curvatureExtremaGradientPlanarPeriodicLocal(
   const X3 = X2.derivative()
   const Y3 = Y2.derivative()
 
-  const g = gOverDuals(
-    new Dual(X1, zeroLike(X1)),
-    new Dual(Y1, zeroLike(Y1)),
-    new Dual(X2, zeroLike(X2)),
-    new Dual(Y2, zeroLike(Y2)),
-    new Dual(X3, zeroLike(X3)),
-    new Dual(Y3, zeroLike(Y3)),
-  ).v
+  // Shared value polynomials — computed ONCE per build, not once per control
+  // point. (The per-column AD re-derived these 12× over.) g = ‖c′‖²(c′×c‴) −
+  // 3(c′·c″)(c′×c″).
+  const cross1 = X1.multiply(Y2).subtract(Y1.multiply(X2)) // c′ × c″
+  const dotP = X1.multiply(X2).add(Y1.multiply(Y2)) // c′ · c″
+  const cross2 = X1.multiply(Y3).subtract(Y1.multiply(X3)) // c′ × c‴
+  const normSq = X1.multiply(X1).add(Y1.multiply(Y1)) // ‖c′‖²
+  const g = normSq.multiply(cross2).subtract(dotP.multiply(cross1).scale(3))
+
+  // Analytic partials ∂g/∂{X1,Y1,X2,Y2,X3,Y3}, treating the six derivative fields
+  // as independent (also once per build). Then dg/dPᵢ = Σ (∂g/∂field)·(∂field/∂Pᵢ)
+  // where ∂Xₖ/∂Pᵢ,ₓ = Nᵢ⁽ᵏ⁾ — the chain rule, with the seed derivatives
+  // precomputed. This is forward-mode AD with the value work hoisted out of the
+  // per-column loop; bit-equal (to round-off) with the dense oracle gradient.
+  const pX1 = X1.scale(2).multiply(cross2).add(normSq.multiply(Y3)).subtract(X2.multiply(cross1).add(dotP.multiply(Y2)).scale(3))
+  const pY1 = Y1.scale(2).multiply(cross2).subtract(normSq.multiply(X3)).subtract(Y2.multiply(cross1).subtract(dotP.multiply(X2)).scale(3))
+  const pX2 = X1.multiply(cross1).subtract(dotP.multiply(Y1)).scale(-3)
+  const pY2 = Y1.multiply(cross1).add(dotP.multiply(X1)).scale(-3)
+  const pX3 = normSq.multiply(Y1).scale(-1)
+  const pY3 = normSq.multiply(X1)
 
   const numSpans = seeds.numSpans
   const spanDegree = g.degree
@@ -431,22 +443,12 @@ export function curvatureExtremaGradientPlanarPeriodicLocal(
     const n1 = seeds.n1[i]
     const n2 = seeds.n2[i]
     const n3 = seeds.n3[i]
-    const x1 = gatherSpans(X1, spans)
-    const y1 = gatherSpans(Y1, spans)
-    const x2 = gatherSpans(X2, spans)
-    const y2 = gatherSpans(Y2, spans)
-    const x3 = gatherSpans(X3, spans)
-    const y3 = gatherSpans(Y3, spans)
-    const gx = gOverDuals(
-      new Dual(x1, n1), new Dual(y1, zeroLike(y1)),
-      new Dual(x2, n2), new Dual(y2, zeroLike(y2)),
-      new Dual(x3, n3), new Dual(y3, zeroLike(y3)),
-    ).t
-    const gy = gOverDuals(
-      new Dual(x1, zeroLike(x1)), new Dual(y1, n1),
-      new Dual(x2, zeroLike(x2)), new Dual(y2, n2),
-      new Dual(x3, zeroLike(x3)), new Dual(y3, n3),
-    ).t
+    const gx = gatherSpans(pX1, spans).multiply(n1)
+      .add(gatherSpans(pX2, spans).multiply(n2))
+      .add(gatherSpans(pX3, spans).multiply(n3))
+    const gy = gatherSpans(pY1, spans).multiply(n1)
+      .add(gatherSpans(pY2, spans).multiply(n2))
+      .add(gatherSpans(pY3, spans).multiply(n3))
     dx.push(scatterSpans(gx, spans, numSpans, spanDegree, g.breaks))
     dy.push(scatterSpans(gy, spans, numSpans, spanDegree, g.breaks))
   }
@@ -528,10 +530,9 @@ export function inflectionGradientPlanarPeriodicLocal(
   const Y1 = decomposeToBernsteinPeriodic(y, knots, degree).derivative()
   const X2 = X1.derivative()
   const Y2 = Y1.derivative()
-  const g = fOverDuals(
-    new Dual(X1, zeroLike(X1)), new Dual(Y1, zeroLike(Y1)),
-    new Dual(X2, zeroLike(X2)), new Dual(Y2, zeroLike(Y2)),
-  ).v
+  // f = c′ × c″ = X1·Y2 − Y1·X2. Partials: ∂f/∂X1=Y2, ∂f/∂Y1=−X2,
+  // ∂f/∂X2=−Y1, ∂f/∂Y2=X1 (each computed once; chain-ruled per column).
+  const g = X1.multiply(Y2).subtract(Y1.multiply(X2))
 
   const numSpans = seeds.numSpans
   const spanDegree = g.degree
@@ -542,12 +543,9 @@ export function inflectionGradientPlanarPeriodicLocal(
     const spans = seeds.spans[i]
     const n1 = seeds.n1[i]
     const n2 = seeds.n2[i]
-    const x1 = gatherSpans(X1, spans)
-    const y1 = gatherSpans(Y1, spans)
-    const x2 = gatherSpans(X2, spans)
-    const y2 = gatherSpans(Y2, spans)
-    const gx = fOverDuals(new Dual(x1, n1), new Dual(y1, zeroLike(y1)), new Dual(x2, n2), new Dual(y2, zeroLike(y2))).t
-    const gy = fOverDuals(new Dual(x1, zeroLike(x1)), new Dual(y1, n1), new Dual(x2, zeroLike(x2)), new Dual(y2, n2)).t
+    // dx = Y2·Nᵢ′ + (−Y1)·Nᵢ″ ; dy = (−X2)·Nᵢ′ + X1·Nᵢ″
+    const gx = gatherSpans(Y2, spans).multiply(n1).subtract(gatherSpans(Y1, spans).multiply(n2))
+    const gy = gatherSpans(X1, spans).multiply(n2).subtract(gatherSpans(X2, spans).multiply(n1))
     dx.push(scatterSpans(gx, spans, numSpans, spanDegree, g.breaks))
     dy.push(scatterSpans(gy, spans, numSpans, spanDegree, g.breaks))
   }

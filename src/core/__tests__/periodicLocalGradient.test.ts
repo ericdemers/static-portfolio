@@ -26,32 +26,41 @@ function makeOval(a: number, b: number, p1x: number, p1y: number, p2x: number, p
 }
 const OVAL = makeOval(179.0609926, 213.3017254, 156.1043674, 118.2907758, 87.2324738, 189.5488809)
 
-function maxColumnDiff(
+// Max RELATIVE difference (abs diff / max |coeff|). The local gradients compute
+// the same partials as the dense oracle but with the value work hoisted out of
+// the per-column loop (shared once) and combined via the analytic chain rule, so
+// the floating-point operation ORDER differs — the result is identical to
+// round-off, not bit-for-bit. g's coefficients span ~1e14, so we compare
+// relative, not absolute.
+function maxRelDiff(
   dense: PlanarCurvatureGradient,
   local: PlanarCurvatureGradient,
   n: number,
 ): number {
   let d = 0
+  let scale = 0
   const cmp = (a: BernsteinDecomposition, b: BernsteinDecomposition) => {
     for (let s = 0; s < a.coeffs.length; s++)
-      for (let c = 0; c < a.coeffs[s].length; c++)
+      for (let c = 0; c < a.coeffs[s].length; c++) {
         d = Math.max(d, Math.abs(a.coeffs[s][c] - b.coeffs[s][c]))
+        scale = Math.max(scale, Math.abs(a.coeffs[s][c]))
+      }
   }
   cmp(dense.g, local.g)
   for (let i = 0; i < n; i++) { cmp(dense.dx[i], local.dx[i]); cmp(dense.dy[i], local.dy[i]) }
-  return d
+  return scale > 0 ? d / scale : d
 }
 
-describe('local periodic gradients bit-match the dense oracle', () => {
-  it('curvature gradient — Oval (deg 3, 12 CPs), exact', () => {
+describe('local periodic gradients match the dense oracle (to round-off)', () => {
+  it('curvature gradient — Oval (deg 3, 12 CPs)', () => {
     const K = Array.from({ length: 12 }, (_, i) => i / 12)
     const x = OVAL.map((p) => p.x), y = OVAL.map((p) => p.y)
-    const diff = maxColumnDiff(
+    const rel = maxRelDiff(
       curvatureExtremaGradientPlanarPeriodic(x, y, K, 3),
       curvatureExtremaGradientPlanarPeriodicLocal(x, y, K, 3),
       12,
     )
-    expect(diff).toBe(0)
+    expect(rel).toBeLessThan(1e-12) // ≈ machine epsilon; observed ~3e-17
   })
 
   it('curvature + inflection gradients — random periodic curves (deg 3 & 4)', () => {
@@ -60,19 +69,18 @@ describe('local periodic gradients bit-match the dense oracle', () => {
     for (const [n, deg] of [[8, 3], [10, 3], [7, 4], [12, 4], [16, 3]] as [number, number][]) {
       const K = Array.from({ length: n }, (_, i) => i / n)
       const x = Array.from({ length: n }, rnd), y = Array.from({ length: n }, rnd)
-      const cg = maxColumnDiff(
+      const cg = maxRelDiff(
         curvatureExtremaGradientPlanarPeriodic(x, y, K, deg),
         curvatureExtremaGradientPlanarPeriodicLocal(x, y, K, deg),
         n,
       )
-      const fg = maxColumnDiff(
+      const fg = maxRelDiff(
         inflectionGradientPlanarPeriodic(x, y, K, deg),
         inflectionGradientPlanarPeriodicLocal(x, y, K, deg),
         n,
       )
-      // Same per-span arithmetic, so equal to floating-point round-off (zero in practice).
-      expect(cg).toBeLessThan(1e-6)
-      expect(fg).toBeLessThan(1e-6)
+      expect(cg).toBeLessThan(1e-12)
+      expect(fg).toBeLessThan(1e-12)
     }
   })
 })
