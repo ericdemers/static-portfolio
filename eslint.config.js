@@ -20,4 +20,26 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  // Architecture boundary (see ARCHITECTURE.md): the reference engine (core/),
+  // the talk deck (talks/) and the page shell (pages/) must NOT import from the
+  // production editor (sketcher/). The composition root src/App.tsx wires the
+  // sketcher pages via lazy() dynamic import and is intentionally outside this
+  // zone. Machine-enforces what was previously review-vigilance only.
+  {
+    files: ['src/core/**/*.{ts,tsx}', 'src/talks/**/*.{ts,tsx}', 'src/pages/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/sketcher', '**/sketcher/**'],
+              message:
+                'Architecture boundary: core/, talks/ and pages/ must not import from sketcher/. See ARCHITECTURE.md.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ])
