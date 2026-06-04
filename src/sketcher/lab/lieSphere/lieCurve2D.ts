@@ -29,6 +29,14 @@ export function identity5(): Mat5 {
   return Array.from({ length: 5 }, (_, i) => Array.from({ length: 5 }, (_, j) => (i === j ? 1 : 0)))
 }
 
+/** Whether M is the identity (to a small tolerance) — i.e. "no transform". */
+export function isIdentityMat5(M: Mat5, tol = 1e-9): boolean {
+  for (let i = 0; i < 5; i++)
+    for (let j = 0; j < 5; j++)
+      if (Math.abs(M[i][j] - (i === j ? 1 : 0)) > tol) return false
+  return true
+}
+
 export function matMul5(A: Mat5, B: Mat5): Mat5 {
   const C = Array.from({ length: 5 }, () => new Array(5).fill(0))
   for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) { let s = 0; for (let k = 0; k < 5; k++) s += A[i][k] * B[k][j]; C[i][j] = s }

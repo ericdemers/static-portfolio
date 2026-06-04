@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Curve, CurveKind, Point2D, Point3D, Curve3D, DrawingTool, HistoryEntry, PHMetadataAny, ComplexPoint } from '../types/curve'
+import type { Curve, CurveKind, Point2D, Point3D, Curve3D, DrawingTool, HistoryEntry, PHMetadataAny, ComplexPoint, WeightedPoint2D } from '../types/curve'
 import type { FairnessEnergyType } from '../lab/optimizer/jerkEnergy'
 import { computeRegionPreview, defaultEnergyForDegree, type SmoothMode } from '../utils/regionSmooth'
 import { createBSpline, elevateDegree, insertKnot, moveKnot, removeKnot, getControlPointsAsPoints, toRationalBSpline, toComplexRationalBSpline, toBSpline, periodicKnotsWithJunction, uniformPeriodicKnots, generateCurveId, findKnotSpan, isClampedEndKnot } from '../utils/bspline'
@@ -14,7 +14,7 @@ import { optimizeCurve, applyOptimizeResult, applyOptimizeRationalResult, optimi
 // MIGRATION: open planar B-spline curvature-extrema drag now runs on the clean
 // core/ engine. Closed bsplines (periodic-junction knots) + rational stay on
 // the legacy optimizer until core covers those conventions.
-import { abPHToLieCurve, identity5, compose5, scaling5, translation5 } from '../lab/lieSphere/lieCurve2D'
+import { abPHToLieCurve, identity5, isIdentityMat5, compose5, scaling5, translation5, type Mat5 } from '../lab/lieSphere/lieCurve2D'
 import { liePoint5, SHAPE_GENERATORS } from '../lab/lieSphere/lieAlgebra2D'
 import { computeRationalFarinPoints, updateWeightsFromRationalFarin, updateWeightsFromComplexFarin, projectPointOntoEdge, moveComplexControlPointKeepingFarinFixed, initializeFarinPositionsFromComplexWeights } from '../utils/farinPoints'
 import { csub, cmult, cdiv, cnorm, type Complex } from '../utils/complex'
@@ -268,6 +268,26 @@ function abShapeForGenerate(curve: Curve, meta: PHMetadataAny): ABPHMetadata {
   // Generate/offset only run on ab/complex-rational curves (callers guard on
   // meta.kind); polynomial/real-rational PH can't be expressed as an AB shape.
   throw new Error(`abShapeForGenerate: unsupported metadata kind '${meta.kind}'`)
+}
+
+// The Generate preview curve (a real rational NURBS) for a given Lie transform M.
+// At the IDENTITY (all sliders at 0) the image is just the original curve, so we
+// use the EXACT complex→real-rational conversion (z = Z·W̄/|W|², degree 2n) — a
+// clean control polygon (weights = |W|² coefficients, control points hugging the
+// curve). The lift+fit path (abPHToLieCurve) is ill-conditioned at degree 2n
+// (negative weights, far-flung control points) and is only needed for a genuine,
+// non-identity transform.
+function generatePreviewGeom(
+  curve: Curve,
+  meta: PHMetadataAny,
+  M: Mat5,
+): { controlPoints: WeightedPoint2D[]; knots: number[]; degree: number } {
+  if (isIdentityMat5(M)) {
+    const r = toRationalBSpline(curve) // complex-rational → exact real rational
+    return { controlPoints: r.controlPoints as WeightedPoint2D[], knots: r.knots, degree: r.degree }
+  }
+  const res = abPHToLieCurve(abShapeForGenerate(curve, meta), M)
+  return { controlPoints: res.controlPoints, knots: res.knots, degree: res.degree }
 }
 
 function createHistoryEntry(curves: Curve[], spatialCurves: Curve3D[], selectedCurveId: string | null, phMetadata: Map<string, PHMetadataAny>): HistoryEntry {
@@ -1172,7 +1192,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     // Conjugate by the normalize/denormalize similarity so the generators act
     // on the unit-scale, origin-centred curve (uniform, sensible slider feel).
     const M = compose5(g.denorm, g.accumulated, liePoint5(g.coeffs), g.norm)
-    const res = abPHToLieCurve(abShapeForGenerate(origCurve, meta), M)
+    const res = generatePreviewGeom(origCurve, meta, M)
     set((s) => ({
       curves: s.curves.map((c): Curve =>
         // The preview is always a fresh open rational curve — build it explicitly
@@ -1204,7 +1224,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     const denorm = compose5(translation5(cx, cy), scaling5(L))
 
     const previewCurveId = generateCurveId()
-    const res = abPHToLieCurve(abShapeForGenerate(curve, meta), identity5())
+    const res = generatePreviewGeom(curve, meta, identity5())
     const preview: Curve = {
       id: previewCurveId, kind: 'rational', degree: res.degree,
       knots: res.knots, controlPoints: res.controlPoints, closed: false,
