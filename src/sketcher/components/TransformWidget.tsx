@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 import { useMemo } from 'react'
 import type { Point2D } from '../types/curve'
@@ -139,7 +138,6 @@ function MobiusWidget({
 }
 
 const LINE_COLORS = ['#4ecdc4', '#ff6b6b', '#fbbf24']
-const ROTATION_HANDLE_DISTANCE = 70
 
 function LaguerreWidget({
   points,

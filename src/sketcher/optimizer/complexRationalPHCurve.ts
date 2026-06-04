@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 /**
  * Complex Rational PH Curve Support
@@ -15,7 +14,7 @@
  */
 
 import type { ComplexPoint } from '../types/curve'
-import { type Complex, cmult, cdiv, cnorm, csub } from '../utils/complex'
+import { type Complex, cmult, cdiv, cnorm } from '../utils/complex'
 import {
   decomposeToBernstein,
   integrateBD,
@@ -27,11 +26,8 @@ import {
   type ComplexBD,
   complexBDMul,
   complexBDSub,
-  complexBDAdd,
-  complexBDScale,
-  zeroBD,
 } from './complexAlgebra'
-import type { ComplexRationalPHMetadata, ComplexRationalPHCurveResult } from './phCurve'
+import type { ComplexRationalPHCurveResult } from './phCurve'
 
 // ============================================================================
 // Forward Pipeline: (S, D) → Curve CPs
@@ -207,15 +203,12 @@ export function computeComplexRationalPHFromSD(
   const fImSpline = recomposeBD(fImBD)
 
   // Build D with matching knot vector — degree-elevate D to match F's degree for the curve
-  const dReSpline = recomposeBD(dBD.re)
-  const dImSpline = recomposeBD(dBD.im)
 
   // The curve degree is fDegree (since F and D may have different degrees,
   // the complex rational curve degree is max(fDegree, dDegree))
   // But for ComplexPoint representation, we need matching knot vectors.
   // Use the F knot vector and degree-elevate D to match.
   const fNumCPs = fReSpline.controlPoints.length
-  const dNumCPs = dReSpline.controlPoints.length
 
   // For now, use the simpler approach: evaluate F/D at the F knot spans
   const controlPoints: ComplexPoint[] = []
@@ -313,8 +306,6 @@ function solveFBernsteinCoeffs(
   const fIm: number[] = [f0Im]
 
   // Evaluate D at equispaced parameter values for Bernstein coefficient computation
-  const dDeg = dReCoeffs.length - 1
-  const hDeg = hReCoeffs.length - 1
 
   for (let k = 0; k < n; k++) {
     // Parameter at Bernstein node k
@@ -388,11 +379,11 @@ export function computeWronskianResidual(
   uCPs: number[],
   vCPs: number[],
   sKnots: number[],
-  sDegree: number,
+  _sDegree: number,
   dReCPs: number[],
   dImCPs: number[],
   dKnots: number[],
-  dDegree: number,
+  _dDegree: number,
   fReCPs: number[],
   fImCPs: number[],
   fKnots: number[],

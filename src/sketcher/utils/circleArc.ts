@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 import type { Point2D } from '../types/curve'
 
@@ -94,7 +93,6 @@ export function circleArcFromThreePoints(
 
   const r = Math.sqrt((p0.x - center.x) ** 2 + (p0.y - center.y) ** 2)
   const startAngle = Math.atan2(p0.y - center.y, p0.x - center.x)
-  const midAngle = Math.atan2(p1.y - center.y, p1.x - center.x)
   const endAngle = Math.atan2(p2.y - center.y, p2.x - center.x)
 
   // Determine direction from the cross product of the three points.

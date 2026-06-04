@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,7 +7,7 @@ import { computeRegionPreview } from '../utils/regionSmooth'
 import { basisFunctions, findKnotSpan, isClampedEndKnot, isPeriodicRepresentation, periodicBasisFunctions, findPeriodicKnotSpan } from '../utils/bspline'
 import { curvatureComb } from '../utils/curvature'
 import { getBasisColor } from '../utils/colors'
-import { computeOpenCurveConstraintState, computeClosedCurveConstraintState, computeRationalCurveConstraintState, computeClosedRationalCurveConstraintState, computeComplexCurvatureConstraintState, computeOpenComplexCurvatureConstraintState, computeCurvatureExtremaParameters } from '../optimizer'
+import { computeClosedCurveConstraintState, computeRationalCurveConstraintState, computeClosedRationalCurveConstraintState, computeComplexCurvatureConstraintState, computeOpenComplexCurvatureConstraintState, computeCurvatureExtremaParameters } from '../optimizer'
 // Open planar B-spline: the displayed bound S and the marker count come from
 // core/ (what the core optimizer actually preserves), not the legacy code —
 // which computed them on a different g decomposition and could drift.
@@ -642,7 +641,6 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
     setSmoothMode, setSmoothIterations,
     disableSliding,
   } = useSceneStore()
-  const isOpenBspline = curve.kind === 'bspline' && !curve.closed
 
   const kSvgRef = useRef<SVGSVGElement>(null)
   const dragIdx = useRef<number | null>(null)
