@@ -19,7 +19,7 @@
 // with homogeneous point (X,Y,W)=(Re(A B̄),Im(A B̄),|B|²), σ=|S|², for z=A/B, gen S.
 import { decomposeToBernstein } from '../../optimizer/algebra'
 import type { BernsteinDecomposition } from '../../optimizer/algebra'
-import { fitRealRational } from './rationalFit'
+import { fitRealRational, evalRealRational, elevateRealRational, normalizeRealRationalWeights, type RealRationalCurve, type RealSample } from './rationalFit'
 import type { ABPHMetadata } from '../../optimizer/abPHCurve'
 import type { WeightedPoint2D } from '../../types/curve'
 
@@ -169,18 +169,52 @@ export function lieCurveHomogeneous(meta: ABPHMetadata, M: Mat5): { X: Bernstein
  */
 export function abPHToLieCurve(meta: ABPHMetadata, M: Mat5): { controlPoints: WeightedPoint2D[]; knots: number[]; degree: number } {
   const h = lieCurveHomogeneous(meta, M)
-  const degree = 2 * meta.degree
-  const m = Math.max(2 * degree + 6, 24)
-  const samples = []
-  for (let k = 0; k < m; k++) {
-    const u = (k + 0.5) / m
-    const w = h.W.evaluate(u)
-    samples.push({ u, x: h.X.evaluate(u) / w, y: h.Y.evaluate(u) / w })
-  }
-  const fit = fitRealRational(samples, degree)
+  const evalPt = (u: number) => { const w = h.W.evaluate(u); return { x: h.X.evaluate(u) / w, y: h.Y.evaluate(u) / w } }
+  const target = 2 * meta.degree // the worst-case (PH-offset) degree bound
 
-  const controlPoints = []
-  for (let i = 0; i <= degree; i++) {
+  // Fit at degree d from point + central-difference unit-tangent samples (the G¹
+  // constraints + minimal degree give a unique, well-conditioned, positive-weight
+  // fit). FD is plenty for a tangent DIRECTION (the analytic BD has no derivative
+  // accessor here).
+  const fd = 1e-5
+  const fitAt = (d: number): RealRationalCurve => {
+    const m = Math.max(2 * d + 6, 16)
+    const samples: RealSample[] = []
+    for (let k = 0; k < m; k++) {
+      const u = (k + 0.5) / m
+      const p = evalPt(u)
+      const pa = evalPt(Math.max(0, u - fd)), pb = evalPt(Math.min(1, u + fd))
+      const tx0 = pb.x - pa.x, ty0 = pb.y - pa.y
+      const tn = Math.hypot(tx0, ty0) || 1
+      samples.push({ u, x: p.x, y: p.y, tx: tx0 / tn, ty: ty0 / tn })
+    }
+    return fitRealRational(samples, d)
+  }
+  const relResidual = (c: RealRationalCurve): number => {
+    let r = 0, scale = 1
+    for (let k = 0; k <= 50; k++) {
+      const u = k / 50, t = evalPt(u), f = evalRealRational(c, u)
+      r = Math.max(r, Math.hypot(t.x - f.x, t.y - f.y))
+      scale = Math.max(scale, Math.abs(t.x), Math.abs(t.y))
+    }
+    return r / scale
+  }
+
+  // Detect the MINIMAL degree (residual drop). The Lie image is usually well below
+  // 2n (n for conformal transforms, ~7 for a Laguerre offset). Fitting AT the
+  // minimal degree is unique with positive weights; a direct fit at the inflated
+  // 2n is non-unique (an arbitrary common factor → negative weights). Then
+  // degree-ELEVATE back to 2n — unique and positivity-preserving — so we keep the
+  // 2n contract with a clean polygon. Finally normalize the weights toward uniform.
+  let fit = fitAt(target)
+  for (let d = 2; d <= target; d++) {
+    const f = fitAt(d)
+    if (relResidual(f) < 1e-7) { fit = f; break }
+  }
+  fit = normalizeRealRationalWeights(elevateRealRational(fit, target))
+
+  const controlPoints: WeightedPoint2D[] = []
+  for (let i = 0; i <= target; i++) {
     const w = fit.den[i]
     controlPoints.push({
       x: Math.abs(w) > 1e-300 ? fit.numX[i] / w : 0,
@@ -189,7 +223,7 @@ export function abPHToLieCurve(meta: ABPHMetadata, M: Mat5): { controlPoints: We
     })
   }
   const knots = []
-  for (let i = 0; i <= degree; i++) knots.push(0)
-  for (let i = 0; i <= degree; i++) knots.push(1)
-  return { controlPoints, knots, degree }
+  for (let i = 0; i <= target; i++) knots.push(0)
+  for (let i = 0; i <= target; i++) knots.push(1)
+  return { controlPoints, knots, degree: target }
 }
