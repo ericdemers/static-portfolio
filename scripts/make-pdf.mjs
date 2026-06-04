@@ -49,7 +49,7 @@ try {
     'decktape@3',
     'reveal',
     '--size',
-    '1600x900',
+    '1600x1200',
     '--load-pause',
     '1800', // let React + KaTeX + the canvas/SVG demos paint their initial state
     DECK_URL,
