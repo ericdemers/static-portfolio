@@ -242,6 +242,8 @@ interface SketcherState {
 
   // Utility
   clearAll: () => void
+  /** Replace the whole scene (from a loaded file). */
+  loadScene: (curves: Curve[], phMetadata: Map<string, PHMetadataAny>, spatialCurves: Curve3D[]) => void
 }
 
 const MAX_HISTORY = 50
@@ -2360,6 +2362,20 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
       selectedControlPointIndex: null,
       showHint: true,
       phMetadata: new Map<string, PHMetadata>(),
+    })
+    get().saveToHistory()
+  },
+
+  loadScene: (curves, phMetadata, spatialCurves) => {
+    set({
+      curves,
+      spatialCurves,
+      selectedCurveId: null,
+      selectedControlPointIndex: null,
+      selectedKnotIndex: null,
+      selectedFarinPointIndex: null,
+      showHint: curves.length === 0,
+      phMetadata: new Map(phMetadata),
     })
     get().saveToHistory()
   },

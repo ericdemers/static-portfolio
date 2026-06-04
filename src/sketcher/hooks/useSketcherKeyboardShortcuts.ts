@@ -1,9 +1,10 @@
-// Being migrated to core/ incrementally; remove this once a file is on core.
 import { useEffect } from 'react'
 import { useSceneStore } from '../store/sceneStore'
+import { serializeScene, downloadScene, defaultSceneFilename, pickAndLoadScene } from '../utils/sceneFile'
 
 export function useSketcherKeyboardShortcuts() {
-  const { undo, redo, selectedCurveId, selectedKnotIndex, deleteCurve, selectCurve, transformActive, cancelTransform } =
+  const { undo, redo, selectedCurveId, selectedKnotIndex, deleteCurve, selectCurve, transformActive, cancelTransform,
+    curves, phMetadata, spatialCurves, loadScene } =
     useSceneStore()
 
   useEffect(() => {
@@ -26,6 +27,18 @@ export function useSketcherKeyboardShortcuts() {
         redo()
       }
 
+      // Cmd/Ctrl + S = Save scene to a JSON file
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault()
+        downloadScene(serializeScene(curves, phMetadata, spatialCurves), defaultSceneFilename())
+      }
+
+      // Cmd/Ctrl + O = Load scene from a JSON file
+      if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
+        e.preventDefault()
+        pickAndLoadScene((s) => loadScene(s.curves, s.phMetadata, s.spatialCurves))
+      }
+
       // Escape = Cancel transform
       if (e.key === 'Escape' && transformActive) {
         e.preventDefault()
@@ -43,5 +56,6 @@ export function useSketcherKeyboardShortcuts() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [undo, redo, selectedCurveId, selectedKnotIndex, deleteCurve, selectCurve, transformActive, cancelTransform])
+  }, [undo, redo, selectedCurveId, selectedKnotIndex, deleteCurve, selectCurve, transformActive, cancelTransform,
+    curves, phMetadata, spatialCurves, loadScene])
 }

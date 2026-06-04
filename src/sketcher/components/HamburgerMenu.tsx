@@ -1,8 +1,8 @@
-// Being migrated to core/ incrementally; remove this once a file is on core.
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, type ChangeEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useSceneStore } from '../store/sceneStore'
+import { serializeScene, downloadScene, defaultSceneFilename, loadSceneFromFile } from '../utils/sceneFile'
 
 // Light mode isn't implemented yet — hide the theme toggle until it is.
 // Flip to true to re-enable the dark/light switch in the hamburger menu.
@@ -27,9 +27,21 @@ const availableLanguages = [
 
 export default function HamburgerMenu() {
   const { t, i18n } = useTranslation()
-  const { hamburgerOpen, setHamburgerOpen, toggleDarkMode, darkMode, clearAll } = useSceneStore()
+  const { hamburgerOpen, setHamburgerOpen, toggleDarkMode, darkMode, clearAll, curves, phMetadata, spatialCurves, loadScene } = useSceneStore()
   const menuRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [showLanguageMenu, setShowLanguageMenu] = useState(false)
+
+  const handleSave = () => {
+    downloadScene(serializeScene(curves, phMetadata, spatialCurves), defaultSceneFilename())
+    setHamburgerOpen(false)
+  }
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // let the same file be re-loaded
+    if (file) loadSceneFromFile(file, (s) => loadScene(s.curves, s.phMetadata, s.spatialCurves))
+    setHamburgerOpen(false)
+  }
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -61,6 +73,14 @@ export default function HamburgerMenu() {
 
   return (
     <div className="absolute top-3 left-3 z-50" ref={menuRef}>
+      {/* hidden file picker for Load */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/json,.json"
+        onChange={handleFileChange}
+        className="hidden"
+      />
       <button
         onClick={() => setHamburgerOpen(!hamburgerOpen)}
         className="w-10 h-10 flex items-center justify-center rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -101,10 +121,7 @@ export default function HamburgerMenu() {
 
           <button
             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-            onClick={() => {
-              // TODO: Implement load
-              setHamburgerOpen(false)
-            }}
+            onClick={() => fileInputRef.current?.click()}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -120,10 +137,7 @@ export default function HamburgerMenu() {
 
           <button
             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-            onClick={() => {
-              // TODO: Implement save
-              setHamburgerOpen(false)
-            }}
+            onClick={handleSave}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
