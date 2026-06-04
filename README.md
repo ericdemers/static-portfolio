@@ -3,6 +3,8 @@
 The [numericelements.com](https://numericelements.com) website — interactive
 B-spline curve design with control of curvature extrema.
 
+[![The sketcher b-spline editor — a degree-3 B-spline curve with its control polygon and live basis functions](docs/screenshot.png)](https://numericelements.com/sketcher)
+
 Try the B-spline sketcher editor → [**sketcher**&thinsp;<sup><small>b-spline</small></sup>](https://numericelements.com/sketcher)
 
 ## Stack
