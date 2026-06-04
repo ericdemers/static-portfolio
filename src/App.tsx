@@ -15,6 +15,9 @@ const Sketcher = lazy(() => import('./sketcher'))
 // editor + its revolved canal surface and Lie-transform sliders. Pulls in
 // three.js, so lazy-load it too.
 const LabLieSphere = lazy(() => import('./sketcher/pages/LabLieSphere'))
+// Minimal phone editor: draw a degree-3 B-spline, move control points, toggle
+// the curvature-extrema bound. Reuses the sketcher engine, so lazy-load it.
+const MobileSketch = lazy(() => import('./sketcher/pages/MobileSketch'))
 
 function Loading() {
   return <div className="min-h-screen bg-steelblue-900" />
@@ -33,6 +36,7 @@ export default function App() {
           <Route path="/talks" element={<Talks />} />
           <Route path="/talks/:slug" element={<Talk />} />
           <Route path="/sketcher" element={<Sketcher />} />
+          <Route path="/sketch" element={<MobileSketch />} />
           <Route path="/lab" element={<Lab />} />
           <Route path="/lab/lie-sphere" element={<LabLieSphere />} />
           <Route path="*" element={<ComingSoon />} />
