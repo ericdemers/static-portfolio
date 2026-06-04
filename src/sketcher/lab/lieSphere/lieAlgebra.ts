@@ -1,4 +1,3 @@
-// @ts-nocheck — ported from ../sketcher Lie Sphere lab (engine intact)
 /**
  * The Lie algebra o(4,2) and its exponential, for driving Lie sphere
  * transformations from sliders. dim O(4,2) = 15; the 8 *shape-changing*

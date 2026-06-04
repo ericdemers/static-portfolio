@@ -1,4 +1,3 @@
-// @ts-nocheck — ported from ../sketcher Lie Sphere lab (engine intact)
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import {

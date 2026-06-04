@@ -1,4 +1,3 @@
-// @ts-nocheck — ported from ../sketcher Lie Sphere lab (engine intact)
 /**
  * 2-D degree-targeted reduction: fit a rational tensor-product Bézier patch
  * (homogeneous control net) to the exactly-evaluable transformed surface.

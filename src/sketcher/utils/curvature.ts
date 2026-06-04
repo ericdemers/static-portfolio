@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 import type { Point2D, Curve } from '../types/curve'
 import { findKnotSpan, isPeriodicRepresentation, findPeriodicKnotSpan, periodicKnotAt, periodicControlPointAt } from './bspline'

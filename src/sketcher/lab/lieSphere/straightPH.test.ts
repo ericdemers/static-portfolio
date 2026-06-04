@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest'
 import { createStraightABPH, evaluateABPHCurveAtParam } from '../../optimizer/abPHCurve'
 import { abPHToLieCurve, lieCurveHomogeneous, identity5 } from './lieCurve2D'

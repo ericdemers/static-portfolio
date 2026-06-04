@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 import type { Point2D, Curve, ComplexRationalBSplineCurve } from '../types/curve'
 import { createBSpline, generateCurveId } from './bspline'

@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 // Farin point computation and weight manipulation for rational B-splines
 // Farin points provide a geometric interface for controlling curve weights

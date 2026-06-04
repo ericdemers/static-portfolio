@@ -1,4 +1,3 @@
-// @ts-nocheck — ported from ../sketcher Lie Sphere lab (engine intact)
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Canvas, useThree } from '@react-three/fiber'

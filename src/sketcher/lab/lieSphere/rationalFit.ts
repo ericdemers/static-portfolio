@@ -1,4 +1,3 @@
-// @ts-nocheck — ported from ../sketcher Lie Sphere lab (engine intact)
 /**
  * Degree-targeted reduction by sample-and-solve.
  *

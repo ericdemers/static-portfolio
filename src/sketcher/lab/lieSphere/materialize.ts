@@ -1,4 +1,3 @@
-// @ts-nocheck — ported from ../sketcher Lie Sphere lab (engine intact)
 /**
  * Materialize the transformed surface as an exact rational NURBS, by sample-and-
  * solve. The full revolution is covered by four θ-quadrant rational-Bézier patches

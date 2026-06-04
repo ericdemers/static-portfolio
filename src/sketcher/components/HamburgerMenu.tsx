@@ -1,4 +1,3 @@
-// @ts-nocheck — imported legacy Sketcher engine; type-checked in ../sketcher.
 // Being migrated to core/ incrementally; remove this once a file is on core.
 import { useRef, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'

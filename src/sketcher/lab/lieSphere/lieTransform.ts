@@ -1,4 +1,3 @@
-// @ts-nocheck — ported from ../sketcher Lie Sphere lab (engine intact)
 /**
  * Lie sphere transformations via the Legendre lift ("Picture 1").
  *

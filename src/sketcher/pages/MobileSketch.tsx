@@ -1,4 +1,3 @@
-// @ts-nocheck — uses the imported Sketcher engine (store + canvas).
 // A deliberately tiny editor for phones: draw a degree-3 B-spline with your
 // finger, move its control points, and toggle the curvature-extrema bound.
 // Nothing else. Reuses SketcherCanvas (with chrome stripped via config) and the

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // The planar Lie algebra o(3,2) and its exponential — the 2-D analogue of the
 // lab's lieAlgebra.ts (o(4,2)), for driving Lie-sphere transforms of a curve
 // from sliders. dim O(3,2) = 10; excluding the 2 translations (mouse-handled)
