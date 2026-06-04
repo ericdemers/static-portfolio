@@ -30,6 +30,7 @@ export default function MobileSketch() {
   const setPreserve = useSceneStore((s) => s.setPreserveCurvatureExtrema)
   const setSolverMethod = useSceneStore((s) => s.setSolverMethod)
   const clearAll = useSceneStore((s) => s.clearAll)
+  const deleteCurve = useSceneStore((s) => s.deleteCurve)
   const curves = useSceneStore((s) => s.curves)
   const selectedCurveId = useSceneStore((s) => s.selectedCurveId)
 
@@ -70,7 +71,27 @@ export default function MobileSketch() {
     setPreserve(true)
     setSolverMethod('ipopt')
     enterDraw()
+
+    // Lock the page so iOS Safari can't rubber-band / scroll the canvas while a
+    // finger is drawing (that scroll cancels the stroke). Restored on exit.
+    const html = document.documentElement
+    const body = document.body
+    const prev = {
+      htmlOverscroll: html.style.overscrollBehavior,
+      bodyOverflow: body.style.overflow,
+      bodyOverscroll: body.style.overscrollBehavior,
+      bodyTouch: body.style.touchAction,
+    }
+    html.style.overscrollBehavior = 'none'
+    body.style.overflow = 'hidden'
+    body.style.overscrollBehavior = 'none'
+    body.style.touchAction = 'none'
+
     return () => {
+      html.style.overscrollBehavior = prev.htmlOverscroll
+      body.style.overflow = prev.bodyOverflow
+      body.style.overscrollBehavior = prev.bodyOverscroll
+      body.style.touchAction = prev.bodyTouch
       useSceneStore.getState().clearAll()
       setActiveTool('none')
       setPreserve(false)
@@ -117,6 +138,15 @@ export default function MobileSketch() {
         >
           {drawing ? '✏️ Drawing' : '✋ Editing'}
         </button>
+        {selectedCurveId && (
+          <button
+            type="button"
+            onClick={() => deleteCurve(selectedCurveId)}
+            className={`${btnBase} bg-red-500 text-white`}
+          >
+            Delete
+          </button>
+        )}
         <button
           type="button"
           onClick={() => {

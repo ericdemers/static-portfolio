@@ -13,7 +13,7 @@ import { computeCurvatureExtremaParameters, computeClosedCurvatureExtremaParamet
 // Open planar B-spline curvature-extrema markers now come from core/ (accurate
 // dense-scan zeros), replacing the legacy coefficient-root finder which reports
 // spurious extra markers on fine-knotted curves.
-import { openCurvatureExtremaParameters as coreOpenExtremaParams } from '../../core'
+import { openCurvatureExtremaParameters as coreOpenExtremaParams, curvatureExtremaNumeratorPlanar as coreCurvatureNumerator } from '../../core'
 import TransformWidget from './TransformWidget'
 import { threeArcPointsFromNoisyPoints, circleArcFromThreePoints } from '../utils/circleArc'
 import { evaluatePHNormal, findNearestPointParam, computePHCurveFromUV, type PHMetadata } from '../optimizer/phCurve'
@@ -165,12 +165,16 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
           curve.degree
         )
       } else {
-        params = coreOpenExtremaParams(
-          curve.controlPoints.map((p) => p.x),
-          curve.controlPoints.map((p) => p.y),
-          curve.knots,
-          curve.degree,
-        )
+        const cx = curve.controlPoints.map((p) => p.x)
+        const cy = curve.controlPoints.map((p) => p.y)
+        // A straight / zero-curvature segment has g ≡ 0, so it has no genuine
+        // curvature extrema — and the root-finder degenerates there, smearing
+        // markers along the whole curve. Skip when g has no sign changes (0
+        // extrema by variation diminishing).
+        if (coreCurvatureNumerator(cx, cy, curve.knots, curve.degree).signChanges() === 0) {
+          return []
+        }
+        params = coreOpenExtremaParams(cx, cy, curve.knots, curve.degree)
       }
 
       // Evaluate curve at each parameter to get (x, y) positions
@@ -763,7 +767,12 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
 
   // Handle pointer up
   const handlePointerUp = useCallback(
-    () => {
+    (e?: React.PointerEvent) => {
+      // Ignore touch here — touch is finalized by handleTouchEnd. On iOS a touch
+      // also emits pointer events, and pointerleave/pointercancel can fire
+      // mid-stroke; without this guard that would finish the drawing prematurely
+      // ("draws a bit, then stops while the finger keeps moving").
+      if (e?.pointerType === 'touch') return
       // Handle click (threshold not exceeded)
       if (!didExceedThreshold && pressStart && allowSelection) {
         // It was a click, not a drag
