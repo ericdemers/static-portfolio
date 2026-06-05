@@ -2206,6 +2206,9 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     const state = get()
     const curve = state.curves.find((c) => c.id === curveId)
     if (!curve || curve.closed) return
+    // Closed PH curves aren't supported — never close a PH curve, whatever path
+    // (mouse, touch) got here.
+    if (state.phMetadata.has(curveId)) return
 
     const n = curve.controlPoints.length
     const minPoints = curve.kind === 'complex-rational' ? 3 : 4

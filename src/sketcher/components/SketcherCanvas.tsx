@@ -611,10 +611,12 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
           })
         }
 
-        // Check for endpoint snap (closing open curve)
+        // Check for endpoint snap (closing open curve). PH curves are excluded —
+        // closed PH curves aren't supported, so we don't highlight the opposite
+        // endpoint or offer to close them.
         const curve = curves.find((c) => c.id === selectedCurveId)
         const minSnapPoints = curve?.kind === 'complex-rational' ? 3 : 4
-        if (curve && !curve.closed && curve.controlPoints.length >= minSnapPoints) {
+        if (curve && !curve.closed && !phMetadata.has(curve.id) && curve.controlPoints.length >= minSnapPoints) {
           const n = curve.controlPoints.length
           const isFirst = draggedPointIndex === 0
           const isLast = draggedPointIndex === n - 1
