@@ -290,31 +290,6 @@ function generatePreviewGeom(
   return { controlPoints: res.controlPoints, knots: res.knots, degree: res.degree }
 }
 
-// Closed PH curves aren't supported yet, so a drag must not bring the curve's two
-// endpoints together. Returns true when the proposed result's first and last
-// control points (the clamped curve's endpoints) would come within ~10% of the
-// CURRENT (still-open) curve's extent — close enough to count as "closing". The
-// reference extent is taken from `refCPs` (the pre-drag curve) rather than the
-// result, because a closing result's bbox shrinks and would weaken the threshold.
-// Handles all PH control-point shapes (ComplexPoint re/im vs Point2D/WeightedPoint2D
-// x/y). Tunable via the 0.10 factor.
-type AnyCP = Point2D | WeightedPoint2D | ComplexPoint
-const cpXY = (p: AnyCP): [number, number] => ('re' in p ? [p.re, p.im] : [p.x, p.y])
-function phEndpointsWouldClose(resultCPs: AnyCP[], refCPs: AnyCP[]): boolean {
-  const n = resultCPs.length
-  if (n < 2) return false
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-  for (const p of refCPs) {
-    const [x, y] = cpXY(p)
-    minX = Math.min(minX, x); maxX = Math.max(maxX, x)
-    minY = Math.min(minY, y); maxY = Math.max(maxY, y)
-  }
-  const extent = Math.hypot(maxX - minX, maxY - minY) || 1
-  const [x0, y0] = cpXY(resultCPs[0])
-  const [xn, yn] = cpXY(resultCPs[n - 1])
-  return Math.hypot(xn - x0, yn - y0) < 0.10 * extent
-}
-
 function createHistoryEntry(curves: Curve[], spatialCurves: Curve3D[], selectedCurveId: string | null, phMetadata: Map<string, PHMetadataAny>): HistoryEntry {
   return {
     curves: curves.map((c) => {
@@ -509,7 +484,6 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
           const result = optimizePHCurve(
             meta, curve.controlPoints, newPosition.x, newPosition.y, pointIndex
           )
-          if (phEndpointsWouldClose(result.curveResult.controlPoints, curve.controlPoints)) return // don't let it close
           if (result.converged || result.iterations > 0) {
             const newPhMetadata = new Map(phMetadata)
             newPhMetadata.set(curveId, result.curveResult.metadata)
@@ -538,7 +512,6 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
             meta, curve.controlPoints, newPosition.x, newPosition.y, pointIndex,
             { preserveCurvatureExtrema }
           )
-          if (phEndpointsWouldClose(result.curveResult.controlPoints, curve.controlPoints)) return // don't let it close
           if (result.converged || result.iterations > 0) {
             const newPhMetadata = new Map(phMetadata)
             newPhMetadata.set(curveId, result.curveResult.metadata)
@@ -565,7 +538,6 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
             meta, curve.controlPoints, newPosition.x, newPosition.y, pointIndex,
             { preserveCurvatureExtrema }
           )
-          if (phEndpointsWouldClose(result.curveResult.controlPoints, curve.controlPoints)) return // don't let it close
           if (result.converged || result.iterations > 0) {
             const newPhMetadata = new Map(phMetadata)
             newPhMetadata.set(curveId, result.curveResult.metadata)
@@ -593,7 +565,6 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
           const result = optimizeRealRationalPHCurve(
             meta, curve.controlPoints, newPosition.x, newPosition.y, pointIndex
           )
-          if (phEndpointsWouldClose(result.curveResult.controlPoints, curve.controlPoints)) return // don't let it close
           if (result.converged || result.iterations > 0) {
             const newPhMetadata = new Map(phMetadata)
             newPhMetadata.set(curveId, result.curveResult.metadata)
