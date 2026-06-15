@@ -13,6 +13,18 @@ const labs = [
     blurb:
       'Edit a complex-rational PH curve and watch its revolved canal surface — Lie sphere transformations reshape the surface while preserving its ridges (the swept curvature extrema).',
   },
+  {
+    to: '/lab/ph2d',
+    title: '2D PH Curvature Workbench',
+    blurb:
+      'Edit a planar Pythagorean-hodograph quintic with the sketcher and watch its curvature profile against a minimum-turning-radius bound — the planar companion to the 3D workbench.',
+  },
+  {
+    to: '/lab/ph3d',
+    title: '3D PH Curvature Workbench',
+    blurb:
+      'Drag the control points of a spatial Pythagorean-hodograph quintic with an exact arc length, and bound its curvature by a minimum turning radius — a smooth, curvature-limited 3D trajectory (e.g. for an underwater drone).',
+  },
 ]
 
 export default function Lab() {

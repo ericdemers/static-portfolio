@@ -21,7 +21,8 @@ import { SymmetryReductionWrapper } from './SymmetryReductionWrapper'
 import { FixedVariableWrapper } from './FixedVariableWrapper'
 import { curveToBS2D, curveToRationalBS2D, updateCurveFromBS2D, updateCurveFromRationalBS2D, type BSpline2D, type RationalBSpline2D } from './bsplineTypes'
 import type { Curve, ComplexPoint, Point2D, ComplexRationalBSplineCurve } from '../types/curve'
-import { PHCurveProblem } from './PHCurveProblem'
+import { PHCurveProblem, type PHCurvatureBoundOptions } from './PHCurveProblem'
+import { phCurvatureMargin } from './phCurvatureBound'
 import { ComplexRationalPHCurveProblem } from './ComplexRationalPHCurveProblem'
 import { computePHCurveFromUV, type PHMetadata, type PHCurveResult, type ComplexRationalPHMetadata, type ComplexRationalPHCurveResult } from './phCurve'
 import { computeComplexRationalPHFromSD } from './complexRationalPHCurve'
@@ -121,6 +122,13 @@ export interface OptimizeOptions {
   /** AB-PH only: also bound the curvature-extrema count (sign changes of g)
    *  while editing, stacked on top of the PH equality constraints. */
   preserveCurvatureExtrema?: boolean
+  /** Polynomial PH only: bound the curvature VALUE |κ| ≤ curvatureBound live
+   *  during the drag (the degree-8 P± = curvatureBound·σ² ± 2(uv'−vu') ≥ 0). */
+  constrainCurvatureValue?: boolean
+  /** κ_max for constrainCurvatureValue (the inverse minimum turning radius). */
+  curvatureBound?: number
+  /** Subdivision depth for the curvature-value certificate (default 2). */
+  curvatureSubdivisions?: number
   /** Force the constrained optimizer's inactive set to ∅ — every sign anchor
    * stays active, so the sign-change boundary cannot slide. Default false. */
   disableSliding?: boolean
@@ -530,9 +538,20 @@ export function optimizePHCurve(
     enableFeasibilityRestoration: false,
     enableFilter: options.enableFilter ?? true,
     enableWatchdog: options.enableWatchdog ?? true,
+    enableBFGS: options.enableBFGS ?? true,
   }
 
-  const problem = new PHCurveProblem(metadata, curveCPs, targetX, targetY, cpIndex)
+  // Optional curvature-value bound |κ| ≤ κ_max, enforced live during the drag.
+  const bound: PHCurvatureBoundOptions =
+    options.constrainCurvatureValue && Number.isFinite(options.curvatureBound ?? Infinity)
+      ? {
+          curvatureBound: options.curvatureBound,
+          subdivisions: options.curvatureSubdivisions ?? 2,
+          constrained: true,
+        }
+      : {}
+
+  const problem = new PHCurveProblem(metadata, curveCPs, targetX, targetY, cpIndex, bound)
   const optimizer = new InteriorPointOptimizer(problem, config)
   const result = optimizer.optimize()
 
@@ -556,6 +575,61 @@ export function optimizePHCurve(
     converged: result.converged,
     objective: result.objective,
   }
+}
+
+/**
+ * Project a (possibly over-curved) polynomial PH curve onto |κ| ≤ κ_max. The IP
+ * barrier needs a feasible start, so feasibility is driven by an escalating
+ * penalty (stops at the first λ that certifies the bound). Used once when the
+ * bound is enabled or the radius tightened while the curve is violating; live
+ * constrained dragging maintains it thereafter.
+ */
+export function snapPHCurveToCurvatureBound(
+  metadata: PHMetadata,
+  curveCPs: Point2D[],
+  kappaMax: number,
+  subdivisions = 2,
+): OptimizePHResult {
+  const numU = metadata.uControlPoints.length
+  const numV = metadata.vControlPoints.length
+  let meta = metadata
+  let lambda = 1
+  let result: ReturnType<InteriorPointOptimizer['optimize']> | null = null
+
+  const margin = () =>
+    phCurvatureMargin(meta.uControlPoints, meta.vControlPoints, meta.uvKnots, kappaMax, subdivisions)
+
+  if (margin() > 1e-9) {
+    return { curveResult: computePHCurveFromUV(meta.uControlPoints, meta.vControlPoints, meta.uvKnots, meta.uvDegree, meta.origin.x, meta.origin.y), iterations: 0, converged: true, objective: 0 }
+  }
+
+  for (let i = 0; i < 18; i++) {
+    // No drag (target = current CP 0); the penalty does the work.
+    const problem = new PHCurveProblem(meta, curveCPs, curveCPs[0].x, curveCPs[0].y, 0, {
+      curvatureBound: kappaMax,
+      subdivisions,
+      penaltyWeight: lambda,
+    })
+    const optimizer = new InteriorPointOptimizer(problem, {
+      maxIterations: 40, enableFeasibilityRestoration: false, enableBFGS: false,
+    })
+    result = optimizer.optimize()
+    problem.setVariables(result.variables)
+    const v = result.variables
+    meta = {
+      ...meta,
+      origin: { x: v[0], y: v[1] },
+      uControlPoints: v.slice(2, 2 + numU),
+      vControlPoints: v.slice(2 + numU, 2 + numU + numV),
+    }
+    if (margin() > 1e-7) break
+    lambda *= 2.5
+  }
+
+  const curveResult = computePHCurveFromUV(
+    meta.uControlPoints, meta.vControlPoints, meta.uvKnots, meta.uvDegree, meta.origin.x, meta.origin.y,
+  )
+  return { curveResult, iterations: result?.iterations ?? 0, converged: true, objective: result?.objective ?? 0 }
 }
 
 // ============================================================================

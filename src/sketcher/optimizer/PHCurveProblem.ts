@@ -17,7 +17,24 @@
 import type { OptimizationProblem } from './types'
 import type { Matrix } from './linearAlgebra'
 import { computePHCurveFromUV, type PHMetadata } from './phCurve'
+import { phCurvatureBoundCoeffs, phCurvatureBoundJacobian } from './phCurvatureBound'
+import { phControlPointJacobian } from './phCurveAnalytic'
 import type { Point2D } from '../types/curve'
+
+/**
+ * Optional curvature-value bound |κ| ≤ κ_max.
+ * - `constrained`: enforce the bound as hard IP inequalities (needs a feasible
+ *   start — true tick-to-tick during a drag once the curve is snapped feasible).
+ * - `penaltyWeight > 0`: instead add λ·Σ max(0,−coeff)² to the objective — a soft
+ *   push toward feasibility from ANY start, used to snap an over-curved curve
+ *   under the bound before constrained dragging takes over.
+ */
+export interface PHCurvatureBoundOptions {
+  curvatureBound?: number // κ_max (omit / Infinity ⇒ no bound)
+  subdivisions?: number
+  constrained?: boolean
+  penaltyWeight?: number
+}
 
 export class PHCurveProblem implements OptimizationProblem {
   private targetCPs: Point2D[]
@@ -34,12 +51,20 @@ export class PHCurveProblem implements OptimizationProblem {
   private uCPs: number[]
   private vCPs: number[]
 
+  // Curvature-value bound (optional)
+  private kappaMax: number
+  private subdivisions: number
+  private constrained: boolean
+  private penaltyWeight: number
+  private _numConstraints: number
+
   constructor(
     metadata: PHMetadata,
     curveCPs: Point2D[],
     targetX: number,
     targetY: number,
     dragIndex: number,
+    bound: PHCurvatureBoundOptions = {},
   ) {
     this.uvDegree = metadata.uvDegree
     this.uvKnots = [...metadata.uvKnots]
@@ -49,6 +74,14 @@ export class PHCurveProblem implements OptimizationProblem {
     this.numV = this.vCPs.length
     this.x0 = metadata.origin.x
     this.y0 = metadata.origin.y
+
+    this.kappaMax = bound.curvatureBound ?? Infinity
+    this.subdivisions = bound.subdivisions ?? 1
+    this.penaltyWeight = bound.penaltyWeight ?? 0
+    this.constrained = (bound.constrained ?? false) && Number.isFinite(this.kappaMax)
+    this._numConstraints = this.constrained
+      ? phCurvatureBoundCoeffs(this.uCPs, this.vCPs, this.uvKnots, this.kappaMax, this.subdivisions).length
+      : 0
 
     // Target CPs: copy current, move dragged one to target
     this.targetCPs = curveCPs.map(p => ({ ...p }))
@@ -62,6 +95,10 @@ export class PHCurveProblem implements OptimizationProblem {
     this.cpWeights[n - 1] = 5
   }
 
+  private boundCoeffs(): number[] {
+    return phCurvatureBoundCoeffs(this.uCPs, this.vCPs, this.uvKnots, this.kappaMax, this.subdivisions)
+  }
+
   // ==========================================================================
   // OptimizationProblem Interface
   // ==========================================================================
@@ -71,7 +108,7 @@ export class PHCurveProblem implements OptimizationProblem {
   }
 
   get numConstraints(): number {
-    return 0
+    return this._numConstraints
   }
 
   get numEqualityConstraints(): number {
@@ -102,42 +139,67 @@ export class PHCurveProblem implements OptimizationProblem {
       const dy = cps[i].y - this.targetCPs[i].y
       f0 += this.cpWeights[i] * 0.5 * (dx * dx + dy * dy)
     }
+
+    // Soft curvature-bound penalty (snap mode): λ·Σ max(0, −coeff)².
+    if (this.penaltyWeight > 0 && Number.isFinite(this.kappaMax)) {
+      let pen = 0
+      for (const c of this.boundCoeffs()) if (c < 0) pen += c * c
+      f0 += this.penaltyWeight * pen
+    }
     return f0
   }
 
   computeObjectiveGradient(): number[] {
     const numVars = this.numVariables
-    const gradient = new Array(numVars).fill(0)
-    const eps = 1e-7
+    const grad = new Array(numVars).fill(0)
 
-    // Finite difference gradient
-    const vars = this.getVariables()
-    const f0 = this.computeObjective()
-
-    for (let j = 0; j < numVars; j++) {
-      const saved = vars[j]
-      vars[j] = saved + eps
-      this.setVariables(vars)
-      const fPlus = this.computeObjective()
-      vars[j] = saved
-      this.setVariables(vars)
-      gradient[j] = (fPlus - f0) / eps
+    // Exact gradient of the control-point least-squares term via the analytic
+    // control-point Jacobian (Bernstein algebra; no finite differences).
+    const phResult = computePHCurveFromUV(
+      this.uCPs, this.vCPs, this.uvKnots, this.uvDegree, this.x0, this.y0,
+    )
+    const cps = phResult.controlPoints
+    const jac = phControlPointJacobian(this.uCPs, this.vCPs, this.uvKnots, this.uvDegree)
+    const n = Math.min(cps.length, this.targetCPs.length)
+    for (let v = 0; v < numVars; v++) {
+      const { dx, dy } = jac[v]
+      let g = 0
+      for (let i = 0; i < n; i++) {
+        g += this.cpWeights[i] *
+          ((cps[i].x - this.targetCPs[i].x) * dx[i] + (cps[i].y - this.targetCPs[i].y) * dy[i])
+      }
+      grad[v] = g
     }
 
-    return gradient
+    // Exact gradient of the soft curvature penalty (snap mode) via the bound
+    // Jacobian: d/dx [λ·Σ max(0,−c)²] = Σ_{c<0} −2λ(−c)·∂c/∂x.
+    if (this.penaltyWeight > 0 && Number.isFinite(this.kappaMax)) {
+      const c = this.boundCoeffs()
+      const J = phCurvatureBoundJacobian(this.uCPs, this.vCPs, this.uvKnots, this.kappaMax, this.subdivisions)
+      for (let k = 0; k < c.length; k++) {
+        if (c[k] < 0) {
+          const coef = -2 * this.penaltyWeight * (-c[k])
+          for (let v = 0; v < numVars; v++) grad[v] += coef * J[k][v]
+        }
+      }
+    }
+    return grad
   }
 
-  // No constraints
   computeConstraints(): number[] {
-    return []
+    if (!this.constrained) return []
+    // Raw P± coefficients; sign = −1 ⇒ feasibility (sign·c < 0) is coeff > 0.
+    return this.boundCoeffs()
   }
 
   computeConstraintJacobian(): Matrix {
-    return []
+    if (!this.constrained) return []
+    // Exact Jacobian of the P± bound coefficients (Bernstein algebra).
+    return phCurvatureBoundJacobian(this.uCPs, this.vCPs, this.uvKnots, this.kappaMax, this.subdivisions)
   }
 
   getConstraintSigns(): number[] {
-    return []
+    return new Array(this._numConstraints).fill(-1)
   }
 
   getInactiveConstraints(): Set<number> {
@@ -145,6 +207,6 @@ export class PHCurveProblem implements OptimizationProblem {
   }
 
   updateConstraintState(): void {
-    // No constraints to update
+    // Bound is a fixed requirement (coeff ≥ 0); nothing to re-anchor.
   }
 }

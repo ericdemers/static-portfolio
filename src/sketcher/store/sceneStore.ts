@@ -91,6 +91,11 @@ interface SketcherState {
   pencilExpanded: boolean
   darkMode: boolean
   preserveCurvatureExtrema: boolean
+  // Polynomial PH only: bound the curvature VALUE |κ| ≤ curvatureBound live
+  // during a drag (used by the 2D PH curvature workbench). Off by default so the
+  // main sketcher is unaffected.
+  boundCurvatureValue: boolean
+  curvatureBound: number // κ_max = 1 / minimum turning radius
   // Region-smoothing tool: linear fairing of a windowed arc; B-spline locality
   // keeps everything outside the window's support exactly fixed.
   smoothActive: boolean
@@ -172,6 +177,8 @@ interface SketcherState {
   setPencilExpanded: (expanded: boolean) => void
   toggleDarkMode: () => void
   setPreserveCurvatureExtrema: (preserve: boolean) => void
+  setBoundCurvatureValue: (bound: boolean) => void
+  setCurvatureBound: (kappaMax: number) => void
   enterSmooth: () => void
   cancelSmooth: () => void
   applySmooth: () => void
@@ -359,6 +366,8 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   pencilExpanded: false,
   darkMode: true,
   preserveCurvatureExtrema: false,
+  boundCurvatureValue: false,
+  curvatureBound: Infinity,
   smoothActive: false,
   smoothWindow: [0.3, 0.7],
   smoothAmount: 0,
@@ -471,7 +480,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   },
 
   moveControlPoint: (curveId, pointIndex, newPosition) => {
-    const { preserveCurvatureExtrema, preserveInflections, disableSliding, symmetryMaps, curves, phMetadata, anchorWeight, dragStartCPsX, dragStartCPsY } = get()
+    const { preserveCurvatureExtrema, preserveInflections, disableSliding, symmetryMaps, curves, phMetadata, anchorWeight, dragStartCPsX, dragStartCPsY, boundCurvatureValue, curvatureBound } = get()
     const curve = curves.find((c) => c.id === curveId)
 
     if (!curve) return
@@ -482,7 +491,12 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
       if (meta.kind === 'polynomial') {
         try {
           const result = optimizePHCurve(
-            meta, curve.controlPoints, newPosition.x, newPosition.y, pointIndex
+            meta, curve.controlPoints, newPosition.x, newPosition.y, pointIndex,
+            // Bound the curvature value live during the drag (2D PH workbench).
+            // Gauss-Newton (no BFGS) + a small iteration cap for interactivity.
+            boundCurvatureValue && Number.isFinite(curvatureBound)
+              ? { constrainCurvatureValue: true, curvatureBound, maxIterations: 24, enableBFGS: false }
+              : {}
           )
           if (result.converged || result.iterations > 0) {
             const newPhMetadata = new Map(phMetadata)
@@ -1177,6 +1191,8 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     }),
 
   setPreserveCurvatureExtrema: (preserve) => set({ preserveCurvatureExtrema: preserve }),
+  setBoundCurvatureValue: (bound) => set({ boundCurvatureValue: bound }),
+  setCurvatureBound: (kappaMax) => set({ curvatureBound: kappaMax }),
   setPreserveInflections: (preserve) => set({ preserveInflections: preserve }),
   setDisableSliding: (disable) => set({ disableSliding: disable }),
   setAnchorWeight: (weight) => set({ anchorWeight: weight }),
