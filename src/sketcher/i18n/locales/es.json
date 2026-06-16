@@ -39,7 +39,8 @@
     "spiral": "Espiral",
     "freehand": "Mano alzada",
     "circle": "Círculo",
-    "ph": "PH"
+    "ph": "PH",
+    "phSpline": "Spline PH"
   },
   "hints": {
     "drawToStart": "Dibuja para empezar",

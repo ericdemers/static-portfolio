@@ -461,7 +461,7 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
         }
 
 
-        const isDrawingTool = activeTool === 'draw' || activeTool === 'line' || activeTool === 'circle' || activeTool === 'spiral' || activeTool === 'rational-spiral' || activeTool === 'complex-spiral'
+        const isDrawingTool = activeTool === 'draw' || activeTool === 'line' || activeTool === 'circle' || activeTool === 'spiral' || activeTool === 'rational-spiral' || activeTool === 'complex-spiral' || activeTool === 'ph-freehand'
 
         if (isDrawingTool && allowDrawing) {
           // Drawing tool: use threshold detection (click vs drag)
@@ -553,7 +553,7 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
                 setAction('creating-offset')
               }
             } else {
-            const isDrawingTool = activeTool === 'draw' || activeTool === 'line' || activeTool === 'circle' || activeTool === 'spiral' || activeTool === 'rational-spiral' || activeTool === 'complex-spiral'
+            const isDrawingTool = activeTool === 'draw' || activeTool === 'line' || activeTool === 'circle' || activeTool === 'spiral' || activeTool === 'rational-spiral' || activeTool === 'complex-spiral' || activeTool === 'ph-freehand'
             if (isDrawingTool && allowDrawing) {
               // Started drag with drawing tool → start drawing from press position
               const canvas = screenToCanvas(pressStart.x, pressStart.y)
@@ -916,7 +916,7 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
       } else if (touches.length === 1) {
         // One-finger gesture - use same threshold-based approach as pointer
         const touch = touches[0]
-        const isDrawingTool = activeTool === 'draw' || activeTool === 'line' || activeTool === 'circle' || activeTool === 'spiral' || activeTool === 'rational-spiral' || activeTool === 'complex-spiral'
+        const isDrawingTool = activeTool === 'draw' || activeTool === 'line' || activeTool === 'circle' || activeTool === 'spiral' || activeTool === 'rational-spiral' || activeTool === 'complex-spiral' || activeTool === 'ph-freehand'
 
         if (isDrawingTool && allowDrawing) {
           // Drawing tool: use threshold detection (click vs drag)
@@ -1017,7 +1017,7 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
 
             // Determine what action to start
             if (action === 'none') {
-              const isDrawingTool = activeTool === 'draw' || activeTool === 'line' || activeTool === 'circle' || activeTool === 'spiral' || activeTool === 'rational-spiral' || activeTool === 'complex-spiral'
+              const isDrawingTool = activeTool === 'draw' || activeTool === 'line' || activeTool === 'circle' || activeTool === 'spiral' || activeTool === 'rational-spiral' || activeTool === 'complex-spiral' || activeTool === 'ph-freehand'
               if (isDrawingTool && allowDrawing) {
                 // Started drag with drawing tool → start drawing from press position
                 const canvas = screenToCanvas(pressStart.x, pressStart.y)
@@ -1493,7 +1493,7 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
         {/* Drawing preview */}
         {isDrawing && drawingPoints.length > 0 && (
           <g>
-            {activeTool === 'draw' && (
+            {(activeTool === 'draw' || activeTool === 'ph-freehand') && (
               <>
                 {/* Freehand preview */}
                 <polyline

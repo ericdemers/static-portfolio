@@ -80,7 +80,7 @@ export interface ComplexRationalBSplineCurve extends BaseCurve {
 export type Curve = BSplineCurve | RationalBSplineCurve | ComplexRationalBSplineCurve
 
 // Drawing tool types
-export type DrawingTool = 'none' | 'draw' | 'line' | 'circle' | 'spiral' | 'rational-spiral' | 'complex-spiral' | 'offset'
+export type DrawingTool = 'none' | 'draw' | 'line' | 'circle' | 'spiral' | 'rational-spiral' | 'complex-spiral' | 'ph-freehand' | 'offset'
 
 // Editor state types
 export interface EditorState {

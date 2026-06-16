@@ -39,7 +39,8 @@
     "spiral": "螺旋",
     "freehand": "フリーハンド",
     "circle": "円",
-    "ph": "PH"
+    "ph": "PH",
+    "phSpline": "PHスプライン"
   },
   "hints": {
     "drawToStart": "描いて始める",

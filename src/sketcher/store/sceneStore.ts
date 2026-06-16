@@ -6,6 +6,7 @@ import { createBSpline, elevateDegree, insertKnot, moveKnot, removeKnot, getCont
 import { createLine, createCircularArc, createFullCircle } from '../utils/shapes'
 import { createSpiralFromTwoPoints, computePHCurveFromUV, computePHOffset, type PHMetadata, type ComplexRationalPHMetadata } from '../optimizer/phCurve'
 import { createStraightComplexRationalPH } from '../optimizer/complexRationalPHCurve'
+import { fitPHSplineToBSpline } from '../optimizer/phSplineFit'
 import { computeABPHCurve, computeABPHOffset, applyMobiusToABPH, convertComplexPointsToAB, type ABPHMetadata } from '../optimizer/abPHCurve'
 import { createRealRationalPHFromTwoPoints, computeRealRationalPHCurve, computeRealRationalPHOffset, type RealRationalPHMetadata } from '../optimizer/realRationalPHCurve'
 import { insertKnot1D, elevateDegree1D, removeKnot1D } from '../optimizer/phBSplineOps'
@@ -1020,6 +1021,60 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
         // the bound ON it would be frozen straight — undeformable — which baffles
         // a new user. Turn the curvature-extrema constraint off so they can shape
         // it; they can re-enable the bound once it's a curve.
+        preserveCurvatureExtrema: false,
+        ...(!s.toolLocked ? { activeTool: 'none' as DrawingTool, toolLocked: false } : {}),
+      }))
+      get().saveToHistory()
+      return
+    }
+
+    // Polynomial PH spline via hodograph matching: fit an ordinary freehand
+    // B-spline to the stroke, then match its hodograph with w² (a linear √h
+    // least-squares fit) and integrate — an automatically-C² PH spline that
+    // follows the stroke and is fully editable through the polynomial-PH path.
+    if (tool === 'ph-freehand') {
+      if (points.length < 2) {
+        set({ isDrawing: false, drawingPoints: [], isNearStart: false, drawnCircleArc: null, isCircleClosed: false })
+        return
+      }
+      // Trim the noisy slow-down tail, mirroring the freehand branch below.
+      const tailRadius = 5 / zoom
+      let trimEnd = points.length - 1
+      while (trimEnd > 0) {
+        const tdx = points[trimEnd].x - points[points.length - 1].x
+        const tdy = points[trimEnd].y - points[points.length - 1].y
+        if (Math.sqrt(tdx * tdx + tdy * tdy) >= tailRadius) break
+        trimEnd--
+      }
+      const trimmedPoints = trimEnd < points.length - 2 ? points.slice(0, trimEnd + 2) : points
+      const simplified = simplifyPointsCurvatureAdaptive(trimmedPoints)
+      const bs = createBSpline(simplified, 3)
+      const bsCPs = bs.kind === 'bspline' ? bs.controlPoints : []
+      const ph = fitPHSplineToBSpline(bsCPs, bs.knots)
+      if (!ph) {
+        set({ isDrawing: false, drawingPoints: [], isNearStart: false, drawnCircleArc: null, isCircleClosed: false })
+        return
+      }
+      const curveId = generateCurveId()
+      const phCurve: Curve = {
+        id: curveId,
+        kind: 'bspline',
+        degree: ph.degree,
+        knots: ph.knots,
+        controlPoints: ph.controlPoints,
+        closed: false,
+      }
+      const newPhMetadata = new Map(state.phMetadata)
+      newPhMetadata.set(curveId, ph.metadata)
+      set((s) => ({
+        curves: [...s.curves, phCurve],
+        selectedCurveId: curveId,
+        isDrawing: false,
+        drawingPoints: [],
+        isNearStart: false,
+        drawnCircleArc: null,
+        isCircleClosed: false,
+        phMetadata: newPhMetadata,
         preserveCurvatureExtrema: false,
         ...(!s.toolLocked ? { activeTool: 'none' as DrawingTool, toolLocked: false } : {}),
       }))

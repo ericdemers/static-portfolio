@@ -39,7 +39,8 @@
     "spiral": "Σπείρα",
     "freehand": "Ελεύθερο σχέδιο",
     "circle": "Κύκλος",
-    "ph": "PH"
+    "ph": "PH",
+    "phSpline": "Spline PH"
   },
   "hints": {
     "drawToStart": "Σχεδιάστε για να ξεκινήσετε",

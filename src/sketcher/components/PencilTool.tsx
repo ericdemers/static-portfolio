@@ -51,6 +51,13 @@ const phCurveIcon = (
   </svg>
 )
 
+// PH Spline: a freehand wavy stroke — drawn freely, fitted to a PH spline.
+const phSplineIcon = (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+    <path d="M3 14 C 6 8, 9 8, 12 12 S 18 16, 21 10" strokeWidth={2} strokeLinecap="round" />
+  </svg>
+)
+
 const tools: { tool: DrawingTool; labelKey: string; icon: React.ReactNode }[] = [
   {
     tool: 'draw',
@@ -124,6 +131,12 @@ export default function PencilTool({ className }: { className?: string }) {
     }
     if (activeTool === 'offset') {
       return offsetIcon
+    }
+    if (activeTool === 'complex-spiral') {
+      return phCurveIcon
+    }
+    if (activeTool === 'ph-freehand') {
+      return phSplineIcon
     }
     const currentTool = tools.find((t) => t.tool === activeTool)
     return currentTool?.icon || pencilIcon
@@ -268,6 +281,53 @@ export default function PencilTool({ className }: { className?: string }) {
                       setPencilExpanded(false)
                     }}
                     aria-label={isPinned ? 'Unpin PH Curve' : 'Pin PH Curve'}
+                  >
+                    {pinIcon(isPinned)}
+                  </button>
+                </div>
+              )
+            })()}
+
+            {/* PH Spline — freehand stroke fitted to a polynomial PH spline
+                (hodograph matching). Automatically C², editable afterward. */}
+            {(() => {
+              const isActive = activeTool === 'ph-freehand'
+              const isPinned = isActive && toolLocked
+              return (
+                <div
+                  className={`flex items-center transition-colors ${
+                    isActive ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <button
+                    className={`flex-1 flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                      isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-200'
+                    }`}
+                    onClick={() => {
+                      setActiveTool(isActive ? 'none' : 'ph-freehand')
+                      setPencilExpanded(false)
+                    }}
+                  >
+                    {phSplineIcon}
+                    {t('tools.phSpline')}
+                  </button>
+
+                  <button
+                    className={`px-3 py-2.5 transition-colors ${
+                      isPinned
+                        ? 'text-blue-500 dark:text-blue-400'
+                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                    }`}
+                    onClick={() => {
+                      if (isPinned) {
+                        setToolLocked(false)
+                      } else {
+                        if (!isActive) setActiveTool('ph-freehand')
+                        setToolLocked(true)
+                      }
+                      setPencilExpanded(false)
+                    }}
+                    aria-label={isPinned ? 'Unpin PH Spline' : 'Pin PH Spline'}
                   >
                     {pinIcon(isPinned)}
                   </button>

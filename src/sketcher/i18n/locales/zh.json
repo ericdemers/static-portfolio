@@ -39,7 +39,8 @@
     "spiral": "螺旋",
     "freehand": "手绘",
     "circle": "圆",
-    "ph": "PH"
+    "ph": "PH",
+    "phSpline": "PH样条"
   },
   "hints": {
     "drawToStart": "绘制以开始",
