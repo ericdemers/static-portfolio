@@ -10,7 +10,7 @@ import { fitPHSplineToBSpline } from '../optimizer/phSplineFit'
 import { fitClosedPHSpline, closeOpenPHSpline } from '../optimizer/phClosedSplineFit'
 import { computeABPHCurve, computeABPHOffset, applyMobiusToABPH, convertComplexPointsToAB, type ABPHMetadata } from '../optimizer/abPHCurve'
 import { createRealRationalPHFromTwoPoints, computeRealRationalPHCurve, computeRealRationalPHOffset, type RealRationalPHMetadata } from '../optimizer/realRationalPHCurve'
-import { insertKnot1D, elevateDegree1D, removeKnot1D } from '../optimizer/phBSplineOps'
+import { insertKnot1D, elevateDegree1D, removeKnot1D, moveKnot1D } from '../optimizer/phBSplineOps'
 import { weightedAveragePhi, threeArcPointsFromNoisyPoints, circleArcFromThreePoints, type CircleArcGeometry } from '../utils/circleArc'
 import { optimizeCurve, applyOptimizeResult, applyOptimizeRationalResult, optimizeComplexRationalCurve, applyComplexRationalOptimizeResult, optimizeRationalFarinCurve, applyOptimizeRationalFarinResult, optimizePHCurve, optimizeComplexRationalPHCurve, optimizeABPHCurve, optimizeRealRationalPHCurve, type OptimizeRationalResult } from '../optimizer'
 // MIGRATION: open planar B-spline curvature-extrema drag now runs on the clean
@@ -1708,6 +1708,37 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     const state = get()
     const curve = state.curves.find((c) => c.id === id)
     if (!curve) return
+
+    // Polynomial PH curve: the dragged curve knot is a triple (C² ⇒ multiplicity
+    // 3) — the image of ONE generator knot. Map it to that generator knot by
+    // value, move the generator knot, and recompute; the triple follows together.
+    if (state.phMetadata.has(id)) {
+      const meta = state.phMetadata.get(id)!
+      if (meta.kind === 'polynomial') {
+        const value = curve.knots[knotIndex]
+        let g = -1
+        for (let i = meta.uvDegree + 1; i < meta.uvKnots.length - meta.uvDegree - 1; i++) {
+          if (Math.abs(meta.uvKnots[i] - value) < 1e-9) { g = i; break }
+        }
+        if (g < 0) return
+        const moved = moveKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, g, newValue)
+        if (!moved) return
+        const phResult = computePHCurveFromUV(
+          meta.uControlPoints, meta.vControlPoints, moved.knots, meta.uvDegree, meta.origin.x, meta.origin.y,
+        )
+        const newPhMetadata = new Map(state.phMetadata)
+        newPhMetadata.set(id, phResult.metadata)
+        set((s) => ({
+          curves: s.curves.map((c) =>
+            c.id === id
+              ? { ...c, controlPoints: phResult.controlPoints, knots: phResult.knots, degree: phResult.degree } as Curve
+              : c,
+          ),
+          phMetadata: newPhMetadata,
+        }))
+        return
+      }
+    }
 
     const updated = moveKnot(curve, knotIndex, newValue)
     if (!updated) return

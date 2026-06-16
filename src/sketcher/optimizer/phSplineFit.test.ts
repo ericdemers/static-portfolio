@@ -4,6 +4,8 @@ import { optimizePHCurve } from './index'
 import { createBSpline } from '../utils/bspline/utilities'
 import { evaluateBSpline } from '../utils/bspline/core'
 import { computeOpenComplexCurvatureExtremaParameters } from './complexAlgebra'
+import { moveKnot1D } from './phBSplineOps'
+import { computePHCurveFromUV } from './phCurve'
 import type { Point2D } from '../types/curve'
 
 // A gentle S-shaped stroke (no cusps, speed bounded away from zero).
@@ -108,5 +110,31 @@ describe('PH spline curvature-extrema preservation', () => {
     expect(res.iterations).toBeGreaterThan(0)
     const n1 = countExtrema(res.curveResult.controlPoints, res.curveResult.knots)
     expect(n1).toBe(n0)
+  })
+})
+
+describe('PH spline knot move (generator knot ↔ curve triple)', () => {
+  it('moving a generator knot carries the curve triple together', () => {
+    const bs = createBSpline(makeStrokePoints(), 3) as { controlPoints: Point2D[]; knots: number[] }
+    const ph = fitPHSplineToBSpline(bs.controlPoints, bs.knots, { generatorDegree: 2 })!
+    const meta = ph.metadata
+    const gi = meta.uvDegree + 1 // first interior generator knot
+    const oldVal = meta.uvKnots[gi]
+    expect(oldVal).toBeGreaterThan(0)
+    expect(oldVal).toBeLessThan(1)
+    // In the curve this generator knot appears as a triple (degree 5, C²).
+    expect(ph.knots.filter((k) => Math.abs(k - oldVal) < 1e-9).length).toBe(3)
+
+    // Move the generator knot toward its right neighbour.
+    const newVal = (oldVal + meta.uvKnots[gi + 1]) / 2
+    const moved = moveKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, gi, newVal)!
+    const recomputed = computePHCurveFromUV(
+      meta.uControlPoints, meta.vControlPoints, moved.knots, meta.uvDegree, meta.origin.x, meta.origin.y,
+    )
+    // The whole triple moved to the new value — together.
+    expect(recomputed.knots.filter((k) => Math.abs(k - oldVal) < 1e-9).length).toBe(0)
+    expect(recomputed.knots.filter((k) => Math.abs(k - newVal) < 1e-9).length).toBe(3)
+    expect(recomputed.degree).toBe(5)
+    expect(recomputed.controlPoints.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))).toBe(true)
   })
 })

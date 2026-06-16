@@ -6,7 +6,7 @@
  */
 
 import type { Point2D, BSplineCurve } from '../types/curve'
-import { insertKnot as insertKnot2D, elevateDegree as elevateDegree2D, removeKnot as removeKnot2D } from '../utils/bspline'
+import { insertKnot as insertKnot2D, elevateDegree as elevateDegree2D, removeKnot as removeKnot2D, moveKnot as moveKnot2D } from '../utils/bspline'
 
 // ============================================================================
 // 1D B-spline Operations
@@ -92,6 +92,36 @@ export function removeKnot1D(
   }
 
   const result = removeKnot2D(curve, knotIndex, tolerance)
+  if (!result) return null
+  if (result.kind !== 'bspline') throw new Error('Unexpected curve kind')
+
+  return {
+    controlPoints: result.controlPoints.map((p: Point2D) => p.x),
+    knots: result.knots,
+  }
+}
+
+/**
+ * Move an interior knot of a 1D B-spline to a new value (control points kept —
+ * a shape edit). Returns new control points and knots, or null if it can't move.
+ */
+export function moveKnot1D(
+  cps: number[],
+  knots: number[],
+  degree: number,
+  knotIndex: number,
+  newValue: number,
+): { controlPoints: number[]; knots: number[] } | null {
+  const curve: BSplineCurve = {
+    id: '__tmp__',
+    kind: 'bspline',
+    degree,
+    knots,
+    controlPoints: cps.map(v => ({ x: v, y: 0 })),
+    closed: false,
+  }
+
+  const result = moveKnot2D(curve, knotIndex, newValue)
   if (!result) return null
   if (result.kind !== 'bspline') throw new Error('Unexpected curve kind')
 
