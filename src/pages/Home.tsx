@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 /**
@@ -6,11 +5,9 @@ import { Link } from 'react-router-dom'
  *
  * Animated gradient wordmark on a steelblue gradient, with a fade-in nav.
  * Small "exponent" marks give a math vibe — Sketcher^b-spline and
- * Source^github. "More" reveals the secondary links (Lab, Community).
+ * Source^github.
  */
 export default function Home() {
-  const [showMore, setShowMore] = useState(false)
-
   const itemClass = 'text-white/50 hover:text-neutral-300 transition-colors'
   // Exponent ("powered by") mark — proportional to its word, with normal
   // letter-spacing so it doesn't inherit the wordy `tracking-widest`.
@@ -53,22 +50,9 @@ export default function Home() {
               </a>
             </li>
 
-            {!showMore ? (
-              <li className={`animate-fade-in-up-5 ${itemClass}`}>
-                <button type="button" onClick={() => setShowMore(true)}>
-                  More
-                </button>
-              </li>
-            ) : (
-              <>
-                <li className={`animate-fade-in-up-1 ${itemClass}`}>
-                  <Link to="/lab">Lab</Link>
-                </li>
-                <li className={`animate-fade-in-up-1 ${itemClass}`}>
-                  <a href="https://discord.gg/7hMWSvFzrB">Community</a>
-                </li>
-              </>
-            )}
+            <li className={`animate-fade-in-up-5 ${itemClass}`}>
+              <Link to="/lab">Lab</Link>
+            </li>
           </ul>
         </nav>
       </div>
