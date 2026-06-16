@@ -15,7 +15,7 @@ import { optimizeCurve, applyOptimizeResult, applyOptimizeRationalResult, optimi
 // MIGRATION: open planar B-spline curvature-extrema drag now runs on the clean
 // core/ engine. Closed bsplines (periodic-junction knots) + rational stay on
 // the legacy optimizer until core covers those conventions.
-import { abPHToLieCurve, identity5, isIdentityMat5, compose5, scaling5, translation5, type Mat5 } from '../lab/lieSphere/lieCurve2D'
+import { abPHToLieCurveSpline, identity5, isIdentityMat5, compose5, scaling5, translation5, type Mat5 } from '../lab/lieSphere/lieCurve2D'
 import { liePoint5, SHAPE_GENERATORS } from '../lab/lieSphere/lieAlgebra2D'
 import { computeRationalFarinPoints, updateWeightsFromRationalFarin, updateWeightsFromComplexFarin, projectPointOntoEdge, moveComplexControlPointKeepingFarinFixed, initializeFarinPositionsFromComplexWeights } from '../utils/farinPoints'
 import { csub, cmult, cdiv, cnorm, type Complex } from '../utils/complex'
@@ -273,8 +273,25 @@ function abShapeForGenerate(curve: Curve, meta: PHMetadataAny): ABPHMetadata {
       knots: curve.knots, sKnots: meta.sKnots,
     }
   }
-  // Generate/offset only run on ab/complex-rational curves (callers guard on
-  // meta.kind); polynomial/real-rational PH can't be expressed as an AB shape.
+  if (meta.kind === 'polynomial') {
+    // A polynomial PH curve is the rational case with denominator B ≡ 1: its
+    // real control points ARE the numerator A, the weight is 1, and the stored
+    // (u,v) generator is S. (B'=0 ⇒ A'=S²=w², matching r'=w².) Exact repackaging
+    // — the Lie pipeline then emits the rational image (multi-segment aware).
+    const cps = curve.controlPoints as Point2D[]
+    return {
+      kind: 'ab-complex-rational',
+      degree: curve.degree,
+      aReCPs: cps.map((p) => p.x),
+      aImCPs: cps.map((p) => p.y),
+      bReCPs: cps.map(() => 1),
+      bImCPs: cps.map(() => 0),
+      sReCPs: meta.uControlPoints, sImCPs: meta.vControlPoints,
+      knots: curve.knots, sKnots: meta.uvKnots,
+    }
+  }
+  // Generate/offset only run on PH curves (callers guard on meta.kind);
+  // real-rational PH can't be expressed as an AB shape.
   throw new Error(`abShapeForGenerate: unsupported metadata kind '${meta.kind}'`)
 }
 
@@ -294,7 +311,7 @@ function generatePreviewGeom(
     const r = toRationalBSpline(curve) // complex-rational → exact real rational
     return { controlPoints: r.controlPoints as WeightedPoint2D[], knots: r.knots, degree: r.degree }
   }
-  const res = abPHToLieCurve(abShapeForGenerate(curve, meta), M)
+  const res = abPHToLieCurveSpline(abShapeForGenerate(curve, meta), M)
   return { controlPoints: res.controlPoints, knots: res.knots, degree: res.degree }
 }
 
@@ -1287,7 +1304,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   startGenerate: (curveId) => {
     if (get().generate) return
     const meta = get().phMetadata.get(curveId)
-    if (!meta || (meta.kind !== 'ab-complex-rational' && meta.kind !== 'complex-rational')) return
+    if (!meta || (meta.kind !== 'ab-complex-rational' && meta.kind !== 'complex-rational' && meta.kind !== 'polynomial')) return
     const curve = get().curves.find((c) => c.id === curveId)
     if (!curve) return
     // Centre + unit-scale similarity from the curve's bounding box, so the Lie

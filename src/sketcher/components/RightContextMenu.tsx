@@ -36,9 +36,10 @@ export default function RightContextMenu() {
 
   // Check if the selected curve has PH metadata
   const hasPHMeta = selectedCurveId ? phMetadata.get(selectedCurveId) : null
-  // Both PH representations get Generate: (A,B,S) curves and the (S,D)
-  // complex-rational PH curves drawn by the pencil.
-  const hasABPHMeta = hasPHMeta && (hasPHMeta.kind === 'ab-complex-rational' || hasPHMeta.kind === 'complex-rational')
+  // All editable PH representations get Generate: (A,B,S) curves, the (S,D)
+  // complex-rational PH curves drawn by the pencil, and the polynomial PH spline
+  // (lifted to AB with denominator ≡ 1).
+  const hasABPHMeta = hasPHMeta && (hasPHMeta.kind === 'ab-complex-rational' || hasPHMeta.kind === 'complex-rational' || hasPHMeta.kind === 'polynomial')
 
   const inactiveBtn = 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
   const activeBtn = 'bg-purple-500 text-white'

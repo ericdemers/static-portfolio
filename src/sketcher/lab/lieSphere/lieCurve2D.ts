@@ -227,3 +227,91 @@ export function abPHToLieCurve(meta: ABPHMetadata, M: Mat5): { controlPoints: We
   for (let i = 0; i <= target; i++) knots.push(1)
   return { controlPoints, knots, degree: target }
 }
+
+/**
+ * Multi-segment Lie-sphere transform of an AB-PH *spline* (e.g. the polynomial PH
+ * spline lifted with B≡1). The single-Bézier `abPHToLieCurve` collapses every
+ * segment into one degree-2n Bézier, which smears a wiggly multi-segment input;
+ * here we fit EACH input span to its own rational Bézier and assemble a clamped
+ * piecewise-Bézier rational B-spline. The exact homogeneous form is degree-
+ * inflated, so (as in the single-segment case) we sample its stable point ratios
+ * and re-fit per span. The minimal image degree is set by the transform M — the
+ * same for every span — so we detect it once and fit all spans at that degree
+ * (unique, positive-weight). `normalizeRealRationalWeights` pins each span's end
+ * weights to 1, so consecutive spans meet with a consistent weight at the joins.
+ */
+export function abPHToLieCurveSpline(meta: ABPHMetadata, M: Mat5): { controlPoints: WeightedPoint2D[]; knots: number[]; degree: number } {
+  // Distinct breakpoints of the AB curve = the input segmentation.
+  const breaks: number[] = []
+  for (let i = 0; i < meta.knots.length; i++) {
+    if (i === 0 || meta.knots[i] !== meta.knots[i - 1]) breaks.push(meta.knots[i])
+  }
+  const numSpans = breaks.length - 1
+  if (numSpans <= 1) return abPHToLieCurve(meta, M) // single segment → existing path
+
+  const h = lieCurveHomogeneous(meta, M)
+  const evalPt = (u: number) => { const w = h.W.evaluate(u); return { x: h.X.evaluate(u) / w, y: h.Y.evaluate(u) / w } }
+  const target = 2 * meta.degree
+  const fd = 1e-5
+
+  // Fit span [a,b] at degree d, sampling in the global parameter but expressing
+  // the fit on the local [0,1] (the tangent DIRECTION is reparametrization-free).
+  const fitSpan = (a: number, b: number, d: number): RealRationalCurve => {
+    const m = Math.max(2 * d + 6, 16)
+    const span = b - a
+    const samples: RealSample[] = []
+    for (let k = 0; k < m; k++) {
+      const uloc = (k + 0.5) / m
+      const u = a + uloc * span
+      const p = evalPt(u)
+      const pa = evalPt(Math.max(a, u - fd * span)), pb = evalPt(Math.min(b, u + fd * span))
+      const tx = pb.x - pa.x, ty = pb.y - pa.y, tn = Math.hypot(tx, ty) || 1
+      samples.push({ u: uloc, x: p.x, y: p.y, tx: tx / tn, ty: ty / tn })
+    }
+    return fitRealRational(samples, d)
+  }
+  const relResidualSpan = (c: RealRationalCurve, a: number, b: number): number => {
+    let r = 0, scale = 1
+    for (let k = 0; k <= 50; k++) {
+      const uloc = k / 50, u = a + uloc * (b - a)
+      const t = evalPt(u), f = evalRealRational(c, uloc)
+      r = Math.max(r, Math.hypot(t.x - f.x, t.y - f.y))
+      scale = Math.max(scale, Math.abs(t.x), Math.abs(t.y))
+    }
+    return r / scale
+  }
+
+  // Fit each span at its own minimal degree (a short/flat span needs fewer
+  // degrees than the curve's true image degree), then elevate all to the common
+  // max — fitting AT the minimal degree is unique + positive-weight, elevation
+  // keeps it so, whereas fitting directly above the minimal is non-unique.
+  const fits: RealRationalCurve[] = []
+  let T = 2
+  for (let s = 0; s < numSpans; s++) {
+    const a = breaks[s], b = breaks[s + 1]
+    let fit = fitSpan(a, b, target), d = target
+    for (let dd = 2; dd <= target; dd++) {
+      const f = fitSpan(a, b, dd)
+      if (relResidualSpan(f, a, b) < 1e-7) { fit = f; d = dd; break }
+    }
+    fits.push(fit)
+    if (d > T) T = d
+  }
+  const spans = fits.map((c) => normalizeRealRationalWeights(elevateRealRational(c, T)))
+
+  // Assemble: clamped, interior breakpoints at multiplicity T (C⁰ piecewise
+  // Bézier). Consecutive spans share the join control point (end weights are 1).
+  const controlPoints: WeightedPoint2D[] = []
+  for (let s = 0; s < numSpans; s++) {
+    const c = spans[s]
+    for (let i = s === 0 ? 0 : 1; i <= T; i++) {
+      const w = c.den[i]
+      controlPoints.push({ x: Math.abs(w) > 1e-300 ? c.numX[i] / w : 0, y: Math.abs(w) > 1e-300 ? c.numY[i] / w : 0, w })
+    }
+  }
+  const knots: number[] = []
+  for (let i = 0; i <= T; i++) knots.push(breaks[0])
+  for (let s = 1; s < numSpans; s++) for (let i = 0; i < T; i++) knots.push(breaks[s])
+  for (let i = 0; i <= T; i++) knots.push(breaks[numSpans])
+  return { controlPoints, knots, degree: T }
+}
