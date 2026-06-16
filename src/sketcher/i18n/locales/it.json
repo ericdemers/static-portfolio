@@ -36,7 +36,10 @@
     "draw": "Disegna",
     "line": "Linea",
     "arc": "Arco",
-    "spiral": "Spirale"
+    "spiral": "Spirale",
+    "freehand": "Mano libera",
+    "circle": "Cerchio",
+    "ph": "PH"
   },
   "hints": {
     "drawToStart": "Disegna per iniziare",
@@ -67,5 +70,13 @@
       "cancel": "Annulla"
     },
     "applyTitle": "Fissa la trasformazione corrente; continua a comporre"
+  },
+  "smoothing": {
+    "smooth": "Leviga",
+    "laplacianBounded": "Laplaciano (limitato)",
+    "fairness": "regolarità",
+    "apply": "Applica",
+    "cancel": "Annulla",
+    "smoothRegion": "Leviga regione…"
   }
 }

@@ -36,7 +36,10 @@
     "draw": "描画",
     "line": "直線",
     "arc": "円弧",
-    "spiral": "螺旋"
+    "spiral": "螺旋",
+    "freehand": "フリーハンド",
+    "circle": "円",
+    "ph": "PH"
   },
   "hints": {
     "drawToStart": "描いて始める",
@@ -67,5 +70,13 @@
       "cancel": "キャンセル"
     },
     "applyTitle": "現在の変換を確定して合成を続ける"
+  },
+  "smoothing": {
+    "smooth": "平滑化",
+    "laplacianBounded": "ラプラシアン（有界）",
+    "fairness": "滑らかさ",
+    "apply": "適用",
+    "cancel": "キャンセル",
+    "smoothRegion": "領域を平滑化…"
   }
 }

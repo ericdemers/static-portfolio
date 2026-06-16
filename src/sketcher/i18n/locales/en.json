@@ -36,7 +36,10 @@
     "draw": "Draw",
     "line": "Line",
     "arc": "Arc",
-    "spiral": "Spiral"
+    "spiral": "Spiral",
+    "freehand": "Freehand",
+    "circle": "Circle",
+    "ph": "PH"
   },
   "hints": {
     "drawToStart": "Draw to start",
@@ -67,5 +70,13 @@
       "cancel": "Cancel"
     },
     "applyTitle": "Bake the current transform; keep composing"
+  },
+  "smoothing": {
+    "smooth": "Smooth",
+    "laplacianBounded": "Laplacian (bounded)",
+    "fairness": "fairness",
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "smoothRegion": "Smooth region…"
   }
 }

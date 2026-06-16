@@ -17,13 +17,19 @@ const labs = [
     to: '/lab/ph2d',
     title: '2D PH Curvature Workbench',
     blurb:
-      'Edit a planar Pythagorean-hodograph quintic with the sketcher and watch its curvature profile against a minimum-turning-radius bound — the planar companion to the 3D workbench.',
+      'Edit a planar PH quintic; bound its curvature value — its arc length is a polynomial.',
   },
   {
     to: '/lab/ph3d',
     title: '3D PH Curvature Workbench',
     blurb:
-      'Drag the control points of a spatial Pythagorean-hodograph quintic with an exact arc length, and bound its curvature by a minimum turning radius — a smooth, curvature-limited 3D trajectory (e.g. for an underwater drone).',
+      'Edit a spatial PH quintic; bound its curvature value — its arc length is a polynomial.',
+  },
+  {
+    to: '/lab/thb',
+    title: 'THB‑splines Workbench (1D)',
+    blurb:
+      'See how truncated hierarchical B‑splines do local refinement: a draggable refined region, coarse functions kept / replaced / truncated, and a toggle that shows the partition‑of‑unity sum break (plain hierarchical) and heal (truncated).',
   },
 ]
 

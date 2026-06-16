@@ -1,5 +1,6 @@
 // Being migrated to core/ incrementally; remove this once a file is on core.
 import { useRef, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSceneStore } from '../store/sceneStore'
 import type { DrawingTool } from '../types/curve'
 
@@ -50,10 +51,10 @@ const phCurveIcon = (
   </svg>
 )
 
-const tools: { tool: DrawingTool; label: string; icon: React.ReactNode }[] = [
+const tools: { tool: DrawingTool; labelKey: string; icon: React.ReactNode }[] = [
   {
     tool: 'draw',
-    label: 'Freehand',
+    labelKey: 'tools.freehand',
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
         <path
@@ -66,7 +67,7 @@ const tools: { tool: DrawingTool; label: string; icon: React.ReactNode }[] = [
   },
   {
     tool: 'line',
-    label: 'Line',
+    labelKey: 'tools.line',
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
         <line x1="5" y1="19" x2="19" y2="5" strokeWidth={2} strokeLinecap="round" />
@@ -75,7 +76,7 @@ const tools: { tool: DrawingTool; label: string; icon: React.ReactNode }[] = [
   },
   {
     tool: 'circle',
-    label: 'Circle',
+    labelKey: 'tools.circle',
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
         <path
@@ -90,6 +91,7 @@ const tools: { tool: DrawingTool; label: string; icon: React.ReactNode }[] = [
 ]
 
 export default function PencilTool({ className }: { className?: string }) {
+  const { t } = useTranslation()
   const { pencilExpanded, setPencilExpanded, activeTool, setActiveTool, toolLocked, setToolLocked, curves } = useSceneStore()
   const menuRef = useRef<HTMLDivElement>(null)
   const [, setPhExpanded] = useState(false)
@@ -165,9 +167,10 @@ export default function PencilTool({ className }: { className?: string }) {
       {pencilExpanded && (
         <div className="absolute top-12 right-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 overflow-hidden">
           {/* Standard drawing tools */}
-          {tools.map(({ tool, label, icon }) => {
+          {tools.map(({ tool, labelKey, icon }) => {
             const isActive = activeTool === tool
             const isPinned = isActive && toolLocked
+            const label = t(labelKey)
 
             return (
               <div
@@ -246,7 +249,7 @@ export default function PencilTool({ className }: { className?: string }) {
                     }}
                   >
                     {phCurveIcon}
-                    PH
+                    {t('tools.ph')}
                   </button>
 
                   <button

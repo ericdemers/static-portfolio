@@ -23,6 +23,9 @@ const LabPH3D = lazy(() => import('./sketcher/pages/LabPH3D'))
 // sketcher, plus a curvature display showing a turning-radius bound. Reuses the
 // sketcher engine, so lazy-load it.
 const LabPH2D = lazy(() => import('./sketcher/pages/LabPH2D'))
+// THB-splines learning workbench (1D): hierarchical refinement, truncation, and
+// the partition-of-unity toggle.
+const LabTHB = lazy(() => import('./sketcher/pages/LabTHB'))
 // Minimal phone editor: draw a degree-3 B-spline, move control points, toggle
 // the curvature-extrema bound. Reuses the sketcher engine, so lazy-load it.
 const MobileSketch = lazy(() => import('./sketcher/pages/MobileSketch'))
@@ -49,6 +52,7 @@ export default function App() {
           <Route path="/lab/lie-sphere" element={<LabLieSphere />} />
           <Route path="/lab/ph3d" element={<LabPH3D />} />
           <Route path="/lab/ph2d" element={<LabPH2D />} />
+          <Route path="/lab/thb" element={<LabTHB />} />
           <Route path="*" element={<ComingSoon />} />
         </Routes>
       </Suspense>

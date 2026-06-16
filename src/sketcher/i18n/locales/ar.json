@@ -36,7 +36,10 @@
     "draw": "رسم",
     "line": "خط",
     "arc": "قوس",
-    "spiral": "حلزوني"
+    "spiral": "حلزوني",
+    "freehand": "رسم حر",
+    "circle": "دائرة",
+    "ph": "PH"
   },
   "hints": {
     "drawToStart": "ارسم للبدء",
@@ -67,5 +70,13 @@
       "cancel": "إلغاء"
     },
     "applyTitle": "تثبيت التحويل الحالي؛ متابعة التركيب"
+  },
+  "smoothing": {
+    "smooth": "تنعيم",
+    "laplacianBounded": "لابلاسي (مقيّد)",
+    "fairness": "نعومة",
+    "apply": "تطبيق",
+    "cancel": "إلغاء",
+    "smoothRegion": "تنعيم المنطقة…"
   }
 }

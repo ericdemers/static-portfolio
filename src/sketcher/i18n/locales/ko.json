@@ -36,7 +36,10 @@
     "draw": "그리기",
     "line": "직선",
     "arc": "호",
-    "spiral": "나선"
+    "spiral": "나선",
+    "freehand": "자유 곡선",
+    "circle": "원",
+    "ph": "PH"
   },
   "hints": {
     "drawToStart": "그려서 시작하세요",
@@ -67,5 +70,13 @@
       "cancel": "취소"
     },
     "applyTitle": "현재 변환을 적용하고 계속 합성"
+  },
+  "smoothing": {
+    "smooth": "평활화",
+    "laplacianBounded": "라플라시안 (유계)",
+    "fairness": "매끄러움",
+    "apply": "적용",
+    "cancel": "취소",
+    "smoothRegion": "영역 평활화…"
   }
 }

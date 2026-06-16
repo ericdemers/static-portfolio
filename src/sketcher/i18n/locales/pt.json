@@ -36,7 +36,10 @@
     "draw": "Desenhar",
     "line": "Linha",
     "arc": "Arco",
-    "spiral": "Espiral"
+    "spiral": "Espiral",
+    "freehand": "Mão livre",
+    "circle": "Círculo",
+    "ph": "PH"
   },
   "hints": {
     "drawToStart": "Desenhe para começar",
@@ -67,5 +70,13 @@
       "cancel": "Cancelar"
     },
     "applyTitle": "Fixar a transformação atual; continuar compondo"
+  },
+  "smoothing": {
+    "smooth": "Suavizar",
+    "laplacianBounded": "Laplaciano (limitado)",
+    "fairness": "regularidade",
+    "apply": "Aplicar",
+    "cancel": "Cancelar",
+    "smoothRegion": "Suavizar região…"
   }
 }

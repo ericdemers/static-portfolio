@@ -36,7 +36,10 @@
     "draw": "Dessiner",
     "line": "Ligne",
     "arc": "Arc",
-    "spiral": "Spirale"
+    "spiral": "Spirale",
+    "freehand": "Main levée",
+    "circle": "Cercle",
+    "ph": "PH"
   },
   "hints": {
     "drawToStart": "Dessinez pour commencer",
@@ -67,5 +70,13 @@
       "cancel": "Annuler"
     },
     "applyTitle": "Figer la transformation actuelle ; continuer à composer"
+  },
+  "smoothing": {
+    "smooth": "Lissage",
+    "laplacianBounded": "Laplacien (borné)",
+    "fairness": "régularité",
+    "apply": "Appliquer",
+    "cancel": "Annuler",
+    "smoothRegion": "Lisser une région…"
   }
 }

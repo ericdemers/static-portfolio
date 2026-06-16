@@ -853,15 +853,15 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
         <div className="flex items-center gap-3">
           {active ? (
             <>
-              <span className="text-xs text-gray-600 dark:text-gray-300">Smooth</span>
+              <span className="text-xs text-gray-600 dark:text-gray-300">{t('smoothing.smooth')}</span>
               <select
                 value={smoothMode}
                 onChange={(e) => setSmoothMode(e.target.value as 'fairness' | 'laplacian' | 'laplacian-bounded')}
                 className="text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-1 py-0.5"
                 title="smoothing method"
               >
-                <option value="laplacian-bounded">Laplacian (bounded)</option>
-                <option value="fairness">fairness ({smoothEnergy})</option>
+                <option value="laplacian-bounded">{t('smoothing.laplacianBounded')}</option>
+                <option value="fairness">{t('smoothing.fairness')} ({smoothEnergy})</option>
               </select>
               {smoothMode === 'laplacian-bounded' && smoothBound !== null && (
                 <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 tabular-nums">
@@ -888,13 +888,13 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
                 onClick={applySmooth}
                 className="text-xs px-2 py-0.5 rounded bg-blue-600 text-white hover:bg-blue-700"
               >
-                Apply
+                {t('smoothing.apply')}
               </button>
               <button
                 onClick={cancelSmooth}
                 className="text-xs px-2 py-0.5 rounded border border-gray-400 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
               >
-                Cancel
+                {t('smoothing.cancel')}
               </button>
             </>
           ) : (
@@ -922,7 +922,7 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
                   onClick={enterSmooth}
                   className="text-xs px-2 py-0.5 rounded border border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30"
                 >
-                  Smooth region…
+                  {t('smoothing.smoothRegion')}
                 </button>
               )}
               <span className="text-xs text-gray-500 dark:text-gray-400">

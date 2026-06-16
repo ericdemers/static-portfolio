@@ -72,7 +72,7 @@ function CurvaturePlot({ data, kappaMax }: { data: CurvatureData; kappaMax: numb
   const inBound = clearance >= 0
 
   return (
-    <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
+    <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
       <div className="flex items-center justify-between px-3 py-1.5 text-xs">
         <span className="font-medium text-gray-700 dark:text-gray-200">Curvature κ(t)</span>
         <span className={`font-mono ${inBound ? 'text-emerald-500' : 'text-red-500'}`}>
@@ -260,7 +260,7 @@ export default function LabPH2D() {
   )
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-steelblue-900 to-steelblue-200">
       <header className="flex items-center gap-4 px-4 py-2 border-b border-gray-200 dark:border-gray-800">
         <Link to="/lab" className="text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400">
           Lab

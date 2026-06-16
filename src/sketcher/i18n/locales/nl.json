@@ -36,7 +36,10 @@
     "draw": "Tekenen",
     "line": "Lijn",
     "arc": "Boog",
-    "spiral": "Spiraal"
+    "spiral": "Spiraal",
+    "freehand": "Vrije hand",
+    "circle": "Cirkel",
+    "ph": "PH"
   },
   "hints": {
     "drawToStart": "Teken om te beginnen",
@@ -67,5 +70,13 @@
       "cancel": "Annuleren"
     },
     "applyTitle": "De huidige transformatie vastleggen; blijven samenstellen"
+  },
+  "smoothing": {
+    "smooth": "Gladmaken",
+    "laplacianBounded": "Laplace (begrensd)",
+    "fairness": "gladheid",
+    "apply": "Toepassen",
+    "cancel": "Annuleren",
+    "smoothRegion": "Regio gladmaken…"
   }
 }

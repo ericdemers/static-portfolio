@@ -36,7 +36,10 @@
     "draw": "Zeichnen",
     "line": "Linie",
     "arc": "Bogen",
-    "spiral": "Spirale"
+    "spiral": "Spirale",
+    "freehand": "Freihand",
+    "circle": "Kreis",
+    "ph": "PH"
   },
   "hints": {
     "drawToStart": "Zeichnen um zu beginnen",
@@ -67,5 +70,13 @@
       "cancel": "Abbrechen"
     },
     "applyTitle": "Aktuelle Transformation übernehmen; weiter komponieren"
+  },
+  "smoothing": {
+    "smooth": "Glätten",
+    "laplacianBounded": "Laplace (beschränkt)",
+    "fairness": "Glattheit",
+    "apply": "Anwenden",
+    "cancel": "Abbrechen",
+    "smoothRegion": "Region glätten…"
   }
 }

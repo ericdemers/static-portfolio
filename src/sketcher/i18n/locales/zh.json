@@ -36,7 +36,10 @@
     "draw": "绘制",
     "line": "直线",
     "arc": "圆弧",
-    "spiral": "螺旋"
+    "spiral": "螺旋",
+    "freehand": "手绘",
+    "circle": "圆",
+    "ph": "PH"
   },
   "hints": {
     "drawToStart": "绘制以开始",
@@ -67,5 +70,13 @@
       "cancel": "取消"
     },
     "applyTitle": "固定当前变换；继续组合"
+  },
+  "smoothing": {
+    "smooth": "平滑",
+    "laplacianBounded": "拉普拉斯（有界）",
+    "fairness": "光顺",
+    "apply": "应用",
+    "cancel": "取消",
+    "smoothRegion": "平滑区域…"
   }
 }
