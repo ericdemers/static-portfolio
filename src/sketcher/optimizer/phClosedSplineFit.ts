@@ -26,7 +26,7 @@
  * metadata for later editing.
  */
 
-import { computePHCurveFromUV, type PHCurveResult } from './phCurve'
+import { computePHCurveFromUV, type PHCurveResult, type PHMetadata } from './phCurve'
 import { phControlPointJacobian } from './phCurveAnalytic'
 import { findKnotSpan, basisFunctions } from '../utils/bspline/core'
 import { evaluatePeriodicBSpline } from '../utils/bspline/core'
@@ -187,6 +187,60 @@ export function fitClosedPHSpline(
   const cps = curve.controlPoints
   cps[cps.length - 1] = { x: cps[0].x, y: cps[0].y }
 
+  return {
+    controlPoints: cps,
+    knots: curve.knots,
+    degree: curve.degree,
+    metadata: { ...curve.metadata, closed: true, wrapSign: s },
+  }
+}
+
+/**
+ * Close an EXISTING open polynomial PH spline at C⁰ — preserving its shape and
+ * the corner where the two ends meet. The endpoint drag has already brought the
+ * last point onto the first, so r(1)−r(0) = ∮w² is already small; a short
+ * least-norm Newton projection (moving the generator control points, origin
+ * held) drives it to zero. No wrap constraint is imposed, so the seam stays C⁰
+ * (a corner) — the "smooth seam" step raises continuity later.
+ */
+export function closeOpenPHSpline(meta: PHMetadata): PHCurveResult | null {
+  const u = [...meta.uControlPoints]
+  const v = [...meta.vControlPoints]
+  const knots = meta.uvKnots, p = meta.uvDegree, ox = meta.origin.x, oy = meta.origin.y
+  const n = u.length
+  if (n < 3) return null
+
+  const dot = (a: number[], b: number[]) => a.reduce((s, v2, i) => s + v2 * b[i], 0)
+  const build = () => computePHCurveFromUV(u, v, knots, p, ox, oy)
+  let curve = build()
+  for (let iter = 0; iter < 10; iter++) {
+    const cps = curve.controlPoints
+    const last = cps.length - 1
+    const gapX = cps[last].x - cps[0].x, gapY = cps[last].y - cps[0].y
+    if (Math.hypot(gapX, gapY) < 1e-7) break
+    const jac = phControlPointJacobian(u, v, knots, p)
+    // Variables: u_i = jac[2+i], v_i = jac[2+n+i]; gap rows only (origin held).
+    const Jx = new Array(2 * n).fill(0), Jy = new Array(2 * n).fill(0)
+    for (let i = 0; i < n; i++) {
+      Jx[i] = jac[2 + i].dx[last] - jac[2 + i].dx[0]
+      Jy[i] = jac[2 + i].dy[last] - jac[2 + i].dy[0]
+      Jx[n + i] = jac[2 + n + i].dx[last] - jac[2 + n + i].dx[0]
+      Jy[n + i] = jac[2 + n + i].dy[last] - jac[2 + n + i].dy[0]
+    }
+    const a = dot(Jx, Jx), b = dot(Jx, Jy), c2 = dot(Jy, Jy)
+    const det = a * c2 - b * b
+    if (Math.abs(det) < 1e-20) break
+    const l0 = (c2 * gapX - b * gapY) / det, l1 = (-b * gapX + a * gapY) / det
+    for (let j = 0; j < 2 * n; j++) {
+      const step = -(Jx[j] * l0 + Jy[j] * l1)
+      if (j < n) u[j] += step; else v[j - n] += step
+    }
+    curve = build()
+  }
+  const cps = curve.controlPoints
+  cps[cps.length - 1] = { x: cps[0].x, y: cps[0].y }
+  // Wrap sign from the generator end tangents (√ of the curve's end tangents).
+  const s = u[0] * u[n - 1] + v[0] * v[n - 1] < 0 ? -1 : 1
   return {
     controlPoints: cps,
     knots: curve.knots,

@@ -7,7 +7,7 @@ import { createLine, createCircularArc, createFullCircle } from '../utils/shapes
 import { createSpiralFromTwoPoints, computePHCurveFromUV, computePHOffset, type PHMetadata, type ComplexRationalPHMetadata } from '../optimizer/phCurve'
 import { createStraightComplexRationalPH } from '../optimizer/complexRationalPHCurve'
 import { fitPHSplineToBSpline } from '../optimizer/phSplineFit'
-import { fitClosedPHSpline } from '../optimizer/phClosedSplineFit'
+import { fitClosedPHSpline, closeOpenPHSpline } from '../optimizer/phClosedSplineFit'
 import { computeABPHCurve, computeABPHOffset, applyMobiusToABPH, convertComplexPointsToAB, type ABPHMetadata } from '../optimizer/abPHCurve'
 import { createRealRationalPHFromTwoPoints, computeRealRationalPHCurve, computeRealRationalPHOffset, type RealRationalPHMetadata } from '../optimizer/realRationalPHCurve'
 import { insertKnot1D, elevateDegree1D, removeKnot1D } from '../optimizer/phBSplineOps'
@@ -2308,9 +2308,32 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     const state = get()
     const curve = state.curves.find((c) => c.id === curveId)
     if (!curve || curve.closed) return
-    // Closed PH curves aren't supported — never close a PH curve, whatever path
-    // (mouse, touch) got here.
-    if (state.phMetadata.has(curveId)) return
+
+    // PH curves: only the polynomial PH spline can close, and not by merging
+    // control points (the shape lives in the generator). Close it at C⁰ — keep
+    // the corner where the ends meet — by projecting the generator to ∮w²=0.
+    if (state.phMetadata.has(curveId)) {
+      const meta = state.phMetadata.get(curveId)!
+      if (meta.kind !== 'polynomial') return
+      const n = curve.controlPoints.length
+      if (draggedPointIndex !== 0 && draggedPointIndex !== n - 1) return
+      const closed = closeOpenPHSpline(meta)
+      if (!closed) return
+      const newPhMetadata = new Map(state.phMetadata)
+      newPhMetadata.set(curveId, closed.metadata)
+      set({
+        curves: state.curves.map((c): Curve =>
+          c.id === curveId
+            ? { ...c, controlPoints: closed.controlPoints, knots: closed.knots, degree: closed.degree, closed: true } as Curve
+            : c,
+        ),
+        phMetadata: newPhMetadata,
+        endpointSnapTarget: null,
+        selectedControlPointIndex: null,
+      })
+      get().saveToHistory()
+      return
+    }
 
     const n = curve.controlPoints.length
     const minPoints = curve.kind === 'complex-rational' ? 3 : 4

@@ -611,12 +611,14 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
           })
         }
 
-        // Check for endpoint snap (closing open curve). PH curves are excluded —
-        // closed PH curves aren't supported, so we don't highlight the opposite
-        // endpoint or offer to close them.
+        // Check for endpoint snap (closing open curve). Closeable: ordinary
+        // curves, and the polynomial PH spline (the only PH kind with closed
+        // support). Other PH kinds are still excluded.
         const curve = curves.find((c) => c.id === selectedCurveId)
+        const phK = curve ? phMetadata.get(curve.id) : undefined
+        const closeable = !phK || phK.kind === 'polynomial'
         const minSnapPoints = curve?.kind === 'complex-rational' ? 3 : 4
-        if (curve && !curve.closed && !phMetadata.has(curve.id) && curve.controlPoints.length >= minSnapPoints) {
+        if (curve && !curve.closed && closeable && curve.controlPoints.length >= minSnapPoints) {
           const n = curve.controlPoints.length
           const isFirst = draggedPointIndex === 0
           const isLast = draggedPointIndex === n - 1
@@ -1070,10 +1072,13 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
             })
           }
 
-          // Check for endpoint snap (closing open curve)
+          // Check for endpoint snap (closing open curve). Only ordinary curves
+          // and the polynomial PH spline are closeable.
           const curve = curves.find((c) => c.id === selectedCurveId)
+          const phK = curve ? phMetadata.get(curve.id) : undefined
+          const closeable = !phK || phK.kind === 'polynomial'
           const minSnapPoints = curve?.kind === 'complex-rational' ? 3 : 4
-          if (curve && !curve.closed && curve.controlPoints.length >= minSnapPoints) {
+          if (curve && !curve.closed && closeable && curve.controlPoints.length >= minSnapPoints) {
             const n = curve.controlPoints.length
             const isFirst = draggedPointIndex === 0
             const isLast = draggedPointIndex === n - 1
@@ -1144,6 +1149,7 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
       curves,
       setActiveTool,
       setEndpointSnapTarget,
+      phMetadata,
     ]
   )
 

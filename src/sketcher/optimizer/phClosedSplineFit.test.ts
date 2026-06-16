@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { fitClosedPHSpline } from './phClosedSplineFit'
+import { fitClosedPHSpline, closeOpenPHSpline } from './phClosedSplineFit'
+import { fitPHSplineToBSpline } from './phSplineFit'
+import { optimizePHCurve } from './index'
 import { createBSpline } from '../utils/bspline/utilities'
 import { evaluateCurve } from '../utils/bspline/core'
 import type { Curve, Point2D } from '../types/curve'
@@ -71,6 +73,54 @@ describe('fitClosedPHSpline', () => {
       let best = Infinity
       for (const e of dense) best = Math.min(best, Math.hypot(e.x - g.x, e.y - g.y))
       err = Math.max(err, best)
+    }
+    expect(err / scale).toBeLessThan(0.05)
+  })
+})
+
+describe('closeOpenPHSpline', () => {
+  // An open PH spline whose ends nearly meet (≈340° arc) — as after dragging an
+  // endpoint onto the other to close.
+  function nearlyClosedOpenPH() {
+    const pts: Point2D[] = []
+    const NP = 14
+    for (let i = 0; i < NP; i++) {
+      const a = (2 * Math.PI * 0.94 * i) / (NP - 1) // sweep ~340°
+      pts.push({ x: 120 * Math.cos(a), y: 120 * Math.sin(a) })
+    }
+    const bs = createBSpline(pts, 3) as { controlPoints: Point2D[]; knots: number[] }
+    return fitPHSplineToBSpline(bs.controlPoints, bs.knots, { generatorDegree: 2 })!
+  }
+
+  it('closes an open PH spline at C⁰ (first = last control point)', () => {
+    const open = nearlyClosedOpenPH()
+    const closed = closeOpenPHSpline(open.metadata)
+    expect(closed).not.toBeNull()
+    expect(closed!.metadata.closed).toBe(true)
+    expect(Math.abs(closed!.metadata.wrapSign!)).toBe(1)
+    const p0 = closed!.controlPoints[0], pN = closed!.controlPoints[closed!.controlPoints.length - 1]
+    expect(Math.hypot(p0.x - pN.x, p0.y - pN.y)).toBeLessThan(1e-6)
+  })
+
+  it('is a gentle correction once the endpoint is dragged onto the start', () => {
+    const open = nearlyClosedOpenPH()
+    // Simulate the user dragging the last endpoint onto the first (gap → 0).
+    const cps = open.controlPoints
+    const last = cps.length - 1
+    const res = optimizePHCurve(open.metadata, cps, cps[0].x, cps[0].y, last)
+    const dragged = res.curveResult
+    const draggedCurve: Curve = { id: 'd', kind: 'bspline', degree: dragged.degree, knots: dragged.knots, controlPoints: dragged.controlPoints, closed: false }
+
+    const closed = closeOpenPHSpline(dragged.metadata)!
+    const closedCurve: Curve = { id: 'c', kind: 'bspline', degree: closed.degree, knots: closed.knots, controlPoints: closed.controlPoints, closed: true }
+    // With the gap closed by the drag, the closure projection barely moves the
+    // curve — closed ≈ dragged-open over the interior (away from the seam).
+    let err = 0, scale = 1
+    for (let k = 5; k <= 95; k++) {
+      const t = k / 100
+      const a = evaluateCurve(draggedCurve, t), b = evaluateCurve(closedCurve, t)
+      err = Math.max(err, Math.hypot(a.x - b.x, a.y - b.y))
+      scale = Math.max(scale, Math.abs(a.x), Math.abs(a.y))
     }
     expect(err / scale).toBeLessThan(0.05)
   })
