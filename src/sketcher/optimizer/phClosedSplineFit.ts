@@ -95,6 +95,9 @@ export interface ClosedPHSplineFitOptions {
   segments?: number
   /** Samples per generator segment for the √h fit (default 8). */
   samplesPerSegment?: number
+  /** Seam continuity of the resulting curve: 0 = C⁰ corner, 1 = G¹, 2 = G²
+   *  (default 2). It equals the number of generator wrap-derivative matches. */
+  seamContinuity?: number
 }
 
 /**
@@ -166,14 +169,26 @@ export function fitClosedPHSpline(
   for (let i = 1; i < m; i++) uvKnots.push(i / m)
   for (let i = 0; i <= genDegree; i++) uvKnots.push(1)
 
-  // Wrap substitution: full control points c (length n) from K = n−2 free ones,
-  //   c_i = f_i (i < n−2),  c_{n-2} = s(2 f_0 − f_1),  c_{n-1} = s f_0.
-  const K = n - 2
+  // Wrap substitution by seam continuity (= number of wrap-derivative matches):
+  //   nWrap=0 (C⁰): no constraints, all n control points free.
+  //   nWrap=1 (C¹): c_{n-1} = s·c_0           (w continuous across the seam).
+  //   nWrap=2 (C²): c_{n-1} = s·c_0,  c_{n-2} = s·(2 c_0 − c_1)  (w, w′).
+  // Folding `c_{n-1}`/`c_{n-2}` back onto the free f_0/f_1 keeps the fit linear.
+  const nWrap = Math.max(0, Math.min(2, options.seamContinuity ?? 2))
+  const K = n - nWrap
   const expand = (f: number[]): number[] => {
     const c = f.slice(0, K)
-    c.push(s * (2 * f[0] - f[1])) // c_{n-2}
-    c.push(s * f[0]) // c_{n-1}
+    if (nWrap >= 2) c.push(s * (2 * f[0] - f[1])) // c_{n-2}
+    if (nWrap >= 1) c.push(s * f[0]) // c_{n-1}
     return c
+  }
+  // Fold the constrained boundary control points onto a row over the K free vars.
+  const foldRow = (bRow: number[]): number[] => {
+    const row = new Array(K).fill(0)
+    for (let i = 0; i < K; i++) row[i] = bRow[i]
+    if (nWrap >= 1) row[0] += bRow[n - 1] * s
+    if (nWrap >= 2) { row[0] += bRow[n - 2] * s * 2; row[1] += bRow[n - 2] * s * -1 }
+    return row
   }
 
   // Basis matrix B (samples × n) then M = B·S (samples × K) via the substitution.
@@ -185,12 +200,7 @@ export function fitClosedPHSpline(
     const N = basisFunctions(span, tc, genDegree, uvKnots)
     const bRow = new Array(n).fill(0)
     for (let j = 0; j <= genDegree; j++) bRow[span - genDegree + j] = N[j]
-    // Fold the substitution: contributions of c_{n-2}, c_{n-1} land on f_0, f_1.
-    const row = new Array(K).fill(0)
-    for (let i = 0; i < K; i++) row[i] = bRow[i]
-    row[0] += bRow[n - 2] * s * 2 + bRow[n - 1] * s
-    row[1] += bRow[n - 2] * s * -1
-    M.push(row)
+    M.push(foldRow(bRow))
   }
 
   const solU = leastSquares(M, gRe)
@@ -211,21 +221,18 @@ export function fitClosedPHSpline(
     if (Math.hypot(gapX, gapY) < 1e-7) break
 
     // Jacobian of the gap w.r.t. the free variables [uFree, vFree] (2 × 2K).
+    // d(gap)/d(c_i) over all n control points, then fold through c = S·f (same
+    // substitution as the basis matrix, so foldRow does the chain rule).
     const jac = phControlPointJacobian(expand(uFree), expand(vFree), uvKnots, genDegree)
-    // jac index: 0,1 = x0,y0; 2+i = u_i; 2+n+i = v_i. d(gap)/d(c_i) = jac[...].(last − 0).
-    const dGapU = (i: number) => ({ x: jac[2 + i].dx[last] - jac[2 + i].dx[0], y: jac[2 + i].dy[last] - jac[2 + i].dy[0] })
-    const dGapV = (i: number) => ({ x: jac[2 + n + i].dx[last] - jac[2 + n + i].dx[0], y: jac[2 + n + i].dy[last] - jac[2 + n + i].dy[0] })
-    // Chain through the substitution c = S f (same fold as the basis matrix).
-    const Jx = new Array(2 * K).fill(0), Jy = new Array(2 * K).fill(0)
-    const accU: { x: number; y: number }[] = []
-    const accV: { x: number; y: number }[] = []
-    for (let i = 0; i < n; i++) { accU.push(dGapU(i)); accV.push(dGapV(i)) }
-    for (let i = 0; i < K; i++) { Jx[i] = accU[i].x; Jy[i] = accU[i].y; Jx[K + i] = accV[i].x; Jy[K + i] = accV[i].y }
-    // c_{n-2}, c_{n-1} contributions onto f_0, f_1:
-    Jx[0] += accU[n - 2].x * s * 2 + accU[n - 1].x * s; Jy[0] += accU[n - 2].y * s * 2 + accU[n - 1].y * s
-    Jx[1] += accU[n - 2].x * s * -1; Jy[1] += accU[n - 2].y * s * -1
-    Jx[K + 0] += accV[n - 2].x * s * 2 + accV[n - 1].x * s; Jy[K + 0] += accV[n - 2].y * s * 2 + accV[n - 1].y * s
-    Jx[K + 1] += accV[n - 2].x * s * -1; Jy[K + 1] += accV[n - 2].y * s * -1
+    const dGapUx: number[] = [], dGapUy: number[] = [], dGapVx: number[] = [], dGapVy: number[] = []
+    for (let i = 0; i < n; i++) {
+      dGapUx.push(jac[2 + i].dx[last] - jac[2 + i].dx[0])
+      dGapUy.push(jac[2 + i].dy[last] - jac[2 + i].dy[0])
+      dGapVx.push(jac[2 + n + i].dx[last] - jac[2 + n + i].dx[0])
+      dGapVy.push(jac[2 + n + i].dy[last] - jac[2 + n + i].dy[0])
+    }
+    const fUx = foldRow(dGapUx), fUy = foldRow(dGapUy), fVx = foldRow(dGapVx), fVy = foldRow(dGapVy)
+    const Jx = [...fUx, ...fVx], Jy = [...fUy, ...fVy] // length 2K
 
     // Least-norm step Δf = −Jᵀ (J Jᵀ)⁻¹ gap, with J = [Jx; Jy] (2 × 2K).
     const a = Jx.reduce((s2, v) => s2 + v * v, 0), b = Jx.reduce((s2, v, idx) => s2 + v * Jy[idx], 0), c2 = Jy.reduce((s2, v) => s2 + v * v, 0)
@@ -240,15 +247,15 @@ export function fitClosedPHSpline(
     curve = buildCurve()
   }
 
-  // Express the exact (C²) closed curve in the periodic representation, so it
-  // behaves like every other closed B-spline. The generator stays clamped (the
-  // PH source of truth); the periodic curve is the display geometry.
-  const periodic = buildPeriodicPHCurve(curve.controlPoints, curve.knots, 2)
+  // Express the exact closed curve in the periodic representation, so it behaves
+  // like every other closed B-spline. The generator stays clamped (the PH source
+  // of truth); the periodic curve is the display geometry.
+  const periodic = buildPeriodicPHCurve(curve.controlPoints, curve.knots, nWrap)
   return {
     controlPoints: periodic.controlPoints,
     knots: periodic.knots,
     degree: periodic.degree,
-    metadata: { ...curve.metadata, closed: true, wrapSign: s, seamContinuity: 2 },
+    metadata: { ...curve.metadata, closed: true, wrapSign: s, seamContinuity: nWrap },
   }
 }
 

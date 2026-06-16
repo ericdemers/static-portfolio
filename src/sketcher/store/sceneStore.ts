@@ -1763,8 +1763,34 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     // read undefined here; they fall through to the kind-aware generic removeKnot.
     if (state.phMetadata.has(id)) {
       const meta = state.phMetadata.get(id)!
-      // Closed PH: knot editing at the seam is a follow-on; no-op for now.
-      if (meta.kind === 'polynomial' && meta.closed) return
+      // Closed PH: deleting a SEAM junction knot raises the seam continuity
+      // (C⁰→C¹→C²) — re-fit the generator with one more wrap-derivative match,
+      // exactly like removing a junction knot raises continuity on an ordinary
+      // closed B-spline. (Non-seam knots / already-C² seam: no-op for now.)
+      if (meta.kind === 'polynomial' && meta.closed) {
+        const value = curve.knots[knotIndex]
+        const atSeam = Math.abs(value) < 1e-9 || Math.abs(value - 1) < 1e-9
+        const cur = meta.seamContinuity ?? 0
+        if (!atSeam || cur >= 2) return
+        const interiorVals = new Set<string>()
+        for (const kk of meta.uvKnots) if (kk > 1e-9 && kk < 1 - 1e-9) interiorVals.add(kk.toFixed(6))
+        const m = interiorVals.size + 1
+        const refit = fitClosedPHSpline(curve.controlPoints as Point2D[], curve.degree, curve.knots, { segments: m, seamContinuity: cur + 1 })
+        if (!refit) return
+        const newPhMetadata = new Map(state.phMetadata)
+        newPhMetadata.set(id, refit.metadata)
+        set((s) => ({
+          curves: s.curves.map((c) =>
+            c.id === id
+              ? { ...c, controlPoints: refit.controlPoints, knots: refit.knots, degree: refit.degree, closed: true } as Curve
+              : c,
+          ),
+          phMetadata: newPhMetadata,
+          selectedKnotIndex: null,
+        }))
+        get().saveToHistory()
+        return
+      }
       if (meta.kind === 'polynomial') {
         const uResult = removeKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, knotIndex)
         if (!uResult) return

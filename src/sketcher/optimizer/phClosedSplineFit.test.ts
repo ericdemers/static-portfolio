@@ -130,3 +130,45 @@ describe('closeOpenPHSpline', () => {
     expect(err / scale).toBeLessThan(0.05)
   })
 })
+
+describe('closed PH seam continuity ladder', () => {
+  // Magnitude of the tangent-direction jump across the seam (0 ⇒ G¹/smooth).
+  function seamTangentJump(ph: { controlPoints: Point2D[]; degree: number; knots: number[] }): number {
+    const curve: Curve = { id: 's', kind: 'bspline', degree: ph.degree, knots: ph.knots, controlPoints: ph.controlPoints, closed: true }
+    const e = 1e-4
+    const p0 = evaluateCurve(curve, 0)
+    const aft = evaluateCurve(curve, e)
+    const bef = evaluateCurve(curve, 1 - e)
+    let d = Math.atan2(aft.y - p0.y, aft.x - p0.x) - Math.atan2(p0.y - bef.y, p0.x - bef.x)
+    while (d > Math.PI) d -= 2 * Math.PI
+    while (d < -Math.PI) d += 2 * Math.PI
+    return Math.abs(d)
+  }
+
+  it('re-fitting C⁰→C¹→C² progressively smooths the seam (what removing a seam knot does)', () => {
+    // A ~330° arc: when closed, the two end tangents differ → a real corner.
+    const pts: Point2D[] = []
+    const NP = 14
+    for (let i = 0; i < NP; i++) {
+      const a = (2 * Math.PI * 0.92 * i) / (NP - 1)
+      pts.push({ x: 120 * Math.cos(a), y: 120 * Math.sin(a) })
+    }
+    const bs = createBSpline(pts, 3) as { controlPoints: Point2D[]; knots: number[] }
+    const open = fitPHSplineToBSpline(bs.controlPoints, bs.knots, { generatorDegree: 2 })!
+    const c0 = closeOpenPHSpline(open.metadata)!
+    expect(c0.metadata.seamContinuity).toBe(0)
+
+    const interior = new Set<string>()
+    for (const k of open.metadata.uvKnots) if (k > 1e-9 && k < 1 - 1e-9) interior.add(k.toFixed(6))
+    const m = interior.size + 1
+    const c1 = fitClosedPHSpline(c0.controlPoints, c0.degree, c0.knots, { segments: m, seamContinuity: 1 })!
+    const c2 = fitClosedPHSpline(c0.controlPoints, c0.degree, c0.knots, { segments: m, seamContinuity: 2 })!
+    expect(c1.metadata.seamContinuity).toBe(1)
+    expect(c2.metadata.seamContinuity).toBe(2)
+
+    const j0 = seamTangentJump(c0), j1 = seamTangentJump(c1), j2 = seamTangentJump(c2)
+    expect(j0).toBeGreaterThan(0.1) // a real corner at C⁰
+    expect(j1).toBeLessThan(j0)     // C¹ closes the tangent gap
+    expect(j2).toBeLessThan(0.03)   // C² seam is tangent-continuous
+  })
+})
