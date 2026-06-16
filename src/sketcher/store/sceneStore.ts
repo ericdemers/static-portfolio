@@ -288,18 +288,35 @@ function abShapeForGenerate(curve: Curve, meta: PHMetadataAny): ABPHMetadata {
   if (meta.kind === 'polynomial') {
     // A polynomial PH curve is the rational case with denominator B ≡ 1: its
     // real control points ARE the numerator A, the weight is 1, and the stored
-    // (u,v) generator is S. (B'=0 ⇒ A'=S²=w², matching r'=w².) Exact repackaging
-    // — the Lie pipeline then emits the rational image (multi-segment aware).
-    const cps = curve.controlPoints as Point2D[]
+    // (u,v) generator is S. (B'=0 ⇒ A'=S²=w², matching r'=w².) The Lie pipeline
+    // then emits the rational image (multi-segment aware).
+    //
+    // For a CLOSED PH curve the stored geometry is PERIODIC while the generator
+    // is clamped — mismatched knot vectors. Reconstruct the matching CLAMPED
+    // curve from the generator so the (A, B, S) shape is self-consistent (one
+    // clamped knot vector the homogeneous-polynomial builder can consume). Open
+    // curves are already clamped, so use their geometry directly.
+    let aReCPs: number[], aImCPs: number[], knots: number[]
+    if (meta.closed) {
+      const clamped = computePHCurveFromUV(meta.uControlPoints, meta.vControlPoints, meta.uvKnots, meta.uvDegree, meta.origin.x, meta.origin.y)
+      aReCPs = clamped.controlPoints.map((p) => p.x)
+      aImCPs = clamped.controlPoints.map((p) => p.y)
+      knots = clamped.knots
+    } else {
+      const cps = curve.controlPoints as Point2D[]
+      aReCPs = cps.map((p) => p.x)
+      aImCPs = cps.map((p) => p.y)
+      knots = curve.knots
+    }
     return {
       kind: 'ab-complex-rational',
       degree: curve.degree,
-      aReCPs: cps.map((p) => p.x),
-      aImCPs: cps.map((p) => p.y),
-      bReCPs: cps.map(() => 1),
-      bImCPs: cps.map(() => 0),
+      aReCPs,
+      aImCPs,
+      bReCPs: aReCPs.map(() => 1),
+      bImCPs: aReCPs.map(() => 0),
       sReCPs: meta.uControlPoints, sImCPs: meta.vControlPoints,
-      knots: curve.knots, sKnots: meta.uvKnots,
+      knots, sKnots: meta.uvKnots,
     }
   }
   // Generate/offset only run on PH curves (callers guard on meta.kind);
@@ -330,13 +347,23 @@ function generatePreviewGeom(
   curve: Curve,
   meta: PHMetadataAny,
   M: Mat5,
-): { controlPoints: WeightedPoint2D[]; knots: number[]; degree: number } {
+): { controlPoints: WeightedPoint2D[]; knots: number[]; degree: number; closed: boolean } {
+  const closed = !!curve.closed
   if (isIdentityMat5(M)) {
+    // Closed polynomial PH is stored periodic with a clamped generator; emit the
+    // exact CLAMPED curve (weight 1) so the preview shares the clamped chart the
+    // non-identity (Lie) path uses — no representation jump when leaving identity.
+    if (meta.kind === 'polynomial' && closed) {
+      const clamped = computePHCurveFromUV(meta.uControlPoints, meta.vControlPoints, meta.uvKnots, meta.uvDegree, meta.origin.x, meta.origin.y)
+      return { controlPoints: clamped.controlPoints.map((p) => ({ x: p.x, y: p.y, w: 1 })), knots: clamped.knots, degree: clamped.degree, closed }
+    }
     const r = toRationalBSpline(curve) // complex-rational → exact real rational
-    return { controlPoints: r.controlPoints as WeightedPoint2D[], knots: r.knots, degree: r.degree }
+    return { controlPoints: r.controlPoints as WeightedPoint2D[], knots: r.knots, degree: r.degree, closed }
   }
+  // The Lie image of a closed curve closes too (its coincident endpoints map to
+  // the same point), so the clamped rational result is a valid closed curve.
   const res = abPHToLieCurveSpline(abShapeForGenerate(curve, meta), M)
-  return { controlPoints: res.controlPoints, knots: res.knots, degree: res.degree }
+  return { controlPoints: res.controlPoints, knots: res.knots, degree: res.degree, closed }
 }
 
 function createHistoryEntry(curves: Curve[], spatialCurves: Curve3D[], selectedCurveId: string | null, phMetadata: Map<string, PHMetadataAny>): HistoryEntry {
@@ -1365,7 +1392,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
         // rather than spreading c (whose complex-rational fields, e.g. a {re,im}
         // wrapWeight, would conflict with the rational shape).
         c.id === g.previewCurveId
-          ? { id: c.id, kind: 'rational', degree: res.degree, knots: res.knots, controlPoints: res.controlPoints, closed: false }
+          ? { id: c.id, kind: 'rational', degree: res.degree, knots: res.knots, controlPoints: res.controlPoints, closed: res.closed }
           : c,
       ),
     }))
@@ -1393,7 +1420,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     const res = generatePreviewGeom(curve, meta, identity5())
     const preview: Curve = {
       id: previewCurveId, kind: 'rational', degree: res.degree,
-      knots: res.knots, controlPoints: res.controlPoints, closed: false,
+      knots: res.knots, controlPoints: res.controlPoints, closed: res.closed,
     }
     set((s) => ({
       curves: [...s.curves, preview],
