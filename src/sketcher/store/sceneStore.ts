@@ -300,6 +300,18 @@ function abShapeForGenerate(curve: Curve, meta: PHMetadataAny): ABPHMetadata {
   throw new Error(`abShapeForGenerate: unsupported metadata kind '${meta.kind}'`)
 }
 
+// Clamp a generator knot move to its immediate neighbours: it may reach a
+// neighbour's value (collide → raise multiplicity) but not cross it (no cascade),
+// and it stays a hair off the clamped ends (reaching the boundary would merge it
+// into the degree+1 end stack — a degenerate multiplicity that corrupts the fit).
+function clampKnotMove(knots: number[], degree: number, g: number, newValue: number): number {
+  const dl = knots[degree], dh = knots[knots.length - degree - 1]
+  const eps = (dh - dl) * 1e-3
+  const lo = Math.max(knots[g - 1], dl + eps)
+  const hi = Math.min(knots[g + 1], dh - eps)
+  return Math.max(lo, Math.min(hi, newValue))
+}
+
 // The Generate preview curve (a real rational NURBS) for a given Lie transform M.
 // At the IDENTITY (all sliders at 0) the image is just the original curve, so we
 // use the EXACT complex→real-rational conversion (z = Z·W̄/|W|², degree 2n) — a
@@ -1783,7 +1795,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
           }
           if (g === null) return
         }
-        const moved = moveKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, g, newValue)
+        const moved = moveKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, g, clampKnotMove(meta.uvKnots, meta.uvDegree, g, newValue))
         if (!moved) return
         const refit = fitClosedPHSpline(curve.controlPoints as Point2D[], curve.degree, curve.knots, { genKnots: moved.knots, seamContinuity: cur })
         if (!refit) return
@@ -1812,7 +1824,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
           }
           if (g === null) return
         }
-        const moved = moveKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, g, newValue)
+        const moved = moveKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, g, clampKnotMove(meta.uvKnots, meta.uvDegree, g, newValue))
         if (!moved) return
         const phResult = computePHCurveFromUV(
           meta.uControlPoints, meta.vControlPoints, moved.knots, meta.uvDegree, meta.origin.x, meta.origin.y,

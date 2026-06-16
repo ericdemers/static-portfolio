@@ -57,4 +57,37 @@ describe('closed PH knot drag: collide then separate', () => {
     const a = evaluateCurve(c, 0), b = evaluateCurve(c, 1)
     expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeLessThan(1e-6)
   })
+
+  it('dragging an interior knot to the very end does not degenerate', () => {
+    const { id, gKnots } = injectClosedPH()
+    const g = 3
+    const v0 = gKnots[g]
+    const n0 = curveOf(id).controlPoints.length
+    const curveIdx = curveOf(id).knots.findIndex((k) => Math.abs(k - v0) < 1e-9)
+    useSceneStore.getState().selectKnot(curveIdx)
+    const move = (val: number) => useSceneStore.getState().moveKnotAtCurve(id, useSceneStore.getState().selectedKnotIndex ?? curveIdx, val)
+
+    // Slam it past the boundary toward the seam.
+    move(0.999)
+    move(2.0)
+    move(1.0)
+
+    const m = meta(id)
+    const dl = m.uvKnots[m.uvDegree], dh = m.uvKnots[m.uvKnots.length - m.uvDegree - 1]
+    // Stayed strictly inside — never merged into the clamped end (no "mult 5").
+    expect(m.uvKnots[g]).toBeGreaterThan(dl + 1e-9)
+    expect(m.uvKnots[g]).toBeLessThan(dh - 1e-9)
+    // No generator knot exceeds degree+1 multiplicity (no degeneracy).
+    let maxMult = 0
+    for (const v of new Set(m.uvKnots)) maxMult = Math.max(maxMult, m.uvKnots.filter((k) => Math.abs(k - v) < 1e-9).length)
+    expect(maxMult).toBeLessThanOrEqual(m.uvDegree + 1)
+    // Count may DROP (it collided with a neighbour) but must not grow/explode.
+    expect(curveOf(id).controlPoints.length).toBeLessThanOrEqual(n0)
+    expect(curveOf(id).controlPoints.length).toBeGreaterThan(n0 - 6)
+    // Finite + still closed.
+    expect(isFiniteCurve(id)).toBe(true)
+    const c = curveOf(id)
+    const a = evaluateCurve(c, 0), b = evaluateCurve(c, 1)
+    expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeLessThan(1e-6)
+  })
 })
