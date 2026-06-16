@@ -507,10 +507,12 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     // PH curve optimization (always active for PH curves)
     if (phMetadata.has(curveId) && curve.kind === 'bspline') {
       const meta = phMetadata.get(curveId)!
-      // Closed PH splines aren't re-solved yet (the open solver would break the
-      // ∮w²=0 closure + seam wrap) — drag support for closed is a follow-on, so
-      // for now let the drag fall through to a plain move.
-      if (meta.kind === 'polynomial' && !meta.closed) {
+      // Closed PH splines aren't editable yet (the open solver would break the
+      // ∮w²=0 closure + seam wrap, and the curve is now a periodic representation
+      // of a clamped generator) — control-point editing of closed curves is a
+      // follow-on. No-op rather than corrupt the PH structure.
+      if (meta.kind === 'polynomial' && meta.closed) return
+      if (meta.kind === 'polynomial') {
         try {
           // Live curvature controls during the drag: the curvature-VALUE bound
           // (2D PH workbench) and/or curvature-EXTREMA-count preservation (the
@@ -1714,6 +1716,9 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     // value, move the generator knot, and recompute; the triple follows together.
     if (state.phMetadata.has(id)) {
       const meta = state.phMetadata.get(id)!
+      // Closed PH: seam-continuity editing (moving the junction) is a follow-on;
+      // no-op for now rather than corrupt the periodic representation.
+      if (meta.kind === 'polynomial' && meta.closed) return
       if (meta.kind === 'polynomial') {
         const value = curve.knots[knotIndex]
         let g = -1
@@ -1758,6 +1763,8 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     // read undefined here; they fall through to the kind-aware generic removeKnot.
     if (state.phMetadata.has(id)) {
       const meta = state.phMetadata.get(id)!
+      // Closed PH: knot editing at the seam is a follow-on; no-op for now.
+      if (meta.kind === 'polynomial' && meta.closed) return
       if (meta.kind === 'polynomial') {
         const uResult = removeKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, knotIndex)
         if (!uResult) return

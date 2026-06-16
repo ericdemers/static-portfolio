@@ -3,7 +3,7 @@ import { fitClosedPHSpline, closeOpenPHSpline } from './phClosedSplineFit'
 import { fitPHSplineToBSpline } from './phSplineFit'
 import { optimizePHCurve } from './index'
 import { createBSpline } from '../utils/bspline/utilities'
-import { evaluateCurve } from '../utils/bspline/core'
+import { evaluateCurve, isPeriodicRepresentation } from '../utils/bspline/core'
 import type { Curve, Point2D } from '../types/curve'
 
 // A closed ellipse stroke (turning number 1 → anti-periodic generator, s = −1).
@@ -34,11 +34,13 @@ describe('fitClosedPHSpline', () => {
     expect(ph!.metadata.wrapSign).toBe(-1) // a simple loop has turning number 1
   })
 
-  it('closes: first and last control points coincide', () => {
+  it('is a periodic representation that closes (eval wraps)', () => {
     const { cps, degree, knots } = ellipseStroke()
     const ph = fitClosedPHSpline(cps, degree, knots)!
-    const p0 = ph.controlPoints[0], pN = ph.controlPoints[ph.controlPoints.length - 1]
-    expect(Math.hypot(p0.x - pN.x, p0.y - pN.y)).toBeLessThan(1e-6)
+    const curve = asCurve(ph)
+    expect(isPeriodicRepresentation(curve)).toBe(true) // closed + knots in [0,1)
+    const at0 = evaluateCurve(curve, 0), at1 = evaluateCurve(curve, 1)
+    expect(Math.hypot(at0.x - at1.x, at0.y - at1.y)).toBeLessThan(1e-6)
   })
 
   it('is smooth at the seam (tangent matches across t=0)', () => {
@@ -92,14 +94,17 @@ describe('closeOpenPHSpline', () => {
     return fitPHSplineToBSpline(bs.controlPoints, bs.knots, { generatorDegree: 2 })!
   }
 
-  it('closes an open PH spline at C⁰ (first = last control point)', () => {
+  it('closes an open PH spline at C⁰ (periodic, eval wraps)', () => {
     const open = nearlyClosedOpenPH()
     const closed = closeOpenPHSpline(open.metadata)
     expect(closed).not.toBeNull()
     expect(closed!.metadata.closed).toBe(true)
+    expect(closed!.metadata.seamContinuity).toBe(0)
     expect(Math.abs(closed!.metadata.wrapSign!)).toBe(1)
-    const p0 = closed!.controlPoints[0], pN = closed!.controlPoints[closed!.controlPoints.length - 1]
-    expect(Math.hypot(p0.x - pN.x, p0.y - pN.y)).toBeLessThan(1e-6)
+    const curve: Curve = { id: 'c', kind: 'bspline', degree: closed!.degree, knots: closed!.knots, controlPoints: closed!.controlPoints, closed: true }
+    expect(isPeriodicRepresentation(curve)).toBe(true)
+    const at0 = evaluateCurve(curve, 0), at1 = evaluateCurve(curve, 1)
+    expect(Math.hypot(at0.x - at1.x, at0.y - at1.y)).toBeLessThan(1e-6)
   })
 
   it('is a gentle correction once the endpoint is dragged onto the start', () => {

@@ -28,10 +28,67 @@
 
 import { computePHCurveFromUV, type PHCurveResult, type PHMetadata } from './phCurve'
 import { phControlPointJacobian } from './phCurveAnalytic'
-import { findKnotSpan, basisFunctions } from '../utils/bspline/core'
+import { findKnotSpan, basisFunctions, evaluateBSpline, findPeriodicKnotSpan, periodicBasisFunctions } from '../utils/bspline/core'
 import { evaluatePeriodicBSpline } from '../utils/bspline/core'
 import { leastSquares, type Matrix } from './linearAlgebra'
 import type { Point2D } from '../types/curve'
+
+/**
+ * Re-express an exact clamped closed PH curve in the PERIODIC representation
+ * (closed, knots in [0,1) with a real seam junction), so it behaves like every
+ * other closed B-spline — movable junction knots and all. The clamped curve
+ * already lives in the periodic spline space (same interior breakpoints, the
+ * seam differs only in representation), so a linear least-squares fit on the
+ * periodic basis recovers it essentially exactly; this avoids fragile
+ * clamped→periodic knot surgery.
+ *
+ * seamContinuity c sets the seam-junction multiplicity = degree − c (C⁰→5,
+ * C¹→4, C²→3). Interior joins keep multiplicity 3 (C², from single generator
+ * knots).
+ */
+export function buildPeriodicPHCurve(
+  clampedCPs: Point2D[],
+  clampedKnots: number[],
+  seamContinuity: number,
+): { controlPoints: Point2D[]; knots: number[]; degree: number } {
+  const degree = 5
+  // Distinct interior breakpoints (generator joins) in (0,1).
+  const interior: number[] = []
+  for (const k of clampedKnots) {
+    if (k > 1e-9 && k < 1 - 1e-9 && !interior.some((x) => Math.abs(x - k) < 1e-9)) interior.push(k)
+  }
+  interior.sort((a, b) => a - b)
+
+  // Periodic knot vector (length n = #control points): seam at 0 with the chosen
+  // multiplicity, each interior breakpoint at multiplicity 3.
+  const seamMult = degree - seamContinuity
+  const Kp: number[] = []
+  for (let r = 0; r < seamMult; r++) Kp.push(0)
+  for (const b of interior) for (let r = 0; r < 3; r++) Kp.push(b)
+  const n = Kp.length
+
+  // Sample the exact clamped curve over [0,1) and least-squares fit the periodic
+  // control points (the periodic basis encodes the wrap).
+  const lo = clampedKnots[degree], hi = clampedKnots[clampedKnots.length - degree - 1]
+  const m = Math.max(4 * n, 240)
+  const A: Matrix = []
+  const bx: number[] = [], by: number[] = []
+  for (let i = 0; i < m; i++) {
+    const tt = i / m
+    const p = evaluateBSpline(clampedCPs, degree, clampedKnots, Math.min(lo + tt * (hi - lo), hi - 1e-9))
+    const span = findPeriodicKnotSpan(degree, Kp, tt)
+    const N = periodicBasisFunctions(span, tt, degree, Kp)
+    const row = new Array(n).fill(0)
+    for (let j = 0; j <= degree; j++) {
+      const idx = (((span - degree + j) % n) + n) % n
+      row[idx] += N[j]
+    }
+    A.push(row); bx.push(p.x); by.push(p.y)
+  }
+  const sx = leastSquares(A, bx), sy = leastSquares(A, by)
+  const controlPoints = sx.x.map((x, i) => ({ x, y: sy.x[i] }))
+  return { controlPoints, knots: Kp, degree }
+}
 
 export interface ClosedPHSplineFitOptions {
   /** Generator segments around the loop (defaults to the stroke's CP count). */
@@ -183,15 +240,15 @@ export function fitClosedPHSpline(
     curve = buildCurve()
   }
 
-  // Snap the last control point exactly onto the first for a watertight loop.
-  const cps = curve.controlPoints
-  cps[cps.length - 1] = { x: cps[0].x, y: cps[0].y }
-
+  // Express the exact (C²) closed curve in the periodic representation, so it
+  // behaves like every other closed B-spline. The generator stays clamped (the
+  // PH source of truth); the periodic curve is the display geometry.
+  const periodic = buildPeriodicPHCurve(curve.controlPoints, curve.knots, 2)
   return {
-    controlPoints: cps,
-    knots: curve.knots,
-    degree: curve.degree,
-    metadata: { ...curve.metadata, closed: true, wrapSign: s },
+    controlPoints: periodic.controlPoints,
+    knots: periodic.knots,
+    degree: periodic.degree,
+    metadata: { ...curve.metadata, closed: true, wrapSign: s, seamContinuity: 2 },
   }
 }
 
@@ -241,10 +298,13 @@ export function closeOpenPHSpline(meta: PHMetadata): PHCurveResult | null {
   cps[cps.length - 1] = { x: cps[0].x, y: cps[0].y }
   // Wrap sign from the generator end tangents (√ of the curve's end tangents).
   const s = u[0] * u[n - 1] + v[0] * v[n - 1] < 0 ? -1 : 1
+  // C⁰ closure: express in the periodic representation with a full (degree-mult)
+  // seam junction, so the seam is a real movable junction (corner for now).
+  const periodic = buildPeriodicPHCurve(cps, curve.knots, 0)
   return {
-    controlPoints: cps,
-    knots: curve.knots,
-    degree: curve.degree,
-    metadata: { ...curve.metadata, closed: true, wrapSign: s },
+    controlPoints: periodic.controlPoints,
+    knots: periodic.knots,
+    degree: periodic.degree,
+    metadata: { ...curve.metadata, closed: true, wrapSign: s, seamContinuity: 0 },
   }
 }

@@ -32,9 +32,12 @@ export interface PHMetadata {
   uvKnots: number[]
   origin: { x: number; y: number }
   /** Closed PH spline: the generator wraps with sign `wrapSign` (w(1)=s·w(0))
-   *  and the curve satisfies ∮w²=0. Absent/undefined ⇒ an open PH spline. */
+   *  and the curve satisfies ∮w²=0. Absent/undefined ⇒ an open PH spline.
+   *  `seamContinuity` is the curve's continuity at the seam (0=C⁰ corner … 2=C²),
+   *  i.e. the seam-junction multiplicity is degree − seamContinuity. */
   closed?: boolean
   wrapSign?: number
+  seamContinuity?: number
 }
 
 export interface PHCurveResult {
