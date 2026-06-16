@@ -66,6 +66,10 @@ interface SketcherState {
   selectedCurveId: string | null
   selectedControlPointIndex: number | null
   selectedKnotIndex: number | null
+  /** Closed/open PH knot drag: the GENERATOR knot index being dragged, tracked
+   *  across re-fits so collide/separate stays coherent (don't re-derive by value,
+   *  which is ambiguous when knots coincide). Null when no PH knot drag is live. */
+  draggedGenKnot: number | null
   selectedFarinPointIndex: number | null
 
   // Drawing
@@ -359,6 +363,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   selectedCurveId: null,
   selectedControlPointIndex: null,
   selectedKnotIndex: null,
+  draggedGenKnot: null,
   selectedFarinPointIndex: null,
 
   activeTool: 'none',
@@ -491,11 +496,11 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     if (state.transformActive && id !== state.selectedCurveId) {
       state.commitTransform()
     }
-    set({ selectedCurveId: id, selectedControlPointIndex: null, selectedKnotIndex: null, selectedFarinPointIndex: null })
+    set({ selectedCurveId: id, selectedControlPointIndex: null, selectedKnotIndex: null, selectedFarinPointIndex: null, draggedGenKnot: null })
   },
 
   selectControlPoint: (index) => {
-    set({ selectedControlPointIndex: index, selectedKnotIndex: null, selectedFarinPointIndex: null })
+    set({ selectedControlPointIndex: index, selectedKnotIndex: null, selectedFarinPointIndex: null, draggedGenKnot: null })
   },
 
   moveControlPoint: (curveId, pointIndex, newPosition) => {
@@ -1741,64 +1746,80 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
       // re-fit the closed PH on the MOVED generator knots (keeping the current
       // seam continuity), so the knot relocates and the curve stays PH + closed.
       if (meta.kind === 'polynomial' && meta.closed) {
-        const value = curve.knots[knotIndex]
         const cur = meta.seamContinuity ?? 0
-        // Pulling a SEAM knot (value 0) off the seam raises continuity one step
-        // (C⁰→C¹→C²) — the seam multiplicity drops by one, so the curve loses ONE
-        // control point, exactly like removing a junction knot on a normal closed
-        // B-spline. No knot is inserted at the release point (that would spawn
-        // control points). Capped at C².
-        if (Math.abs(value) < 1e-9 || Math.abs(value - 1) < 1e-9) {
-          if (cur >= 2) return
-          if (newValue < 0.05 || newValue > 0.95) return // not pulled off the seam
-          const refit = fitClosedPHSpline(curve.controlPoints as Point2D[], curve.degree, curve.knots, { genKnots: meta.uvKnots, seamContinuity: cur + 1 })
-          if (!refit) return
-          const newPhMetadata = new Map(state.phMetadata)
-          newPhMetadata.set(id, refit.metadata)
-          set((s) => ({
-            curves: s.curves.map((c) =>
-              c.id === id
-                ? { ...c, controlPoints: refit.controlPoints, knots: refit.knots, degree: refit.degree, closed: true } as Curve
-                : c,
-            ),
-            phMetadata: newPhMetadata,
-            selectedKnotIndex: null,
-          }))
-          return
+        // SEAM pull-out (only at drag start, when no generator knot is tracked):
+        // grabbing the seam knot (value 0) and pulling it off raises continuity
+        // one step (C⁰→C¹→C²) — seam multiplicity drops by one, so the curve loses
+        // ONE control point (like removing a junction knot on a normal closed
+        // B-spline). No knot inserted. Capped at C².
+        if (state.draggedGenKnot === null) {
+          const value = curve.knots[knotIndex]
+          if (Math.abs(value) < 1e-9 || Math.abs(value - 1) < 1e-9) {
+            if (cur >= 2) return
+            if (newValue < 0.05 || newValue > 0.95) return // not pulled off the seam
+            const refit = fitClosedPHSpline(curve.controlPoints as Point2D[], curve.degree, curve.knots, { genKnots: meta.uvKnots, seamContinuity: cur + 1 })
+            if (!refit) return
+            const newPhMetadata = new Map(state.phMetadata)
+            newPhMetadata.set(id, refit.metadata)
+            set((s) => ({
+              curves: s.curves.map((c) =>
+                c.id === id ? { ...c, controlPoints: refit.controlPoints, knots: refit.knots, degree: refit.degree, closed: true } as Curve : c,
+              ),
+              phMetadata: newPhMetadata,
+              selectedKnotIndex: null,
+            }))
+            return
+          }
         }
-        let g = -1
-        for (let i = meta.uvDegree + 1; i < meta.uvKnots.length - meta.uvDegree - 1; i++) {
-          if (Math.abs(meta.uvKnots[i] - value) < 1e-9) { g = i; break }
+        // Interior knot: track the GENERATOR knot through the whole drag (don't
+        // re-look-up by value — that's ambiguous once knots coincide). Move it,
+        // re-fit, and retarget the selection to its new curve image so the next
+        // frame keeps dragging the same knot.
+        let g = state.draggedGenKnot
+        if (g === null) {
+          const value = curve.knots[knotIndex]
+          for (let i = meta.uvDegree + 1; i < meta.uvKnots.length - meta.uvDegree - 1; i++) {
+            if (Math.abs(meta.uvKnots[i] - value) < 1e-9) { g = i; break }
+          }
+          if (g === null) return
         }
-        if (g < 0) return
         const moved = moveKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, g, newValue)
         if (!moved) return
-        const refit = fitClosedPHSpline(curve.controlPoints as Point2D[], curve.degree, curve.knots, { genKnots: moved.knots, seamContinuity: meta.seamContinuity ?? 0 })
+        const refit = fitClosedPHSpline(curve.controlPoints as Point2D[], curve.degree, curve.knots, { genKnots: moved.knots, seamContinuity: cur })
         if (!refit) return
+        const v = moved.knots[g]
+        let newIdx = -1
+        for (let i = 0; i < refit.knots.length; i++) if (Math.abs(refit.knots[i] - v) < 1e-6) { newIdx = i; break }
         const newPhMetadata = new Map(state.phMetadata)
         newPhMetadata.set(id, refit.metadata)
         set((s) => ({
           curves: s.curves.map((c) =>
-            c.id === id
-              ? { ...c, controlPoints: refit.controlPoints, knots: refit.knots, degree: refit.degree, closed: true } as Curve
-              : c,
+            c.id === id ? { ...c, controlPoints: refit.controlPoints, knots: refit.knots, degree: refit.degree, closed: true } as Curve : c,
           ),
           phMetadata: newPhMetadata,
+          draggedGenKnot: g,
+          selectedKnotIndex: newIdx >= 0 ? newIdx : null,
         }))
         return
       }
       if (meta.kind === 'polynomial') {
-        const value = curve.knots[knotIndex]
-        let g = -1
-        for (let i = meta.uvDegree + 1; i < meta.uvKnots.length - meta.uvDegree - 1; i++) {
-          if (Math.abs(meta.uvKnots[i] - value) < 1e-9) { g = i; break }
+        // Open PH: same generator-knot tracking, so collide/separate is coherent.
+        let g = state.draggedGenKnot
+        if (g === null) {
+          const value = curve.knots[knotIndex]
+          for (let i = meta.uvDegree + 1; i < meta.uvKnots.length - meta.uvDegree - 1; i++) {
+            if (Math.abs(meta.uvKnots[i] - value) < 1e-9) { g = i; break }
+          }
+          if (g === null) return
         }
-        if (g < 0) return
         const moved = moveKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, g, newValue)
         if (!moved) return
         const phResult = computePHCurveFromUV(
           meta.uControlPoints, meta.vControlPoints, moved.knots, meta.uvDegree, meta.origin.x, meta.origin.y,
         )
+        const v = moved.knots[g]
+        let newIdx = -1
+        for (let i = 0; i < phResult.knots.length; i++) if (Math.abs(phResult.knots[i] - v) < 1e-6) { newIdx = i; break }
         const newPhMetadata = new Map(state.phMetadata)
         newPhMetadata.set(id, phResult.metadata)
         set((s) => ({
@@ -1808,6 +1829,8 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
               : c,
           ),
           phMetadata: newPhMetadata,
+          draggedGenKnot: g,
+          selectedKnotIndex: newIdx >= 0 ? newIdx : null,
         }))
         return
       }
@@ -1897,7 +1920,9 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   },
 
   selectKnot: (index) => {
-    set({ selectedKnotIndex: index, selectedControlPointIndex: null, selectedFarinPointIndex: null })
+    // A fresh knot grab starts a new drag — reset the tracked generator knot so
+    // the first move re-derives it from this knot.
+    set({ selectedKnotIndex: index, selectedControlPointIndex: null, selectedFarinPointIndex: null, draggedGenKnot: null })
   },
 
   // Farin point actions
