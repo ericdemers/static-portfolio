@@ -19,6 +19,7 @@ import type { Matrix } from './linearAlgebra'
 import { computePHCurveFromUV, type PHMetadata } from './phCurve'
 import { phCurvatureBoundCoeffs, phCurvatureBoundJacobian } from './phCurvatureBound'
 import { phControlPointJacobian } from './phCurveAnalytic'
+import { computeGCPsFromHomogeneous, computeOpenComplexCurvatureConstraintState } from './complexAlgebra'
 import type { Point2D } from '../types/curve'
 
 /**
@@ -34,6 +35,11 @@ export interface PHCurvatureBoundOptions {
   subdivisions?: number
   constrained?: boolean
   penaltyWeight?: number
+  /** Preserve the curvature-extrema COUNT while editing — hold the sign pattern
+   *  of the curvature-derivative numerator g's Bernstein coefficients (the
+   *  sliding mechanism). Independent of the curvature-VALUE bound above; both
+   *  may be active at once. */
+  preserveCurvatureExtrema?: boolean
 }
 
 export class PHCurveProblem implements OptimizationProblem {
@@ -56,7 +62,16 @@ export class PHCurveProblem implements OptimizationProblem {
   private subdivisions: number
   private constrained: boolean
   private penaltyWeight: number
-  private _numConstraints: number
+  private _numBoundConstraints: number
+
+  // Curvature-extrema preservation (optional) — sign pattern + active (non-
+  // sliding) set of g's Bernstein coefficients, snapshotted at drag start. g is
+  // the curve's curvature-derivative numerator; for a polynomial PH curve the
+  // curve is non-rational, so we feed its real CPs as homogeneous coords with
+  // unit weight (W = 1) and reuse the complex-rational g machinery.
+  private constrainExtrema: boolean
+  private extremaSigns: number[] = []
+  private extremaActive: number[] = []
 
   constructor(
     metadata: PHMetadata,
@@ -79,9 +94,30 @@ export class PHCurveProblem implements OptimizationProblem {
     this.subdivisions = bound.subdivisions ?? 1
     this.penaltyWeight = bound.penaltyWeight ?? 0
     this.constrained = (bound.constrained ?? false) && Number.isFinite(this.kappaMax)
-    this._numConstraints = this.constrained
+    this._numBoundConstraints = this.constrained
       ? phCurvatureBoundCoeffs(this.uCPs, this.vCPs, this.uvKnots, this.kappaMax, this.subdivisions).length
       : 0
+
+    // Snapshot the curvature-extrema sign pattern + inactive (sliding) set from
+    // the initial generator state; held fixed for the solve.
+    this.constrainExtrema = bound.preserveCurvatureExtrema ?? false
+    if (this.constrainExtrema) {
+      try {
+        const { knots, Zre, Zim, Wre, Wim } = this.curveHomogeneous()
+        const state = computeOpenComplexCurvatureConstraintState(knots, Zre, Zim, Wre, Wim)
+        const inactive = new Set(state.inactiveIndices)
+        for (let i = 0; i < state.signs.length; i++) {
+          if (inactive.has(i)) continue
+          // Skip g coefficients at zero-width spans (repeated interior knots of a
+          // C² spline): they are NaN/degenerate and carry no curvature meaning.
+          if (!Number.isFinite(state.gCPs[i])) continue
+          this.extremaActive.push(i)
+          this.extremaSigns.push(state.signs[i])
+        }
+      } catch {
+        this.constrainExtrema = false
+      }
+    }
 
     // Target CPs: copy current, move dragged one to target
     this.targetCPs = curveCPs.map(p => ({ ...p }))
@@ -99,6 +135,26 @@ export class PHCurveProblem implements OptimizationProblem {
     return phCurvatureBoundCoeffs(this.uCPs, this.vCPs, this.uvKnots, this.kappaMax, this.subdivisions)
   }
 
+  // Current curve, expressed as homogeneous coords with unit weight (the curve
+  // is non-rational), as needed by the curvature-derivative-numerator machinery.
+  private curveHomogeneous(): {
+    knots: number[]; Zre: number[]; Zim: number[]; Wre: number[]; Wim: number[]
+  } {
+    const ph = computePHCurveFromUV(this.uCPs, this.vCPs, this.uvKnots, this.uvDegree, this.x0, this.y0)
+    const Zre: number[] = [], Zim: number[] = [], Wre: number[] = [], Wim: number[] = []
+    for (const p of ph.controlPoints) {
+      Zre.push(p.x); Zim.push(p.y); Wre.push(1); Wim.push(0)
+    }
+    return { knots: ph.knots, Zre, Zim, Wre, Wim }
+  }
+
+  // Live g (curvature-derivative numerator) coefficients on the active set.
+  private extremaConstraints(): number[] {
+    const { knots, Zre, Zim, Wre, Wim } = this.curveHomogeneous()
+    const g = computeGCPsFromHomogeneous(knots, Zre, Zim, Wre, Wim)
+    return this.extremaActive.map((idx) => g[idx] ?? 0)
+  }
+
   // ==========================================================================
   // OptimizationProblem Interface
   // ==========================================================================
@@ -108,7 +164,7 @@ export class PHCurveProblem implements OptimizationProblem {
   }
 
   get numConstraints(): number {
-    return this._numConstraints
+    return this._numBoundConstraints + (this.constrainExtrema ? this.extremaActive.length : 0)
   }
 
   get numEqualityConstraints(): number {
@@ -187,19 +243,49 @@ export class PHCurveProblem implements OptimizationProblem {
   }
 
   computeConstraints(): number[] {
-    if (!this.constrained) return []
-    // Raw P± coefficients; sign = −1 ⇒ feasibility (sign·c < 0) is coeff > 0.
-    return this.boundCoeffs()
+    const out: number[] = []
+    // Curvature-VALUE bound: raw P± coefficients (feasibility is coeff > 0).
+    if (this.constrained) out.push(...this.boundCoeffs())
+    // Curvature-EXTREMA: live g coefficients on the active set.
+    if (this.constrainExtrema) out.push(...this.extremaConstraints())
+    return out
   }
 
   computeConstraintJacobian(): Matrix {
-    if (!this.constrained) return []
+    const rows: Matrix = []
     // Exact Jacobian of the P± bound coefficients (Bernstein algebra).
-    return phCurvatureBoundJacobian(this.uCPs, this.vCPs, this.uvKnots, this.kappaMax, this.subdivisions)
+    if (this.constrained) {
+      rows.push(...phCurvatureBoundJacobian(this.uCPs, this.vCPs, this.uvKnots, this.kappaMax, this.subdivisions))
+    }
+    // Finite-difference Jacobian of the active g coefficients w.r.t. the
+    // variables (matches the complex-rational PH curvature-extrema path).
+    if (this.constrainExtrema) {
+      const numVars = this.numVariables
+      const vars = this.getVariables()
+      const c0 = this.extremaConstraints()
+      const eps = 1e-7
+      const fd: Matrix = c0.map(() => new Array(numVars).fill(0))
+      for (let j = 0; j < numVars; j++) {
+        const saved = vars[j]
+        vars[j] = saved + eps
+        this.setVariables(vars)
+        const cPlus = this.extremaConstraints()
+        vars[j] = saved
+        this.setVariables(vars)
+        for (let i = 0; i < c0.length; i++) fd[i][j] = (cPlus[i] - c0[i]) / eps
+      }
+      rows.push(...fd)
+    }
+    return rows
   }
 
   getConstraintSigns(): number[] {
-    return new Array(this._numConstraints).fill(-1)
+    const out: number[] = []
+    // Bound rows: sign −1 ⇒ feasibility (sign·c < 0) means coeff > 0.
+    if (this.constrained) for (let i = 0; i < this._numBoundConstraints; i++) out.push(-1)
+    // Extrema rows: the snapshotted sign that keeps each active g_j on its side.
+    if (this.constrainExtrema) out.push(...this.extremaSigns)
+    return out
   }
 
   getInactiveConstraints(): Set<number> {

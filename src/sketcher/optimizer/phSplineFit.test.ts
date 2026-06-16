@@ -3,6 +3,7 @@ import { fitPHSplineToBSpline } from './phSplineFit'
 import { optimizePHCurve } from './index'
 import { createBSpline } from '../utils/bspline/utilities'
 import { evaluateBSpline } from '../utils/bspline/core'
+import { computeOpenComplexCurvatureExtremaParameters } from './complexAlgebra'
 import type { Point2D } from '../types/curve'
 
 // A gentle S-shaped stroke (no cusps, speed bounded away from zero).
@@ -14,6 +15,26 @@ function makeStrokePoints(): Point2D[] {
     pts.push({ x, y })
   }
   return pts
+}
+
+// A wavy stroke (full sine period) → several curvature extrema.
+function makeWavyStrokePoints(): Point2D[] {
+  const pts: Point2D[] = []
+  for (let i = 0; i <= 12; i++) {
+    const x = i * 25
+    const y = 50 * Math.sin((i / 12) * 2 * Math.PI)
+    pts.push({ x, y })
+  }
+  return pts
+}
+
+// Count curvature extrema of a non-rational curve (homogeneous weight = 1).
+function countExtrema(cps: Point2D[], knots: number[]): number {
+  const Zre = cps.map((p) => p.x)
+  const Zim = cps.map((p) => p.y)
+  const Wre = cps.map(() => 1)
+  const Wim = cps.map(() => 0)
+  return computeOpenComplexCurvatureExtremaParameters(knots, Zre, Zim, Wre, Wim).length
 }
 
 describe('fitPHSplineToBSpline', () => {
@@ -63,5 +84,29 @@ describe('fitPHSplineToBSpline', () => {
     const distBefore = Math.hypot(before.x - target.x, before.y - target.y)
     const distAfter = Math.hypot(after.x - target.x, after.y - target.y)
     expect(distAfter).toBeLessThan(distBefore)
+  })
+})
+
+describe('PH spline curvature-extrema preservation', () => {
+  it('preserves the curvature-extrema count under a drag', () => {
+    const bs = createBSpline(makeWavyStrokePoints(), 3) as {
+      controlPoints: Point2D[]; degree: number; knots: number[]
+    }
+    const ph = fitPHSplineToBSpline(bs.controlPoints, bs.knots, { generatorDegree: 2 })!
+    const n0 = countExtrema(ph.controlPoints, ph.knots)
+    expect(n0).toBeGreaterThanOrEqual(2) // a wavy curve really has extrema to preserve
+
+    // Drag a mid control point with extrema preservation ON.
+    const idx = Math.floor(ph.controlPoints.length / 2)
+    const before = ph.controlPoints[idx]
+    const target = { x: before.x + 25, y: before.y - 25 }
+    const res = optimizePHCurve(ph.metadata, ph.controlPoints, target.x, target.y, idx, {
+      preserveCurvatureExtrema: true,
+      maxIterations: 24,
+      enableBFGS: false,
+    })
+    expect(res.iterations).toBeGreaterThan(0)
+    const n1 = countExtrema(res.curveResult.controlPoints, res.curveResult.knots)
+    expect(n1).toBe(n0)
   })
 })

@@ -541,15 +541,18 @@ export function optimizePHCurve(
     enableBFGS: options.enableBFGS ?? true,
   }
 
-  // Optional curvature-value bound |κ| ≤ κ_max, enforced live during the drag.
-  const bound: PHCurvatureBoundOptions =
-    options.constrainCurvatureValue && Number.isFinite(options.curvatureBound ?? Infinity)
+  // Optional curvature-value bound |κ| ≤ κ_max and/or curvature-extrema-count
+  // preservation, enforced live during the drag.
+  const bound: PHCurvatureBoundOptions = {
+    ...(options.constrainCurvatureValue && Number.isFinite(options.curvatureBound ?? Infinity)
       ? {
           curvatureBound: options.curvatureBound,
           subdivisions: options.curvatureSubdivisions ?? 2,
           constrained: true,
         }
-      : {}
+      : {}),
+    ...(options.preserveCurvatureExtrema ? { preserveCurvatureExtrema: true } : {}),
+  }
 
   const problem = new PHCurveProblem(metadata, curveCPs, targetX, targetY, cpIndex, bound)
   const optimizer = new InteriorPointOptimizer(problem, config)

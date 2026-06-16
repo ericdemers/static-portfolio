@@ -976,12 +976,25 @@ export function recomposeBD(bd: BernsteinDecomposition, maxContinuity?: number):
     }
   }
 
-  // Step 2: At each interior breakpoint, compute actual continuity and
-  // remove excess knots via Boehm knot removal
+  // Step 2: At each interior breakpoint, remove excess knots via Boehm removal.
+  //
+  // Two modes:
+  // - maxContinuity GIVEN (the PH path): the structural continuity is KNOWN to
+  //   be ≥ maxContinuity at every interior breakpoint, so remove EXACTLY that
+  //   many knots, FORCED (no tolerance gate). This is essential: judging removal
+  //   on numerically-measured continuity diverges between coordinates — e.g. the
+  //   cancellation in x' = u²−v² can read C¹ at a join where y' = 2uv reads C²,
+  //   yielding different knot vectors and undefined control points. A
+  //   deterministic count keeps every coordinate (and the analytic Jacobian's
+  //   derivatives) on one shared knot vector.
+  // - maxContinuity OMITTED: detect the actual continuity numerically and gate
+  //   removal on a scale-relative tolerance.
+  const forced = maxContinuity !== undefined
+  const cpScale = controlPoints.reduce((m, c) => Math.max(m, Math.abs(c)), 1)
+  const removalTol = forced ? Infinity : 1e-8 * cpScale
   const maxK = maxContinuity !== undefined ? maxContinuity : p - 1
   for (let s = bd.numSpans - 2; s >= 0; s--) {
-    const rawContinuity = computeContinuityAtBreakpoint(bd, s)
-    const continuity = Math.min(rawContinuity, maxK)
+    const continuity = forced ? maxK : Math.min(computeContinuityAtBreakpoint(bd, s), maxK)
     if (continuity < 1) continue  // Already minimal (C0 needs multiplicity p)
 
     // Current multiplicity is p, target is p - continuity
@@ -999,7 +1012,7 @@ export function recomposeBD(bd: BernsteinDecomposition, maxContinuity?: number):
       }
       const removeIdx = Math.floor((knotIdx + lastIdx) / 2)
 
-      const result = removeKnot1DSimple(controlPoints, knots, p, removeIdx, 1e-8)
+      const result = removeKnot1DSimple(controlPoints, knots, p, removeIdx, removalTol)
       if (!result) break  // Can't remove more knots
       controlPoints = result.controlPoints
       knots = result.knots

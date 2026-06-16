@@ -491,13 +491,22 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
       const meta = phMetadata.get(curveId)!
       if (meta.kind === 'polynomial') {
         try {
+          // Live curvature controls during the drag: the curvature-VALUE bound
+          // (2D PH workbench) and/or curvature-EXTREMA-count preservation (the
+          // sketcher's signature constraint). When either is active, use a small
+          // iteration cap + Gauss-Newton (no BFGS) for interactivity.
+          const valueBound = boundCurvatureValue && Number.isFinite(curvatureBound)
+          const phOptions: Parameters<typeof optimizePHCurve>[5] = {
+            ...(valueBound ? { constrainCurvatureValue: true, curvatureBound } : {}),
+            ...(preserveCurvatureExtrema ? { preserveCurvatureExtrema: true } : {}),
+          }
+          if (valueBound || preserveCurvatureExtrema) {
+            phOptions.maxIterations = 24
+            phOptions.enableBFGS = false
+          }
           const result = optimizePHCurve(
             meta, curve.controlPoints, newPosition.x, newPosition.y, pointIndex,
-            // Bound the curvature value live during the drag (2D PH workbench).
-            // Gauss-Newton (no BFGS) + a small iteration cap for interactivity.
-            boundCurvatureValue && Number.isFinite(curvatureBound)
-              ? { constrainCurvatureValue: true, curvatureBound, maxIterations: 24, enableBFGS: false }
-              : {}
+            phOptions,
           )
           if (result.converged || result.iterations > 0) {
             const newPhMetadata = new Map(phMetadata)
