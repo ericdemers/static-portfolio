@@ -1740,10 +1740,35 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
       // Closed PH: map the dragged curve knot to its generator knot by value and
       // re-fit the closed PH on the MOVED generator knots (keeping the current
       // seam continuity), so the knot relocates and the curve stays PH + closed.
-      // The seam knot (value 0) is remove-only (continuity); leave it.
       if (meta.kind === 'polynomial' && meta.closed) {
         const value = curve.knots[knotIndex]
-        if (Math.abs(value) < 1e-9 || Math.abs(value - 1) < 1e-9) return // seam
+        const cur = meta.seamContinuity ?? 0
+        // Pulling a SEAM knot (value 0) inward raises continuity one step and
+        // drops a generator knot at the release position — a new C² join there
+        // (the "move the seam stack out to smooth the seam" gesture). Capped at
+        // C²; retarget the selection to the new knot so the drag keeps moving it.
+        if (Math.abs(value) < 1e-9 || Math.abs(value - 1) < 1e-9) {
+          if (cur >= 2) return
+          const p = newValue
+          if (p < 0.05 || p > 0.95) return // not pulled far enough off the seam
+          const ins = insertKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, p)
+          const refit = fitClosedPHSpline(curve.controlPoints as Point2D[], curve.degree, curve.knots, { genKnots: ins.knots, seamContinuity: cur + 1 })
+          if (!refit) return
+          let newIdx: number | null = null
+          for (let i = 0; i < refit.knots.length; i++) if (Math.abs(refit.knots[i] - p) < 1e-6) { newIdx = i; break }
+          const newPhMetadata = new Map(state.phMetadata)
+          newPhMetadata.set(id, refit.metadata)
+          set((s) => ({
+            curves: s.curves.map((c) =>
+              c.id === id
+                ? { ...c, controlPoints: refit.controlPoints, knots: refit.knots, degree: refit.degree, closed: true } as Curve
+                : c,
+            ),
+            phMetadata: newPhMetadata,
+            selectedKnotIndex: newIdx,
+          }))
+          return
+        }
         let g = -1
         for (let i = meta.uvDegree + 1; i < meta.uvKnots.length - meta.uvDegree - 1; i++) {
           if (Math.abs(meta.uvKnots[i] - value) < 1e-9) { g = i; break }

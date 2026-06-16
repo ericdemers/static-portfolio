@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { fitClosedPHSpline, closeOpenPHSpline } from './phClosedSplineFit'
 import { fitPHSplineToBSpline } from './phSplineFit'
-import { moveKnot1D } from './phBSplineOps'
+import { moveKnot1D, insertKnot1D } from './phBSplineOps'
 import { optimizePHCurve } from './index'
 import { createBSpline } from '../utils/bspline/utilities'
 import { evaluateCurve, isPeriodicRepresentation } from '../utils/bspline/core'
@@ -219,6 +219,39 @@ describe('closed PH control-point drag (re-fit)', () => {
     const dBefore = Math.hypot(before.x - target.x, before.y - target.y)
     const dAfter = Math.hypot(after.x - target.x, after.y - target.y)
     expect(dAfter).toBeLessThan(dBefore) // the control point follows the drag
+    const curve: Curve = { id: 'c', kind: 'bspline', degree: refit.degree, knots: refit.knots, controlPoints: refit.controlPoints, closed: true }
+    const a = evaluateCurve(curve, 0), b = evaluateCurve(curve, 1)
+    expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeLessThan(1e-6) // still closed
+  })
+})
+
+describe('closed PH seam knot pull-out (motion → continuity)', () => {
+  function tangentJump(ph: { controlPoints: Point2D[]; degree: number; knots: number[] }): number {
+    const curve: Curve = { id: 's', kind: 'bspline', degree: ph.degree, knots: ph.knots, controlPoints: ph.controlPoints, closed: true }
+    const e = 1e-4
+    const p0 = evaluateCurve(curve, 0), aft = evaluateCurve(curve, e), bef = evaluateCurve(curve, 1 - e)
+    let d = Math.atan2(aft.y - p0.y, aft.x - p0.x) - Math.atan2(p0.y - bef.y, p0.x - bef.x)
+    while (d > Math.PI) d -= 2 * Math.PI
+    while (d < -Math.PI) d += 2 * Math.PI
+    return Math.abs(d)
+  }
+
+  it('pulling the seam knot to p raises continuity and drops a join at p', () => {
+    const pts: Point2D[] = []
+    const NP = 14
+    for (let i = 0; i < NP; i++) { const a = (2 * Math.PI * 0.92 * i) / (NP - 1); pts.push({ x: 120 * Math.cos(a), y: 120 * Math.sin(a) }) }
+    const bs = createBSpline(pts, 3) as { controlPoints: Point2D[]; knots: number[] }
+    const open = fitPHSplineToBSpline(bs.controlPoints, bs.knots, { generatorDegree: 2 })!
+    const c0 = closeOpenPHSpline(open.metadata)!
+    expect(c0.metadata.seamContinuity).toBe(0)
+
+    const p = 0.4
+    const ins = insertKnot1D(c0.metadata.uControlPoints, c0.metadata.uvKnots, c0.metadata.uvDegree, p)
+    const refit = fitClosedPHSpline(c0.controlPoints, c0.degree, c0.knots, { genKnots: ins.knots, seamContinuity: 1 })!
+
+    expect(refit.metadata.seamContinuity).toBe(1) // continuity raised
+    expect(refit.metadata.uvKnots.some((k) => Math.abs(k - p) < 1e-9)).toBe(true) // join dropped at p
+    expect(tangentJump(refit)).toBeLessThan(tangentJump(c0)) // seam smoother
     const curve: Curve = { id: 'c', kind: 'bspline', degree: refit.degree, knots: refit.knots, controlPoints: refit.controlPoints, closed: true }
     const a = evaluateCurve(curve, 0), b = evaluateCurve(curve, 1)
     expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeLessThan(1e-6) // still closed
