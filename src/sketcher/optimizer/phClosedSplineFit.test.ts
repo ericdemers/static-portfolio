@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { fitClosedPHSpline, closeOpenPHSpline } from './phClosedSplineFit'
 import { fitPHSplineToBSpline } from './phSplineFit'
+import { moveKnot1D } from './phBSplineOps'
 import { optimizePHCurve } from './index'
 import { createBSpline } from '../utils/bspline/utilities'
 import { evaluateCurve, isPeriodicRepresentation } from '../utils/bspline/core'
@@ -170,5 +171,56 @@ describe('closed PH seam continuity ladder', () => {
     expect(j0).toBeGreaterThan(0.1) // a real corner at C⁰
     expect(j1).toBeLessThan(j0)     // C¹ closes the tangent gap
     expect(j2).toBeLessThan(0.03)   // C² seam is tangent-continuous
+  })
+})
+
+describe('closed PH knot move', () => {
+  function closedEllipsePH() {
+    const pts: Point2D[] = []
+    for (let i = 0; i < 16; i++) { const a = (2 * Math.PI * i) / 16; pts.push({ x: 160 * Math.cos(a), y: 90 * Math.sin(a) }) }
+    const bs = createBSpline(pts, 3, true) as { controlPoints: Point2D[]; degree: number; knots: number[] }
+    return fitClosedPHSpline(bs.controlPoints, bs.degree, bs.knots)!
+  }
+
+  it('re-fits on moved generator knots, staying closed + PH', () => {
+    const ph = closedEllipsePH()
+    const meta = ph.metadata
+    const gi = meta.uvDegree + 1 // first interior generator knot
+    const oldVal = meta.uvKnots[gi]
+    const newVal = (oldVal + meta.uvKnots[gi + 1]) / 2
+    const moved = moveKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, gi, newVal)!
+    const refit = fitClosedPHSpline(ph.controlPoints, ph.degree, ph.knots, { genKnots: moved.knots, seamContinuity: 2 })!
+    // generator knot relocated
+    expect(refit.metadata.uvKnots.some((k) => Math.abs(k - newVal) < 1e-9)).toBe(true)
+    expect(refit.metadata.uvKnots.some((k) => Math.abs(k - oldVal) < 1e-9)).toBe(false)
+    expect(refit.metadata.closed).toBe(true)
+    expect(refit.metadata.seamContinuity).toBe(2)
+    // still closed
+    const curve: Curve = { id: 'c', kind: 'bspline', degree: refit.degree, knots: refit.knots, controlPoints: refit.controlPoints, closed: true }
+    expect(isPeriodicRepresentation(curve)).toBe(true)
+    const a = evaluateCurve(curve, 0), b = evaluateCurve(curve, 1)
+    expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeLessThan(1e-6)
+  })
+})
+
+describe('closed PH control-point drag (re-fit)', () => {
+  it('moves the curve toward the dragged target and stays closed', () => {
+    const pts: Point2D[] = []
+    for (let i = 0; i < 16; i++) { const a = (2 * Math.PI * i) / 16; pts.push({ x: 160 * Math.cos(a), y: 90 * Math.sin(a) }) }
+    const bs = createBSpline(pts, 3, true) as { controlPoints: Point2D[]; degree: number; knots: number[] }
+    const ph = fitClosedPHSpline(bs.controlPoints, bs.degree, bs.knots)!
+    const idx = Math.floor(ph.controlPoints.length / 2)
+    const before = ph.controlPoints[idx]
+    const target = { x: before.x + 35, y: before.y + 35 }
+    const edited = ph.controlPoints.map((p, i) => (i === idx ? { x: target.x, y: target.y } : { x: p.x, y: p.y }))
+    const refit = fitClosedPHSpline(edited, ph.degree, ph.knots, { genKnots: ph.metadata.uvKnots, seamContinuity: 2 })!
+    expect(refit.controlPoints.length).toBe(ph.controlPoints.length)
+    const after = refit.controlPoints[idx]
+    const dBefore = Math.hypot(before.x - target.x, before.y - target.y)
+    const dAfter = Math.hypot(after.x - target.x, after.y - target.y)
+    expect(dAfter).toBeLessThan(dBefore) // the control point follows the drag
+    const curve: Curve = { id: 'c', kind: 'bspline', degree: refit.degree, knots: refit.knots, controlPoints: refit.controlPoints, closed: true }
+    const a = evaluateCurve(curve, 0), b = evaluateCurve(curve, 1)
+    expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeLessThan(1e-6) // still closed
   })
 })

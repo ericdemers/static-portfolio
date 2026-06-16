@@ -507,11 +507,32 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     // PH curve optimization (always active for PH curves)
     if (phMetadata.has(curveId) && curve.kind === 'bspline') {
       const meta = phMetadata.get(curveId)!
-      // Closed PH splines aren't editable yet (the open solver would break the
-      // ∮w²=0 closure + seam wrap, and the curve is now a periodic representation
-      // of a clamped generator) — control-point editing of closed curves is a
-      // follow-on. No-op rather than corrupt the PH structure.
-      if (meta.kind === 'polynomial' && meta.closed) return
+      // Closed PH: move the dragged periodic control point, then re-fit the
+      // closed PH from the edited curve on the SAME generator knots (keeping the
+      // seam continuity) — the curve follows the drag and stays PH + closed.
+      if (meta.kind === 'polynomial' && meta.closed) {
+        try {
+          const editedCPs = curve.controlPoints.map((p, i) =>
+            i === pointIndex ? { x: newPosition.x, y: newPosition.y } : { x: (p as Point2D).x, y: (p as Point2D).y },
+          )
+          const refit = fitClosedPHSpline(editedCPs, curve.degree, curve.knots, {
+            genKnots: meta.uvKnots, seamContinuity: meta.seamContinuity ?? 0,
+          })
+          if (refit) {
+            const newPhMetadata = new Map(phMetadata)
+            newPhMetadata.set(curveId, refit.metadata)
+            set((state) => ({
+              curves: state.curves.map((c) =>
+                c.id === curveId
+                  ? { ...c, controlPoints: refit.controlPoints, knots: refit.knots, degree: refit.degree, closed: true } as Curve
+                  : c,
+              ),
+              phMetadata: newPhMetadata,
+            }))
+          }
+        } catch { /* leave the curve unchanged on failure */ }
+        return
+      }
       if (meta.kind === 'polynomial') {
         try {
           // Live curvature controls during the drag: the curvature-VALUE bound
@@ -1716,9 +1737,34 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     // value, move the generator knot, and recompute; the triple follows together.
     if (state.phMetadata.has(id)) {
       const meta = state.phMetadata.get(id)!
-      // Closed PH: seam-continuity editing (moving the junction) is a follow-on;
-      // no-op for now rather than corrupt the periodic representation.
-      if (meta.kind === 'polynomial' && meta.closed) return
+      // Closed PH: map the dragged curve knot to its generator knot by value and
+      // re-fit the closed PH on the MOVED generator knots (keeping the current
+      // seam continuity), so the knot relocates and the curve stays PH + closed.
+      // The seam knot (value 0) is remove-only (continuity); leave it.
+      if (meta.kind === 'polynomial' && meta.closed) {
+        const value = curve.knots[knotIndex]
+        if (Math.abs(value) < 1e-9 || Math.abs(value - 1) < 1e-9) return // seam
+        let g = -1
+        for (let i = meta.uvDegree + 1; i < meta.uvKnots.length - meta.uvDegree - 1; i++) {
+          if (Math.abs(meta.uvKnots[i] - value) < 1e-9) { g = i; break }
+        }
+        if (g < 0) return
+        const moved = moveKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, g, newValue)
+        if (!moved) return
+        const refit = fitClosedPHSpline(curve.controlPoints as Point2D[], curve.degree, curve.knots, { genKnots: moved.knots, seamContinuity: meta.seamContinuity ?? 0 })
+        if (!refit) return
+        const newPhMetadata = new Map(state.phMetadata)
+        newPhMetadata.set(id, refit.metadata)
+        set((s) => ({
+          curves: s.curves.map((c) =>
+            c.id === id
+              ? { ...c, controlPoints: refit.controlPoints, knots: refit.knots, degree: refit.degree, closed: true } as Curve
+              : c,
+          ),
+          phMetadata: newPhMetadata,
+        }))
+        return
+      }
       if (meta.kind === 'polynomial') {
         const value = curve.knots[knotIndex]
         let g = -1

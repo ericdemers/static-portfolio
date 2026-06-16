@@ -98,6 +98,9 @@ export interface ClosedPHSplineFitOptions {
   /** Seam continuity of the resulting curve: 0 = C⁰ corner, 1 = G¹, 2 = G²
    *  (default 2). It equals the number of generator wrap-derivative matches. */
   seamContinuity?: number
+  /** Explicit clamped generator knot vector (overrides `segments`). Used by knot
+   *  moving, which preserves the moved — possibly non-uniform — knots. */
+  genKnots?: number[]
 }
 
 /**
@@ -112,7 +115,10 @@ export function fitClosedPHSpline(
 ): PHCurveResult | null {
   if (strokeCPs.length < 3) return null
   const genDegree = 2
-  const m = Math.max(4, options.segments ?? strokeCPs.length) // generator segments
+  // Generator segments m: from a custom knot vector if given (knot moving keeps
+  // the moved, possibly non-uniform knots), else uniform from the segment count.
+  const customKnots = options.genKnots
+  const m = customKnots ? customKnots.length - 2 * genDegree - 1 : Math.max(4, options.segments ?? strokeCPs.length)
   const n = m + genDegree // generator control points (clamped quadratic)
   const samples = Math.max(8 * m, options.samplesPerSegment ? options.samplesPerSegment * m : 8 * m)
 
@@ -163,11 +169,17 @@ export function fitClosedPHSpline(
     }
   }
 
-  // Uniform clamped quadratic knot vector over [0,1] with m segments.
-  const uvKnots: number[] = []
-  for (let i = 0; i <= genDegree; i++) uvKnots.push(0)
-  for (let i = 1; i < m; i++) uvKnots.push(i / m)
-  for (let i = 0; i <= genDegree; i++) uvKnots.push(1)
+  // Clamped quadratic knot vector over [0,1]: the custom one (knot moving) or
+  // uniform with m segments.
+  let uvKnots: number[]
+  if (customKnots) {
+    uvKnots = [...customKnots]
+  } else {
+    uvKnots = []
+    for (let i = 0; i <= genDegree; i++) uvKnots.push(0)
+    for (let i = 1; i < m; i++) uvKnots.push(i / m)
+    for (let i = 0; i <= genDegree; i++) uvKnots.push(1)
+  }
 
   // Wrap substitution by seam continuity (= number of wrap-derivative matches):
   //   nWrap=0 (C⁰): no constraints, all n control points free.
@@ -176,9 +188,15 @@ export function fitClosedPHSpline(
   // Folding `c_{n-1}`/`c_{n-2}` back onto the free f_0/f_1 keeps the fit linear.
   const nWrap = Math.max(0, Math.min(2, options.seamContinuity ?? 2))
   const K = n - nWrap
+  // C² derivative match across the seam: w'(1)=s·w'(0). For a clamped quadratic
+  // that is c_{n-2} = s·c_0 − s·ratio·(c_1−c_0), ratio = h_last/h_first (the end
+  // knot intervals); ratio=1 for uniform knots. So c_{n-2} = s((1+r)f_0 − r f_1).
+  const hFirst = uvKnots[genDegree + 1] - uvKnots[genDegree]
+  const hLast = uvKnots[n] - uvKnots[n - 1]
+  const ratio = hFirst > 1e-12 ? hLast / hFirst : 1
   const expand = (f: number[]): number[] => {
     const c = f.slice(0, K)
-    if (nWrap >= 2) c.push(s * (2 * f[0] - f[1])) // c_{n-2}
+    if (nWrap >= 2) c.push(s * ((1 + ratio) * f[0] - ratio * f[1])) // c_{n-2}
     if (nWrap >= 1) c.push(s * f[0]) // c_{n-1}
     return c
   }
@@ -187,7 +205,7 @@ export function fitClosedPHSpline(
     const row = new Array(K).fill(0)
     for (let i = 0; i < K; i++) row[i] = bRow[i]
     if (nWrap >= 1) row[0] += bRow[n - 1] * s
-    if (nWrap >= 2) { row[0] += bRow[n - 2] * s * 2; row[1] += bRow[n - 2] * s * -1 }
+    if (nWrap >= 2) { row[0] += bRow[n - 2] * s * (1 + ratio); row[1] += bRow[n - 2] * s * (-ratio) }
     return row
   }
 
