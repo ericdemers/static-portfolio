@@ -1354,6 +1354,19 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   doneGenerate: () => {
     const g = get().generate
     if (!g) return
+    // A Generate session with no actual transform (accumulated identity + all
+    // sliders at zero) would just leave a duplicate of the original stacked on
+    // top of it. Treat that as a cancel — drop the preview rather than commit a
+    // copy. (Covers both the Done button and clicking empty space.)
+    const noChange = isIdentityMat5(g.accumulated) && g.coeffs.every((c) => c === 0)
+    if (noChange) {
+      set((s) => ({
+        curves: s.curves.filter((c) => c.id !== g.previewCurveId),
+        generate: null,
+        selectedCurveId: g.originalCurveId,
+      }))
+      return
+    }
     // The preview curve stays — it becomes an independent curve. Original untouched.
     set({ generate: null, selectedCurveId: g.previewCurveId })
     get().saveToHistory()
