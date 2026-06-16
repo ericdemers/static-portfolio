@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { fitClosedPHSpline, closeOpenPHSpline } from './phClosedSplineFit'
 import { fitPHSplineToBSpline } from './phSplineFit'
-import { moveKnot1D, insertKnot1D } from './phBSplineOps'
+import { moveKnot1D } from './phBSplineOps'
 import { optimizePHCurve } from './index'
 import { createBSpline } from '../utils/bspline/utilities'
 import { evaluateCurve, isPeriodicRepresentation } from '../utils/bspline/core'
@@ -236,7 +236,7 @@ describe('closed PH seam knot pull-out (motion → continuity)', () => {
     return Math.abs(d)
   }
 
-  it('pulling the seam knot to p raises continuity and drops a join at p', () => {
+  it('pulling the seam knot raises continuity WITHOUT spawning control points', () => {
     const pts: Point2D[] = []
     const NP = 14
     for (let i = 0; i < NP; i++) { const a = (2 * Math.PI * 0.92 * i) / (NP - 1); pts.push({ x: 120 * Math.cos(a), y: 120 * Math.sin(a) }) }
@@ -244,13 +244,13 @@ describe('closed PH seam knot pull-out (motion → continuity)', () => {
     const open = fitPHSplineToBSpline(bs.controlPoints, bs.knots, { generatorDegree: 2 })!
     const c0 = closeOpenPHSpline(open.metadata)!
     expect(c0.metadata.seamContinuity).toBe(0)
+    const n0 = c0.controlPoints.length
 
-    const p = 0.4
-    const ins = insertKnot1D(c0.metadata.uControlPoints, c0.metadata.uvKnots, c0.metadata.uvDegree, p)
-    const refit = fitClosedPHSpline(c0.controlPoints, c0.degree, c0.knots, { genKnots: ins.knots, seamContinuity: 1 })!
+    // What the seam pull-out now does: same generator knots, continuity + 1.
+    const refit = fitClosedPHSpline(c0.controlPoints, c0.degree, c0.knots, { genKnots: c0.metadata.uvKnots, seamContinuity: 1 })!
 
     expect(refit.metadata.seamContinuity).toBe(1) // continuity raised
-    expect(refit.metadata.uvKnots.some((k) => Math.abs(k - p) < 1e-9)).toBe(true) // join dropped at p
+    expect(refit.controlPoints.length).toBe(n0 - 1) // ONE fewer CP (seam mult −1), never more
     expect(tangentJump(refit)).toBeLessThan(tangentJump(c0)) // seam smoother
     const curve: Curve = { id: 'c', kind: 'bspline', degree: refit.degree, knots: refit.knots, controlPoints: refit.controlPoints, closed: true }
     const a = evaluateCurve(curve, 0), b = evaluateCurve(curve, 1)

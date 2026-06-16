@@ -1743,19 +1743,16 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
       if (meta.kind === 'polynomial' && meta.closed) {
         const value = curve.knots[knotIndex]
         const cur = meta.seamContinuity ?? 0
-        // Pulling a SEAM knot (value 0) inward raises continuity one step and
-        // drops a generator knot at the release position — a new C² join there
-        // (the "move the seam stack out to smooth the seam" gesture). Capped at
-        // C²; retarget the selection to the new knot so the drag keeps moving it.
+        // Pulling a SEAM knot (value 0) off the seam raises continuity one step
+        // (C⁰→C¹→C²) — the seam multiplicity drops by one, so the curve loses ONE
+        // control point, exactly like removing a junction knot on a normal closed
+        // B-spline. No knot is inserted at the release point (that would spawn
+        // control points). Capped at C².
         if (Math.abs(value) < 1e-9 || Math.abs(value - 1) < 1e-9) {
           if (cur >= 2) return
-          const p = newValue
-          if (p < 0.05 || p > 0.95) return // not pulled far enough off the seam
-          const ins = insertKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, p)
-          const refit = fitClosedPHSpline(curve.controlPoints as Point2D[], curve.degree, curve.knots, { genKnots: ins.knots, seamContinuity: cur + 1 })
+          if (newValue < 0.05 || newValue > 0.95) return // not pulled off the seam
+          const refit = fitClosedPHSpline(curve.controlPoints as Point2D[], curve.degree, curve.knots, { genKnots: meta.uvKnots, seamContinuity: cur + 1 })
           if (!refit) return
-          let newIdx: number | null = null
-          for (let i = 0; i < refit.knots.length; i++) if (Math.abs(refit.knots[i] - p) < 1e-6) { newIdx = i; break }
           const newPhMetadata = new Map(state.phMetadata)
           newPhMetadata.set(id, refit.metadata)
           set((s) => ({
@@ -1765,7 +1762,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
                 : c,
             ),
             phMetadata: newPhMetadata,
-            selectedKnotIndex: newIdx,
+            selectedKnotIndex: null,
           }))
           return
         }
