@@ -52,19 +52,25 @@ export function buildPeriodicPHCurve(
   seamContinuity: number,
 ): { controlPoints: Point2D[]; knots: number[]; degree: number } {
   const degree = 5
-  // Distinct interior breakpoints (generator joins) in (0,1).
-  const interior: number[] = []
+  // Distinct interior breakpoints (joins) in (0,1) WITH the curve's own knot
+  // multiplicity there (already genMult + 2 from the clamped recomposition). We
+  // copy it through — capped at degree — so a collided generator knot (curve C¹,
+  // mult 4) keeps its mult-4 join instead of being forced to a smooth mult-3 one.
+  const interior: { v: number; mult: number }[] = []
   for (const k of clampedKnots) {
-    if (k > 1e-9 && k < 1 - 1e-9 && !interior.some((x) => Math.abs(x - k) < 1e-9)) interior.push(k)
+    if (k > 1e-9 && k < 1 - 1e-9) {
+      const e = interior.find((x) => Math.abs(x.v - k) < 1e-9)
+      if (e) e.mult++; else interior.push({ v: k, mult: 1 })
+    }
   }
-  interior.sort((a, b) => a - b)
+  interior.sort((a, b) => a.v - b.v)
 
-  // Periodic knot vector (length n = #control points): seam at 0 with the chosen
-  // multiplicity, each interior breakpoint at multiplicity 3.
+  // Periodic knot vector (length n = #control points): the seam at 0 carries
+  // degree − seamContinuity knots; each interior join keeps its own multiplicity.
   const seamMult = degree - seamContinuity
   const Kp: number[] = []
   for (let r = 0; r < seamMult; r++) Kp.push(0)
-  for (const b of interior) for (let r = 0; r < 3; r++) Kp.push(b)
+  for (const b of interior) { const cm = Math.min(degree, b.mult); for (let r = 0; r < cm; r++) Kp.push(b.v) }
   const n = Kp.length
 
   // Sample the exact clamped curve over [0,1) and least-squares fit the periodic
@@ -88,6 +94,45 @@ export function buildPeriodicPHCurve(
   const sx = leastSquares(A, bx), sy = leastSquares(A, by)
   const controlPoints = sx.x.map((x, i) => ({ x, y: sy.x[i] }))
   return { controlPoints, knots: Kp, degree }
+}
+
+/** Closed PH generator degree (a quadratic generator ⇒ a quintic curve). */
+export const GEN_DEGREE = 2
+
+/**
+ * Reconstruct the generator's PERIODIC knot vector (knots in [0,1)) from the
+ * clamped chart + seam continuity. This is the representation in which the seam
+ * is an ORDINARY knot: it sits at value 0 with multiplicity
+ *   μ_seam = (degree+1) − seamContinuity   (C⁰→3, C¹→2, C²→1),
+ * and the interior generator knots keep their value & multiplicity. The clamped
+ * storage and this periodic view describe the same closed generator — this is
+ * just the chart in which knot editing is natural.
+ */
+export function periodicGenKnots(clampedKnots: number[], seamContinuity: number): number[] {
+  const muSeam = (GEN_DEGREE + 1) - Math.max(0, Math.min(GEN_DEGREE, seamContinuity))
+  const interior = clampedKnots.filter((k) => k > 1e-9 && k < 1 - 1e-9)
+  const out: number[] = []
+  for (let i = 0; i < muSeam; i++) out.push(0)
+  out.push(...interior)
+  out.sort((a, b) => a - b)
+  return out
+}
+
+/**
+ * Inverse of {@link periodicGenKnots}: derive the clamped chart (genKnots) and
+ * seam continuity from a periodic generator knot vector. μ_seam = number of
+ * knots at the seam value 0 ⇒ seamContinuity = (degree+1) − μ_seam; the interior
+ * knots become the clamped interior (boundary always clamped to degree+1).
+ */
+export function clampedFromPeriodicGenKnots(periodic: number[]): { genKnots: number[]; seamContinuity: number } {
+  const muSeam = periodic.filter((k) => Math.abs(k) < 1e-9).length
+  const interior = periodic.filter((k) => k > 1e-9 && k < 1 - 1e-9).sort((a, b) => a - b)
+  const seamContinuity = Math.max(0, Math.min(GEN_DEGREE, (GEN_DEGREE + 1) - muSeam))
+  const genKnots: number[] = []
+  for (let i = 0; i <= GEN_DEGREE; i++) genKnots.push(0)
+  genKnots.push(...interior)
+  for (let i = 0; i <= GEN_DEGREE; i++) genKnots.push(1)
+  return { genKnots, seamContinuity }
 }
 
 export interface ClosedPHSplineFitOptions {

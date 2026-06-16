@@ -7,7 +7,7 @@ import { createLine, createCircularArc, createFullCircle } from '../utils/shapes
 import { createSpiralFromTwoPoints, computePHCurveFromUV, computePHOffset, type PHMetadata, type ComplexRationalPHMetadata } from '../optimizer/phCurve'
 import { createStraightComplexRationalPH } from '../optimizer/complexRationalPHCurve'
 import { fitPHSplineToBSpline } from '../optimizer/phSplineFit'
-import { fitClosedPHSpline, closeOpenPHSpline } from '../optimizer/phClosedSplineFit'
+import { fitClosedPHSpline, closeOpenPHSpline, periodicGenKnots, clampedFromPeriodicGenKnots, GEN_DEGREE } from '../optimizer/phClosedSplineFit'
 import { computeABPHCurve, computeABPHOffset, applyMobiusToABPH, convertComplexPointsToAB, type ABPHMetadata } from '../optimizer/abPHCurve'
 import { createRealRationalPHFromTwoPoints, computeRealRationalPHCurve, computeRealRationalPHOffset, type RealRationalPHMetadata } from '../optimizer/realRationalPHCurve'
 import { insertKnot1D, elevateDegree1D, removeKnot1D, moveKnot1D } from '../optimizer/phBSplineOps'
@@ -70,6 +70,13 @@ interface SketcherState {
    *  across re-fits so collide/separate stays coherent (don't re-derive by value,
    *  which is ambiguous when knots coincide). Null when no PH knot drag is live. */
   draggedGenKnot: number | null
+  /** Closed PH seam/knot drag. The generator's PERIODIC knot vector with the
+   *  dragged knot LIFTED OUT (`others`, fixed for the whole drag) plus the dragged
+   *  knot's SLOT [lo,hi] = its immediate neighbours at grab time. Each frame the
+   *  knot is re-inserted clamped to [lo,hi], so — exactly like an ordinary periodic
+   *  knot — it can collide with a neighbour (raising multiplicity / changing seam
+   *  continuity) but never cross it. Null when no closed-PH knot drag is live. */
+  draggedGenSlot: { others: number[]; lo: number; hi: number } | null
   selectedFarinPointIndex: number | null
 
   // Drawing
@@ -376,6 +383,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   selectedControlPointIndex: null,
   selectedKnotIndex: null,
   draggedGenKnot: null,
+  draggedGenSlot: null,
   selectedFarinPointIndex: null,
 
   activeTool: 'none',
@@ -508,11 +516,11 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     if (state.transformActive && id !== state.selectedCurveId) {
       state.commitTransform()
     }
-    set({ selectedCurveId: id, selectedControlPointIndex: null, selectedKnotIndex: null, selectedFarinPointIndex: null, draggedGenKnot: null })
+    set({ selectedCurveId: id, selectedControlPointIndex: null, selectedKnotIndex: null, selectedFarinPointIndex: null, draggedGenKnot: null, draggedGenSlot: null })
   },
 
   selectControlPoint: (index) => {
-    set({ selectedControlPointIndex: index, selectedKnotIndex: null, selectedFarinPointIndex: null, draggedGenKnot: null })
+    set({ selectedControlPointIndex: index, selectedKnotIndex: null, selectedFarinPointIndex: null, draggedGenKnot: null, draggedGenSlot: null })
   },
 
   moveControlPoint: (curveId, pointIndex, newPosition) => {
@@ -1754,52 +1762,42 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     // value, move the generator knot, and recompute; the triple follows together.
     if (state.phMetadata.has(id)) {
       const meta = state.phMetadata.get(id)!
-      // Closed PH: map the dragged curve knot to its generator knot by value and
-      // re-fit the closed PH on the MOVED generator knots (keeping the current
-      // seam continuity), so the knot relocates and the curve stays PH + closed.
+      // Closed PH: the generator is a PERIODIC quadratic spline whose seam (value
+      // 0) is an ORDINARY knot. Moving a knot works exactly like every other
+      // periodic spline: the dragged knot stays in its SLOT (between its grab-time
+      // neighbours) — it can collide/merge with a neighbour but NEVER crosses it.
+      // Sliding a knot off the seam raises continuity; into the seam lowers it.
       if (meta.kind === 'polynomial' && meta.closed) {
         const cur = meta.seamContinuity ?? 0
-        // SEAM pull-out (only at drag start, when no generator knot is tracked):
-        // grabbing the seam knot (value 0) and pulling it off raises continuity
-        // one step (C⁰→C¹→C²) — seam multiplicity drops by one, so the curve loses
-        // ONE control point (like removing a junction knot on a normal closed
-        // B-spline). No knot inserted. Capped at C².
-        if (state.draggedGenKnot === null) {
-          const value = curve.knots[knotIndex]
-          if (Math.abs(value) < 1e-9 || Math.abs(value - 1) < 1e-9) {
-            if (cur >= 2) return
-            if (newValue < 0.05 || newValue > 0.95) return // not pulled off the seam
-            const refit = fitClosedPHSpline(curve.controlPoints as Point2D[], curve.degree, curve.knots, { genKnots: meta.uvKnots, seamContinuity: cur + 1 })
-            if (!refit) return
-            const newPhMetadata = new Map(state.phMetadata)
-            newPhMetadata.set(id, refit.metadata)
-            set((s) => ({
-              curves: s.curves.map((c) =>
-                c.id === id ? { ...c, controlPoints: refit.controlPoints, knots: refit.knots, degree: refit.degree, closed: true } as Curve : c,
-              ),
-              phMetadata: newPhMetadata,
-              selectedKnotIndex: null,
-            }))
-            return
-          }
+        const SEAM_SNAP = 0.02
+        let slot = state.draggedGenSlot
+        if (slot === null) {
+          const grabbed = curve.knots[knotIndex]
+          const atSeam = Math.abs(grabbed) < 1e-9 || Math.abs(grabbed - 1) < 1e-9
+          const P = periodicGenKnots(meta.uvKnots, cur)
+          // Grab the inner edge of the seam stack (last 0) so it can pull outward.
+          let g = -1
+          if (atSeam) { for (let i = 0; i < P.length; i++) if (P[i] < 1e-9) g = i }
+          else { let best = Infinity; for (let i = 0; i < P.length; i++) { const d = Math.abs(P[i] - grabbed); if (d < best) { best = d; g = i } } }
+          if (g < 0) return
+          const others = P.filter((_, i) => i !== g)
+          const lo = g > 0 ? P[g - 1] : 0
+          const hi = g < P.length - 1 ? P[g + 1] : 1
+          slot = { others, lo, hi }
         }
-        // Interior knot: track the GENERATOR knot through the whole drag (don't
-        // re-look-up by value — that's ambiguous once knots coincide). Move it,
-        // re-fit, and retarget the selection to its new curve image so the next
-        // frame keeps dragging the same knot.
-        let g = state.draggedGenKnot
-        if (g === null) {
-          const value = curve.knots[knotIndex]
-          for (let i = meta.uvDegree + 1; i < meta.uvKnots.length - meta.uvDegree - 1; i++) {
-            if (Math.abs(meta.uvKnots[i] - value) < 1e-9) { g = i; break }
-          }
-          if (g === null) return
-        }
-        const moved = moveKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, g, clampKnotMove(meta.uvKnots, meta.uvDegree, g, newValue))
-        if (!moved) return
-        const refit = fitClosedPHSpline(curve.controlPoints as Point2D[], curve.degree, curve.knots, { genKnots: moved.knots, seamContinuity: cur })
+        // Clamp to the slot — collide with a neighbour but don't cross it; snap to
+        // the seam (0) when the slot reaches it and the cursor is close.
+        // Snap-to-seam threshold, relative to the slot so a tight slot (dense
+        // generator) still lets the knot sit just off the seam instead of always
+        // snapping back.
+        const snap = Math.min(SEAM_SNAP, (slot.hi - slot.lo) * 0.25)
+        let v = Math.min(slot.hi, Math.max(slot.lo, newValue))
+        if (slot.lo < 1e-9 && v < snap) v = 0                 // merge into the seam (low side)
+        else if (slot.hi > 1 - 1e-9 && v > 1 - snap) v = 0    // merge into the seam (wrap side)
+        const periodic = [...slot.others, v].sort((a, b) => a - b)
+        const { genKnots, seamContinuity } = clampedFromPeriodicGenKnots(periodic)
+        const refit = fitClosedPHSpline(curve.controlPoints as Point2D[], curve.degree, curve.knots, { genKnots, seamContinuity })
         if (!refit) return
-        const v = moved.knots[g]
         let newIdx = -1
         for (let i = 0; i < refit.knots.length; i++) if (Math.abs(refit.knots[i] - v) < 1e-6) { newIdx = i; break }
         const newPhMetadata = new Map(state.phMetadata)
@@ -1809,8 +1807,8 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
             c.id === id ? { ...c, controlPoints: refit.controlPoints, knots: refit.knots, degree: refit.degree, closed: true } as Curve : c,
           ),
           phMetadata: newPhMetadata,
-          draggedGenKnot: g,
-          selectedKnotIndex: newIdx >= 0 ? newIdx : null,
+          draggedGenSlot: slot,
+          selectedKnotIndex: newIdx >= 0 ? newIdx : state.selectedKnotIndex,
         }))
         return
       }
@@ -1866,19 +1864,24 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     // read undefined here; they fall through to the kind-aware generic removeKnot.
     if (state.phMetadata.has(id)) {
       const meta = state.phMetadata.get(id)!
-      // Closed PH: deleting a SEAM junction knot raises the seam continuity
-      // (C⁰→C¹→C²) — re-fit the generator with one more wrap-derivative match,
-      // exactly like removing a junction knot raises continuity on an ordinary
-      // closed B-spline. (Non-seam knots / already-C² seam: no-op for now.)
+      // Closed PH: remove ONE generator knot from the periodic vector — exactly
+      // ordinary periodic knot removal. Removing a seam knot raises the seam
+      // continuity (μ_seam drops); removing an interior knot reduces a degree of
+      // freedom. Re-fit on the reduced knot vector and stay PH + closed.
       if (meta.kind === 'polynomial' && meta.closed) {
         const value = curve.knots[knotIndex]
-        const atSeam = Math.abs(value) < 1e-9 || Math.abs(value - 1) < 1e-9
         const cur = meta.seamContinuity ?? 0
-        if (!atSeam || cur >= 2) return
-        const interiorVals = new Set<string>()
-        for (const kk of meta.uvKnots) if (kk > 1e-9 && kk < 1 - 1e-9) interiorVals.add(kk.toFixed(6))
-        const m = interiorVals.size + 1
-        const refit = fitClosedPHSpline(curve.controlPoints as Point2D[], curve.degree, curve.knots, { segments: m, seamContinuity: cur + 1 })
+        const gv = (Math.abs(value) < 1e-9 || Math.abs(value - 1) < 1e-9) ? 0 : value
+        // Removing a seam knot at C² (μ_seam already 1) would erase the junction.
+        if (gv === 0 && cur >= GEN_DEGREE) return
+        const P = periodicGenKnots(meta.uvKnots, cur)
+        let ri = -1, best = Infinity
+        for (let i = 0; i < P.length; i++) { const d = Math.abs(P[i] - gv); if (d < best) { best = d; ri = i } }
+        if (ri < 0) return
+        const others = P.filter((_, i) => i !== ri)
+        if (others.length < GEN_DEGREE + 1) return // keep a valid closed generator
+        const { genKnots, seamContinuity } = clampedFromPeriodicGenKnots(others)
+        const refit = fitClosedPHSpline(curve.controlPoints as Point2D[], curve.degree, curve.knots, { genKnots, seamContinuity })
         if (!refit) return
         const newPhMetadata = new Map(state.phMetadata)
         newPhMetadata.set(id, refit.metadata)
@@ -1934,7 +1937,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   selectKnot: (index) => {
     // A fresh knot grab starts a new drag — reset the tracked generator knot so
     // the first move re-derives it from this knot.
-    set({ selectedKnotIndex: index, selectedControlPointIndex: null, selectedFarinPointIndex: null, draggedGenKnot: null })
+    set({ selectedKnotIndex: index, selectedControlPointIndex: null, selectedFarinPointIndex: null, draggedGenKnot: null, draggedGenSlot: null })
   },
 
   // Farin point actions
