@@ -31,6 +31,10 @@ export interface PHMetadata {
   vControlPoints: number[]
   uvKnots: number[]
   origin: { x: number; y: number }
+  /** Closed PH spline: the generator wraps with sign `wrapSign` (w(1)=s·w(0))
+   *  and the curve satisfies ∮w²=0. Absent/undefined ⇒ an open PH spline. */
+  closed?: boolean
+  wrapSign?: number
 }
 
 export interface PHCurveResult {

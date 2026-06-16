@@ -7,6 +7,7 @@ import { createLine, createCircularArc, createFullCircle } from '../utils/shapes
 import { createSpiralFromTwoPoints, computePHCurveFromUV, computePHOffset, type PHMetadata, type ComplexRationalPHMetadata } from '../optimizer/phCurve'
 import { createStraightComplexRationalPH } from '../optimizer/complexRationalPHCurve'
 import { fitPHSplineToBSpline } from '../optimizer/phSplineFit'
+import { fitClosedPHSpline } from '../optimizer/phClosedSplineFit'
 import { computeABPHCurve, computeABPHOffset, applyMobiusToABPH, convertComplexPointsToAB, type ABPHMetadata } from '../optimizer/abPHCurve'
 import { createRealRationalPHFromTwoPoints, computeRealRationalPHCurve, computeRealRationalPHOffset, type RealRationalPHMetadata } from '../optimizer/realRationalPHCurve'
 import { insertKnot1D, elevateDegree1D, removeKnot1D } from '../optimizer/phBSplineOps'
@@ -506,7 +507,10 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
     // PH curve optimization (always active for PH curves)
     if (phMetadata.has(curveId) && curve.kind === 'bspline') {
       const meta = phMetadata.get(curveId)!
-      if (meta.kind === 'polynomial') {
+      // Closed PH splines aren't re-solved yet (the open solver would break the
+      // ∮w²=0 closure + seam wrap) — drag support for closed is a follow-on, so
+      // for now let the drag fall through to a plain move.
+      if (meta.kind === 'polynomial' && !meta.closed) {
         try {
           // Live curvature controls during the drag: the curvature-VALUE bound
           // (2D PH workbench) and/or curvature-EXTREMA-count preservation (the
@@ -1072,11 +1076,28 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
         if (Math.sqrt(tdx * tdx + tdy * tdy) >= tailRadius) break
         trimEnd--
       }
-      const trimmedPoints = trimEnd < points.length - 2 ? points.slice(0, trimEnd + 2) : points
-      const simplified = simplifyPointsCurvatureAdaptive(trimmedPoints)
-      const bs = createBSpline(simplified, 3)
-      const bsCPs = bs.kind === 'bspline' ? bs.controlPoints : []
-      const ph = fitPHSplineToBSpline(bsCPs, bs.knots)
+      // Close the curve if the stroke returns near its start (same rule as the
+      // freehand tool): build a CLOSED PH spline (periodic generator + ∮w²=0).
+      const startPt = points[0], endPt = points[points.length - 1]
+      const shouldClose = Math.hypot(endPt.x - startPt.x, endPt.y - startPt.y) < CLOSE_SNAP_THRESHOLD / zoom && points.length >= 4
+
+      let ph: ReturnType<typeof fitPHSplineToBSpline>
+      if (shouldClose) {
+        // Trim the noisy closure tail back to the last point outside the snap zone.
+        const threshold = CLOSE_SNAP_THRESHOLD / zoom
+        let ti = points.length - 1
+        while (ti > 0 && Math.hypot(points[ti].x - startPt.x, points[ti].y - startPt.y) < threshold) ti--
+        const closedSimplified = simplifyPointsCurvatureAdaptive(points.slice(0, ti + 1))
+        const closedBs = createBSpline(closedSimplified, 3, true)
+        ph = closedBs.kind === 'bspline'
+          ? fitClosedPHSpline(closedBs.controlPoints, closedBs.degree, closedBs.knots)
+          : null
+      } else {
+        const trimmedPoints = trimEnd < points.length - 2 ? points.slice(0, trimEnd + 2) : points
+        const simplified = simplifyPointsCurvatureAdaptive(trimmedPoints)
+        const bs = createBSpline(simplified, 3)
+        ph = bs.kind === 'bspline' ? fitPHSplineToBSpline(bs.controlPoints, bs.knots) : null
+      }
       if (!ph) {
         set({ isDrawing: false, drawingPoints: [], isNearStart: false, drawnCircleArc: null, isCircleClosed: false })
         return
@@ -1088,7 +1109,7 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
         degree: ph.degree,
         knots: ph.knots,
         controlPoints: ph.controlPoints,
-        closed: false,
+        closed: shouldClose,
       }
       const newPhMetadata = new Map(state.phMetadata)
       newPhMetadata.set(curveId, ph.metadata)
