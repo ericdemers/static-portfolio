@@ -780,6 +780,10 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
         const curveId = getCurveAtPosition(pressStart.x, pressStart.y)
         if (curveId) {
           selectCurve(curveId)
+        } else if (useSceneStore.getState().generate) {
+          // Clicking empty space during a Generate session commits it (the
+          // generated curve is kept) and hides the panel — click-away = Done.
+          useSceneStore.getState().doneGenerate()
         } else {
           selectCurve(null) // Deselect
           setActiveTool('none') // Enter rest state - must choose tool to draw again
@@ -1153,6 +1157,9 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
           const curveId = getCurveAtPosition(pressStart.x, pressStart.y)
           if (curveId) {
             selectCurve(curveId)
+          } else if (useSceneStore.getState().generate) {
+            // Click-away during a Generate session commits it (Done) and hides the panel.
+            useSceneStore.getState().doneGenerate()
           } else {
             selectCurve(null) // Deselect
             setActiveTool('none') // Enter rest state - must choose tool to draw again
