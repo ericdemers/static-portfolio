@@ -138,3 +138,31 @@ describe('PH spline knot move (generator knot ↔ curve triple)', () => {
     expect(recomputed.controlPoints.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))).toBe(true)
   })
 })
+
+describe('PH spline mixed knot multiplicity (per-breakpoint continuity)', () => {
+  it('colliding two generator knots thickens ONLY that breakpoint, not all', () => {
+    const bs = createBSpline(makeWavyStrokePoints(), 3) as { controlPoints: Point2D[]; knots: number[] }
+    const ph = fitPHSplineToBSpline(bs.controlPoints, bs.knots, { generatorDegree: 2 })!
+    const meta = ph.metadata
+    const lastInterior = meta.uvKnots.length - meta.uvDegree - 2
+    const g = meta.uvDegree + 1 // first interior generator knot
+    expect(lastInterior - g).toBeGreaterThanOrEqual(2) // need g, g+1, g+2 interior
+
+    const multAt = (knots: number[], v: number) => knots.filter((k) => Math.abs(k - v) < 1e-9).length
+    // Before: every interior curve knot is a triple (C²).
+    const otherVal = meta.uvKnots[g + 2]
+    expect(multAt(ph.knots, meta.uvKnots[g])).toBe(3)
+    expect(multAt(ph.knots, otherVal)).toBe(3)
+
+    // Collide generator knot g onto its right neighbour g+1.
+    const vMerged = meta.uvKnots[g + 1]
+    const moved = moveKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, g, vMerged)!
+    const recomputed = computePHCurveFromUV(
+      meta.uControlPoints, meta.vControlPoints, moved.knots, meta.uvDegree, meta.origin.x, meta.origin.y,
+    )
+    // Only the merged breakpoint becomes mult 4 (C¹); the others stay mult 3 (C²).
+    expect(multAt(recomputed.knots, vMerged)).toBe(4)
+    expect(multAt(recomputed.knots, otherVal)).toBe(3)
+    expect(recomputed.controlPoints.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))).toBe(true)
+  })
+})

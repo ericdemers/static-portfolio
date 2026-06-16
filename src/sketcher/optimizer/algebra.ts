@@ -946,8 +946,12 @@ function removeKnot1DSimple(
  *   Default: p-1 (detect up to C^(p-1), maximum possible).
  *   Example: For PH curves where u,v have C^1 at a knot, the curve is
  *   structurally C^2, so pass maxContinuity=2 even if values are accidentally C^4.
+ *
+ *   May also be a PER-BREAKPOINT array (one continuity per interior breakpoint,
+ *   ascending) — used by PH curves whose generator knots have mixed multiplicity,
+ *   so each breakpoint is reduced to its own structural continuity (forced).
  */
-export function recomposeBD(bd: BernsteinDecomposition, maxContinuity?: number): SimpleBSpline {
+export function recomposeBD(bd: BernsteinDecomposition, maxContinuity?: number | number[]): SimpleBSpline {
   const p = bd.degree
   if (bd.numSpans === 0) {
     return { knots: [], controlPoints: [] }
@@ -989,12 +993,17 @@ export function recomposeBD(bd: BernsteinDecomposition, maxContinuity?: number):
   //   derivatives) on one shared knot vector.
   // - maxContinuity OMITTED: detect the actual continuity numerically and gate
   //   removal on a scale-relative tolerance.
+  const perBreak = Array.isArray(maxContinuity)
   const forced = maxContinuity !== undefined
   const cpScale = controlPoints.reduce((m, c) => Math.max(m, Math.abs(c)), 1)
   const removalTol = forced ? Infinity : 1e-8 * cpScale
-  const maxK = maxContinuity !== undefined ? maxContinuity : p - 1
+  const maxK = typeof maxContinuity === 'number' ? maxContinuity : p - 1
   for (let s = bd.numSpans - 2; s >= 0; s--) {
-    const continuity = forced ? maxK : Math.min(computeContinuityAtBreakpoint(bd, s), maxK)
+    // Per-breakpoint array: this breakpoint's own forced continuity. Scalar:
+    // the same forced value everywhere. Omitted: numerically detected.
+    const continuity = perBreak ? ((maxContinuity as number[])[s] ?? 0)
+      : forced ? maxK
+      : Math.min(computeContinuityAtBreakpoint(bd, s), maxK)
     if (continuity < 1) continue  // Already minimal (C0 needs multiplicity p)
 
     // Current multiplicity is p, target is p - continuity

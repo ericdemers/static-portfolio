@@ -17,24 +17,12 @@ import {
   recomposeBD,
   type BernsteinDecomposition,
 } from './algebra'
+import { curveBreakpointContinuities } from './phCurve'
 
 /** Per-variable derivative of the curve's control points. */
 export interface CPDerivative {
   dx: number[]
   dy: number[]
-}
-
-// Same structural max-continuity rule as computePHCurveFromUV, so the
-// recomposition (and therefore the derivative) lines up with the curve itself.
-function maxContinuityOf(uvKnots: number[], uvDegree: number, numSpans: number): number | undefined {
-  if (numSpans <= 1) return undefined
-  let maxMult = 0
-  for (let i = uvDegree + 1; i < uvKnots.length - uvDegree - 1; i++) {
-    let mult = 1
-    while (i + mult < uvKnots.length && uvKnots[i + mult] === uvKnots[i]) mult++
-    if (mult > maxMult) maxMult = mult
-  }
-  return uvDegree - maxMult + 1
 }
 
 function unitBD(n: number, j: number, knots: number[]): BernsteinDecomposition {
@@ -55,7 +43,10 @@ export function phControlPointJacobian(
 ): CPDerivative[] {
   const uBD = decomposeToBernstein({ knots: uvKnots, controlPoints: uCPs })
   const vBD = decomposeToBernstein({ knots: uvKnots, controlPoints: vCPs })
-  const mc = maxContinuityOf(uvKnots, uvDegree, uBD.numSpans)
+  // Per-breakpoint curve continuity (same rule as computePHCurveFromUV), so the
+  // recomposition — and hence the derivative — lines up with the curve itself,
+  // even when generator knots have mixed multiplicity.
+  const mc = uBD.numSpans > 1 ? curveBreakpointContinuities(uBD.distinctKnots, uvKnots, uvDegree) : undefined
   const recomp = (bd: BernsteinDecomposition) => recomposeBD(bd, mc).controlPoints
 
   // Number of control points (from the actual hodograph integration).

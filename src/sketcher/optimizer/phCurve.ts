@@ -86,6 +86,24 @@ export interface ComplexRationalPHCurveResult {
  * 3. Integrate x' and y' to get x and y
  * 4. Recompose to B-spline form
  */
+/**
+ * Per-interior-breakpoint CURVE continuity for a polynomial PH curve, aligned
+ * with `recomposeBD`'s breakpoint iteration (the BD's interior distinct knots,
+ * ascending). At a generator knot of multiplicity m the curve is
+ * C^(uvDegree − m + 1). Per breakpoint, so a collided (higher-multiplicity)
+ * generator knot only thickens its OWN curve knot, not every interior knot.
+ */
+export function curveBreakpointContinuities(distinctKnots: number[], uvKnots: number[], uvDegree: number): number[] {
+  const conts: number[] = []
+  for (let i = 1; i < distinctKnots.length - 1; i++) {
+    const v = distinctKnots[i]
+    let mult = 0
+    for (const k of uvKnots) if (Math.abs(k - v) < 1e-9) mult++
+    conts.push(Math.max(0, uvDegree - mult + 1))
+  }
+  return conts
+}
+
 export function computePHCurveFromUV(
   uCPs: number[],
   vCPs: number[],
@@ -112,25 +130,16 @@ export function computePHCurveFromUV(
   const xBD = integrateBD(xPrime, x0)
   const yBD = integrateBD(yPrime, y0)
 
-  // Step 4: Recompose to B-spline form
-  // Compute structural max continuity from u/v knot structure:
-  // At each interior knot with multiplicity m_uv in uvKnots, u,v are C^(uvDegree - m_uv).
-  // Products u², uv preserve this → hodograph C^(uvDegree - m_uv) → curve C^(uvDegree - m_uv + 1).
-  // We use the minimum across all interior knots.
-  let maxContinuity: number | undefined
-  if (uBD.numSpans > 1) {
-    // Count max multiplicity among interior knots of uvKnots
-    let maxMult = 0
-    for (let i = uvDegree + 1; i < uvKnots.length - uvDegree - 1; i++) {
-      let mult = 1
-      while (i + mult < uvKnots.length && uvKnots[i + mult] === uvKnots[i]) mult++
-      if (mult > maxMult) maxMult = mult
-    }
-    // Structural continuity of curve = uvDegree - maxMult + 1
-    maxContinuity = uvDegree - maxMult + 1
-  }
-  const xSpline = recomposeBD(xBD, maxContinuity)
-  const ySpline = recomposeBD(yBD, maxContinuity)
+  // Step 4: Recompose to B-spline form.
+  // The curve's continuity is set PER interior breakpoint by that knot's
+  // generator multiplicity m: curve is C^(uvDegree − m + 1) there (the product
+  // u²,uv keeps the generator's C^(uvDegree−m); integration adds one). Using a
+  // single global value (the minimum) would force EVERY knot to the lowest
+  // continuity — so colliding two generator knots would wrongly thicken all
+  // interior knots, not just the merged pair.
+  const conts = uBD.numSpans > 1 ? curveBreakpointContinuities(xBD.distinctKnots, uvKnots, uvDegree) : undefined
+  const xSpline = recomposeBD(xBD, conts)
+  const ySpline = recomposeBD(yBD, conts)
 
   // Build Point2D control points
   const controlPoints: Point2D[] = []
