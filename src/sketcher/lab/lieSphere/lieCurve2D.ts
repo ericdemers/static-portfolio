@@ -281,28 +281,47 @@ export function abPHToLieCurveSpline(meta: ABPHMetadata, M: Mat5): { controlPoin
     return r / scale
   }
 
-  // Fit each span at its own minimal degree (a short/flat span needs fewer
-  // degrees than the curve's true image degree), then elevate all to the common
-  // max — fitting AT the minimal degree is unique + positive-weight, elevation
-  // keeps it so, whereas fitting directly above the minimal is non-unique.
-  const fits: RealRationalCurve[] = []
-  let T = 2
-  for (let s = 0; s < numSpans; s++) {
-    const a = breaks[s], b = breaks[s + 1]
-    let fit = fitSpan(a, b, target), d = target
+  // Fit one span at its minimal degree: a short/flat span needs fewer degrees
+  // than the curve's true image degree, and fitting AT the minimal degree is
+  // unique + positive-weight (elevation later keeps it so).
+  const fitMinimal = (a: number, b: number): { fit: RealRationalCurve; degree: number } => {
+    let fit = fitSpan(a, b, target), degree = target
     for (let dd = 2; dd <= target; dd++) {
       const f = fitSpan(a, b, dd)
-      if (relResidualSpan(f, a, b) < 1e-7) { fit = f; d = dd; break }
+      if (relResidualSpan(f, a, b) < 1e-7) { fit = f; degree = dd; break }
     }
-    fits.push(fit)
-    if (d > T) T = d
+    return { fit, degree }
   }
-  const spans = fits.map((c) => normalizeRealRationalWeights(elevateRealRational(c, T)))
+  // A pole-free rational has a sign-definite denominator: by the Bernstein convex
+  // hull, all-positive den coefficients ⇒ den(u) > 0 on [0,1]. A negative/near-
+  // zero coefficient means the fit invented a pole inside the span — the rendered
+  // curve would shoot to infinity at one point (seen when offsetting a sharp,
+  // high-curvature region past its radius of curvature, though the TRUE image is
+  // finite). Detect that and adaptively subdivide the span until each piece fits
+  // pole-free (or a depth cap), which a less-curved sub-piece does.
+  const poleFree = (c: RealRationalCurve): boolean => {
+    let maxW = 0
+    for (const w of c.den) maxW = Math.max(maxW, Math.abs(w))
+    return c.den.every((w) => w > 1e-6 * maxW)
+  }
+  const MAX_DEPTH = 5
+  const pieces: { a: number; b: number; fit: RealRationalCurve; degree: number }[] = []
+  const build = (a: number, b: number, depth: number) => {
+    const { fit, degree } = fitMinimal(a, b)
+    if (depth >= MAX_DEPTH || poleFree(fit)) { pieces.push({ a, b, fit, degree }); return }
+    const mid = 0.5 * (a + b)
+    build(a, mid, depth + 1)
+    build(mid, b, depth + 1)
+  }
+  for (let s = 0; s < numSpans; s++) build(breaks[s], breaks[s + 1], 0)
 
-  // Assemble: clamped, interior breakpoints at multiplicity T (C⁰ piecewise
-  // Bézier). Consecutive spans share the join control point (end weights are 1).
+  // Elevate every piece to the common max degree, then assemble a clamped
+  // piecewise-Bézier rational B-spline. normalizeRealRationalWeights pins each
+  // piece's end weights to 1, so consecutive pieces meet consistently at joins.
+  const T = pieces.reduce((m, p) => Math.max(m, p.degree), 2)
+  const spans = pieces.map((p) => normalizeRealRationalWeights(elevateRealRational(p.fit, T)))
   const controlPoints: WeightedPoint2D[] = []
-  for (let s = 0; s < numSpans; s++) {
+  for (let s = 0; s < spans.length; s++) {
     const c = spans[s]
     for (let i = s === 0 ? 0 : 1; i <= T; i++) {
       const w = c.den[i]
@@ -310,8 +329,8 @@ export function abPHToLieCurveSpline(meta: ABPHMetadata, M: Mat5): { controlPoin
     }
   }
   const knots: number[] = []
-  for (let i = 0; i <= T; i++) knots.push(breaks[0])
-  for (let s = 1; s < numSpans; s++) for (let i = 0; i < T; i++) knots.push(breaks[s])
-  for (let i = 0; i <= T; i++) knots.push(breaks[numSpans])
+  for (let i = 0; i <= T; i++) knots.push(pieces[0].a)
+  for (let s = 1; s < pieces.length; s++) for (let i = 0; i < T; i++) knots.push(pieces[s].a)
+  for (let i = 0; i <= T; i++) knots.push(pieces[pieces.length - 1].b)
   return { controlPoints, knots, degree: T }
 }

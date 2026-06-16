@@ -100,4 +100,41 @@ describe('abPHToLieCurveSpline (multi-segment Lie generate)', () => {
     const M = compose5(compose5(translation5(cx, cy), scaling5(L)), liePoint5(coeffs), compose5(scaling5(1 / L), translation5(-cx, -cy)))
     expect(maxGeomErr(meta, M)).toBeLessThan(3e-3)
   })
+
+  // Regression: offsetting a sharp, high-curvature curve (an airfoil-ish hook)
+  // used to make the per-span fit invent a pole — a negative control-point weight
+  // → the curve shot to infinity at one point. Adaptive subdivision keeps every
+  // weight positive and the curve finite.
+  it('offsetting a sharp curve stays pole-free (no run-away to infinity)', () => {
+    const pts: Point2D[] = []
+    for (let i = 0; i <= 18; i++) { const a = (Math.PI * i) / 18; pts.push({ x: 120 * Math.cos(a) + 120, y: 60 * Math.sin(a) }) }
+    for (let i = 1; i <= 6; i++) { const a = (Math.PI * i) / 6; pts.push({ x: 120 - 18 * Math.sin(a), y: -18 * (1 - Math.cos(a)) }) } // tight hook
+    const bs = createBSpline(pts, 3) as { controlPoints: Point2D[]; knots: number[] }
+    const ph = fitPHSplineToBSpline(bs.controlPoints, bs.knots, { generatorDegree: 2 })!
+    const c = ph.controlPoints
+    const meta: ABPHMetadata = {
+      kind: 'ab-complex-rational', degree: ph.degree,
+      aReCPs: c.map((p) => p.x), aImCPs: c.map((p) => p.y),
+      bReCPs: c.map(() => 1), bImCPs: c.map(() => 0),
+      sReCPs: ph.metadata.uControlPoints, sImCPs: ph.metadata.vControlPoints,
+      knots: ph.knots, sKnots: ph.metadata.uvKnots,
+    }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    for (let i = 0; i < meta.aReCPs.length; i++) {
+      minX = Math.min(minX, meta.aReCPs[i]); maxX = Math.max(maxX, meta.aReCPs[i])
+      minY = Math.min(minY, meta.aImCPs[i]); maxY = Math.max(maxY, meta.aImCPs[i])
+    }
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2, L = 0.5 * Math.hypot(maxX - minX, maxY - minY)
+    const diag = Math.hypot(maxX - minX, maxY - minY)
+    const offsetIdx = SHAPE_GENERATORS.findIndex((g) => g.key === 'offset')
+    for (const d of [-3, -2.5, -1.5, 1.5, 2.5, 3]) {
+      const coeffs = new Array(SHAPE_GENERATORS.length).fill(0)
+      coeffs[offsetIdx] = d
+      const M = compose5(compose5(translation5(cx, cy), scaling5(L)), liePoint5(coeffs), compose5(scaling5(1 / L), translation5(-cx, -cy)))
+      const res = abPHToLieCurveSpline(meta, M)
+      expect(res.controlPoints.every((p) => p.w > 0)).toBe(true) // no inverted weight ⇒ no pole
+      // Every control point stays within a few curve-diagonals (no run-away).
+      expect(res.controlPoints.every((p) => Math.hypot(p.x - cx, p.y - cy) < 5 * diag)).toBe(true)
+    }
+  })
 })
