@@ -2806,6 +2806,17 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
       selectedFarinPointIndex: null,
       showHint: curves.length === 0,
       phMetadata: new Map(phMetadata),
+      // The incoming scene replaces all curves, so any open Transform/Generate
+      // widget points at curves that no longer exist. Clear that state directly
+      // (don't cancel/restore — the old curves are gone).
+      transformActive: false,
+      transformOriginalCurve: null,
+      transformOriginalPhMeta: null,
+      transformWidgetType: null,
+      transformOriginalWidget: null,
+      transformCurrentWidget: null,
+      transformOriginalLaguerreLines: null,
+      generate: null,
     })
     get().saveToHistory()
   },
