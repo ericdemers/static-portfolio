@@ -1961,9 +1961,20 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
         return
       }
       if (meta.kind === 'polynomial') {
-        const uResult = removeKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, knotIndex)
+        // Map the selected CURVE knot (degree 5) to its GENERATOR knot (degree 2)
+        // by value — the curve knot index is NOT the generator knot index. Remove
+        // one generator knot there: it drops that join's multiplicity (raising
+        // continuity), or removes the breakpoint entirely when it was a single
+        // (C²) knot. The curve triple/quadruple follows automatically.
+        const value = curve.knots[knotIndex]
+        let g = -1
+        for (let i = meta.uvDegree + 1; i < meta.uvKnots.length - meta.uvDegree - 1; i++) {
+          if (Math.abs(meta.uvKnots[i] - value) < 1e-9) { g = i; break }
+        }
+        if (g < 0) return
+        const uResult = removeKnot1D(meta.uControlPoints, meta.uvKnots, meta.uvDegree, g)
         if (!uResult) return
-        const vResult = removeKnot1D(meta.vControlPoints, meta.uvKnots, meta.uvDegree, knotIndex)
+        const vResult = removeKnot1D(meta.vControlPoints, meta.uvKnots, meta.uvDegree, g)
         if (!vResult) return
 
         const phResult = computePHCurveFromUV(
