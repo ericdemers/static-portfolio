@@ -7,7 +7,7 @@ import { createLine, createCircularArc, createFullCircle } from '../utils/shapes
 import { createSpiralFromTwoPoints, computePHCurveFromUV, computePHOffset, type PHMetadata, type ComplexRationalPHMetadata } from '../optimizer/phCurve'
 import { createStraightComplexRationalPH } from '../optimizer/complexRationalPHCurve'
 import { fitPHSplineToBSpline } from '../optimizer/phSplineFit'
-import { fitClosedPHSpline, closeOpenPHSpline, periodicGenKnots, clampedFromPeriodicGenKnots, GEN_DEGREE } from '../optimizer/phClosedSplineFit'
+import { fitClosedPHSpline, closeOpenPHSpline, periodicGenKnots, clampedFromPeriodicGenKnots, buildPeriodicPHCurve, projectClosedPHGenerator, GEN_DEGREE } from '../optimizer/phClosedSplineFit'
 import { computeABPHCurve, computeABPHOffset, applyMobiusToABPH, convertComplexPointsToAB, type ABPHMetadata } from '../optimizer/abPHCurve'
 import { createRealRationalPHFromTwoPoints, computeRealRationalPHCurve, computeRealRationalPHOffset, type RealRationalPHMetadata } from '../optimizer/realRationalPHCurve'
 import { insertKnot1D, elevateDegree1D, removeKnot1D, moveKnot1D } from '../optimizer/phBSplineOps'
@@ -564,24 +564,60 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
       // seam continuity) — the curve follows the drag and stays PH + closed.
       if (meta.kind === 'polynomial' && meta.closed) {
         try {
+          const seamCont = meta.seamContinuity ?? 0
           const editedCPs = curve.controlPoints.map((p, i) =>
             i === pointIndex ? { x: newPosition.x, y: newPosition.y } : { x: (p as Point2D).x, y: (p as Point2D).y },
           )
+          // The re-fit follows the drag and keeps the curve closed + PH. It is the
+          // result when no curvature control is active, and the TARGET shape the
+          // optimizer aims at when extrema preservation is on.
           const refit = fitClosedPHSpline(editedCPs, curve.degree, curve.knots, {
-            genKnots: meta.uvKnots, seamContinuity: meta.seamContinuity ?? 0,
+            genKnots: meta.uvKnots, seamContinuity: seamCont,
           })
-          if (refit) {
-            const newPhMetadata = new Map(phMetadata)
-            newPhMetadata.set(curveId, refit.metadata)
-            set((state) => ({
-              curves: state.curves.map((c) =>
-                c.id === curveId
-                  ? { ...c, controlPoints: refit.controlPoints, knots: refit.knots, degree: refit.degree, closed: true } as Curve
-                  : c,
-              ),
-              phMetadata: newPhMetadata,
-            }))
+          if (!refit) return
+
+          let outCps: WeightedPoint2D[] | Point2D[] = refit.controlPoints
+          let outKnots = refit.knots, outDeg = refit.degree
+          let outMeta: PHMetadataAny = refit.metadata
+
+          if (preserveCurvatureExtrema) {
+            // Optimize the generator from the PREVIOUS state toward the re-fit's
+            // CLAMPED curve while holding the curve closed (∮w²=0 + seam wrap) and
+            // the curvature-extrema count (seam-aware sliding). Re-express periodic.
+            const rm = refit.metadata as Extract<PHMetadataAny, { kind: 'polynomial' }>
+            const target = computePHCurveFromUV(rm.uControlPoints, rm.vControlPoints, rm.uvKnots, rm.uvDegree, rm.origin.x, rm.origin.y)
+            const t0 = target.controlPoints[0]
+            const result = optimizePHCurve(meta, target.controlPoints, t0.x, t0.y, 0, {
+              preserveCurvatureExtrema: true,
+              closed: { wrapSign: meta.wrapSign ?? 1, seamContinuity: seamCont },
+              maxIterations: 24,
+              enableBFGS: false,
+            })
+            if (result.converged || result.iterations > 0) {
+              // The optimizer's closure/wrap equalities are penalty-soft; project
+              // the generator EXACTLY onto closure + seam wrap so the periodic
+              // re-fit is clean (no spurious seam curvature extrema).
+              const om = result.curveResult.metadata
+              const proj = projectClosedPHGenerator(om.uControlPoints, om.vControlPoints, om.uvKnots, om.origin.x, om.origin.y, meta.wrapSign ?? 1, seamCont)
+              const clamped = computePHCurveFromUV(proj.uControlPoints, proj.vControlPoints, om.uvKnots, om.uvDegree, om.origin.x, om.origin.y)
+              const periodic = buildPeriodicPHCurve(clamped.controlPoints, clamped.knots, seamCont)
+              outCps = periodic.controlPoints
+              outKnots = periodic.knots
+              outDeg = periodic.degree
+              outMeta = { ...clamped.metadata, closed: true, wrapSign: meta.wrapSign ?? 1, seamContinuity: seamCont }
+            }
           }
+
+          const newPhMetadata = new Map(phMetadata)
+          newPhMetadata.set(curveId, outMeta)
+          set((state) => ({
+            curves: state.curves.map((c) =>
+              c.id === curveId
+                ? { ...c, controlPoints: outCps, knots: outKnots, degree: outDeg, closed: true } as Curve
+                : c,
+            ),
+            phMetadata: newPhMetadata,
+          }))
         } catch { /* leave the curve unchanged on failure */ }
         return
       }

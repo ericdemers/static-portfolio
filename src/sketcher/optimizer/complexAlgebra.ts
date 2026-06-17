@@ -403,6 +403,33 @@ export function computeOpenComplexCurvatureConstraintState(
 }
 
 /**
+ * Curvature-extrema constraint state for a CLOSED polynomial PH curve, given the
+ * curve's CLAMPED homogeneous control points (W ≡ 1). The g (curvature-derivative
+ * numerator) coefficients are computed on the clamped chart exactly as for an open
+ * curve — but the inactive set is the PERIODIC (wrap-aware) one, so an alternating
+ * run may straddle the seam (g[n−1]↔g[0]). That lets a curvature extremum slide
+ * across the seam — leave one end and enter the other — while its count is held.
+ * No periodic curve fit is needed: the clamped g's two endpoint coefficients are
+ * exactly the two sides of the seam, g(1⁻) and g(0⁺).
+ */
+export function computeClosedPolynomialCurvatureConstraintState(
+  knots: number[],
+  cpsZre: number[],
+  cpsZim: number[],
+  cpsWre: number[],
+  cpsWim: number[]
+): ComplexRationalConstraintState {
+  const d = computeOpenComplexDerivativesBD(knots, cpsZre, cpsZim, cpsWre, cpsWim)
+  const ct = computeComplexChenTerms(d)
+  const gBD = computeComplexGFromChenTerms(ct)
+  const gCPs = gBD.flattenControlPoints()
+  const grevilleAbscissae = gBD.grevilleAbscissae()
+  const signs = gCPs.map((g) => (g > 0 ? -1 : 1))
+  const inactive = computePeriodicInactiveSet(gCPs)
+  return { signs, inactiveIndices: Array.from(inactive), gCPs, grevilleAbscissae }
+}
+
+/**
  * Compute curvature extrema parameters for a periodic complex-rational B-spline.
  * Returns parameter values where curvature extrema occur.
  */

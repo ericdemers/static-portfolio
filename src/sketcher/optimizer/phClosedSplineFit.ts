@@ -135,6 +135,75 @@ export function clampedFromPeriodicGenKnots(periodic: number[]): { genKnots: num
   return { genKnots, seamContinuity }
 }
 
+/**
+ * Project a generator (u,v) EXACTLY onto the closed-curve manifold: re-impose the
+ * seam wrap (anti-periodic, sign s; nWrap derivative matches) and Newton-project
+ * the closure gap ∮w² → 0, holding the free interior control points' shape. Used
+ * after the curvature-extrema optimizer, whose equality constraints are only
+ * penalty-soft — this cleans the seam so the periodic re-fit is exact (no spurious
+ * seam curvature wiggle). The correction is tiny, so the extrema count is kept.
+ */
+export function projectClosedPHGenerator(
+  u: number[],
+  v: number[],
+  uvKnots: number[],
+  originX: number,
+  originY: number,
+  s: number,
+  seamContinuity: number,
+): { uControlPoints: number[]; vControlPoints: number[] } {
+  const degree = GEN_DEGREE
+  const n = u.length
+  const nWrap = Math.max(0, Math.min(2, seamContinuity))
+  const K = n - nWrap
+  const hFirst = uvKnots[degree + 1] - uvKnots[degree]
+  const hLast = uvKnots[n] - uvKnots[n - 1]
+  const ratio = hFirst > 1e-12 ? hLast / hFirst : 1
+  const expand = (f: number[]): number[] => {
+    const c = f.slice(0, K)
+    if (nWrap >= 2) c.push(s * ((1 + ratio) * f[0] - ratio * f[1]))
+    if (nWrap >= 1) c.push(s * f[0])
+    return c
+  }
+  const foldRow = (bRow: number[]): number[] => {
+    const row = new Array(K).fill(0)
+    for (let i = 0; i < K; i++) row[i] = bRow[i]
+    if (nWrap >= 1) row[0] += bRow[n - 1] * s
+    if (nWrap >= 2) { row[0] += bRow[n - 2] * s * (1 + ratio); row[1] += bRow[n - 2] * s * (-ratio) }
+    return row
+  }
+  const uFree = u.slice(0, K), vFree = v.slice(0, K)
+  const build = () => computePHCurveFromUV(expand(uFree), expand(vFree), uvKnots, degree, originX, originY)
+  let curve = build()
+  for (let iter = 0; iter < 8; iter++) {
+    const cps = curve.controlPoints, last = cps.length - 1
+    const gapX = cps[last].x - cps[0].x, gapY = cps[last].y - cps[0].y
+    if (Math.hypot(gapX, gapY) < 1e-9) break
+    const jac = phControlPointJacobian(expand(uFree), expand(vFree), uvKnots, degree)
+    const dUx: number[] = [], dUy: number[] = [], dVx: number[] = [], dVy: number[] = []
+    for (let i = 0; i < n; i++) {
+      dUx.push(jac[2 + i].dx[last] - jac[2 + i].dx[0])
+      dUy.push(jac[2 + i].dy[last] - jac[2 + i].dy[0])
+      dVx.push(jac[2 + n + i].dx[last] - jac[2 + n + i].dx[0])
+      dVy.push(jac[2 + n + i].dy[last] - jac[2 + n + i].dy[0])
+    }
+    const fUx = foldRow(dUx), fUy = foldRow(dUy), fVx = foldRow(dVx), fVy = foldRow(dVy)
+    const Jx = [...fUx, ...fVx], Jy = [...fUy, ...fVy]
+    const a = Jx.reduce((t, x) => t + x * x, 0)
+    const b = Jx.reduce((t, x, i) => t + x * Jy[i], 0)
+    const c2 = Jy.reduce((t, x) => t + x * x, 0)
+    const det = a * c2 - b * b
+    if (Math.abs(det) < 1e-20) break
+    const l0 = (c2 * gapX - b * gapY) / det, l1 = (-b * gapX + a * gapY) / det
+    for (let j = 0; j < 2 * K; j++) {
+      const step = -(Jx[j] * l0 + Jy[j] * l1)
+      if (j < K) uFree[j] += step; else vFree[j - K] += step
+    }
+    curve = build()
+  }
+  return { uControlPoints: expand(uFree), vControlPoints: expand(vFree) }
+}
+
 export interface ClosedPHSplineFitOptions {
   /** Generator segments around the loop (defaults to the stroke's CP count). */
   segments?: number

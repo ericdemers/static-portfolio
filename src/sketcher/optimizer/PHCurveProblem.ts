@@ -18,8 +18,8 @@ import type { OptimizationProblem } from './types'
 import type { Matrix } from './linearAlgebra'
 import { computePHCurveFromUV, type PHMetadata } from './phCurve'
 import { phCurvatureBoundCoeffs, phCurvatureBoundJacobian } from './phCurvatureBound'
-import { phControlPointJacobian } from './phCurveAnalytic'
-import { computeGCPsFromHomogeneous, computeOpenComplexCurvatureConstraintState } from './complexAlgebra'
+import { phControlPointJacobian, type CPDerivative } from './phCurveAnalytic'
+import { computeGCPsFromHomogeneous, computeOpenComplexCurvatureConstraintState, computeClosedPolynomialCurvatureConstraintState } from './complexAlgebra'
 import type { Point2D } from '../types/curve'
 
 /**
@@ -40,6 +40,11 @@ export interface PHCurvatureBoundOptions {
    *  sliding mechanism). Independent of the curvature-VALUE bound above; both
    *  may be active at once. */
   preserveCurvatureExtrema?: boolean
+  /** CLOSED PH curve: keep the curve closed (∮w²=0) and the seam wrap continuous
+   *  (anti-periodic, sign `wrapSign`; `seamContinuity` derivative matches) as
+   *  equality constraints, and use the wrap-aware (seam-crossing) inactive set for
+   *  curvature-extrema preservation. Absent ⇒ open curve. */
+  closed?: { wrapSign: number; seamContinuity: number }
 }
 
 export class PHCurveProblem implements OptimizationProblem {
@@ -56,6 +61,10 @@ export class PHCurveProblem implements OptimizationProblem {
   private y0: number
   private uCPs: number[]
   private vCPs: number[]
+  // Cached analytic control-point Jacobian for the current (u,v); the objective
+  // gradient and the closure (equality) Jacobian both need it, so compute once
+  // per variable state. Invalidated by setVariables.
+  private _cpJac: CPDerivative[] | null = null
 
   // Curvature-value bound (optional)
   private kappaMax: number
@@ -72,6 +81,15 @@ export class PHCurveProblem implements OptimizationProblem {
   private constrainExtrema: boolean
   private extremaSigns: number[] = []
   private extremaActive: number[] = []
+
+  // Closed-curve equality constraints (optional): closure ∮w²=0 (2) + seam wrap
+  // (anti-periodic, 0/2/4 linear), prepended to the constraint vector.
+  private closed: boolean
+  private wrapSign: number
+  private nWrap: number          // seam continuity = number of wrap-derivative matches
+  private wrapRatio: number      // end knot-interval ratio (1 for uniform)
+  private _numWrap: number       // linear wrap residual count (2·nWrap: u and v each)
+  private _numEq: number         // total equality constraints (wrap + closure)
 
   constructor(
     metadata: PHMetadata,
@@ -98,13 +116,29 @@ export class PHCurveProblem implements OptimizationProblem {
       ? phCurvatureBoundCoeffs(this.uCPs, this.vCPs, this.uvKnots, this.kappaMax, this.subdivisions).length
       : 0
 
+    // Closed-curve equality constraints: closure (∮w²=0, 2) + seam wrap (linear,
+    // 2 per matched derivative: u and v). nWrap = seam continuity (C⁰→0, C¹→1,
+    // C²→2). The wrap ratio is the end knot-interval ratio (1 for uniform knots).
+    this.closed = !!bound.closed
+    this.wrapSign = bound.closed?.wrapSign ?? 1
+    this.nWrap = Math.max(0, Math.min(this.uvDegree, bound.closed?.seamContinuity ?? 0))
+    const nGen = this.numU
+    const hFirst = this.uvKnots[this.uvDegree + 1] - this.uvKnots[this.uvDegree]
+    const hLast = this.uvKnots[nGen] - this.uvKnots[nGen - 1]
+    this.wrapRatio = hFirst > 1e-12 ? hLast / hFirst : 1
+    this._numWrap = this.closed ? 2 * this.nWrap : 0
+    this._numEq = this.closed ? this._numWrap + 2 : 0
+
     // Snapshot the curvature-extrema sign pattern + inactive (sliding) set from
-    // the initial generator state; held fixed for the solve.
+    // the initial generator state; held fixed for the solve. Closed curves use the
+    // wrap-aware inactive set so an extremum may slide across the seam.
     this.constrainExtrema = bound.preserveCurvatureExtrema ?? false
     if (this.constrainExtrema) {
       try {
         const { knots, Zre, Zim, Wre, Wim } = this.curveHomogeneous()
-        const state = computeOpenComplexCurvatureConstraintState(knots, Zre, Zim, Wre, Wim)
+        const state = this.closed
+          ? computeClosedPolynomialCurvatureConstraintState(knots, Zre, Zim, Wre, Wim)
+          : computeOpenComplexCurvatureConstraintState(knots, Zre, Zim, Wre, Wim)
         const inactive = new Set(state.inactiveIndices)
         for (let i = 0; i < state.signs.length; i++) {
           if (inactive.has(i)) continue
@@ -148,6 +182,56 @@ export class PHCurveProblem implements OptimizationProblem {
     return { knots: ph.knots, Zre, Zim, Wre, Wim }
   }
 
+  // Closed-curve equality residuals (all should be driven to 0): seam-wrap
+  // matches first, then the closure gap. Order matches the Jacobian below.
+  private equalityConstraints(): number[] {
+    if (!this.closed) return []
+    const out: number[] = []
+    const u = this.uCPs, v = this.vCPs, s = this.wrapSign, r = this.wrapRatio, n = this.numU
+    if (this.nWrap >= 1) {
+      out.push(u[n - 1] - s * u[0])
+      out.push(v[n - 1] - s * v[0])
+    }
+    if (this.nWrap >= 2) {
+      out.push(u[n - 2] - s * ((1 + r) * u[0] - r * u[1]))
+      out.push(v[n - 2] - s * ((1 + r) * v[0] - r * v[1]))
+    }
+    // Closure gap ∮w² = lastCP − firstCP (origin cancels).
+    const ph = computePHCurveFromUV(this.uCPs, this.vCPs, this.uvKnots, this.uvDegree, this.x0, this.y0)
+    const cps = ph.controlPoints, last = cps.length - 1
+    out.push(cps[last].x - cps[0].x)
+    out.push(cps[last].y - cps[0].y)
+    return out
+  }
+
+  // Jacobian rows for the equality residuals (same order as equalityConstraints).
+  private equalityJacobian(): Matrix {
+    if (!this.closed) return []
+    const numVars = this.numVariables
+    const rows: Matrix = []
+    const s = this.wrapSign, r = this.wrapRatio, n = this.numU
+    const uOff = 2, vOff = 2 + this.numU
+    const zero = () => new Array(numVars).fill(0)
+    if (this.nWrap >= 1) {
+      const ru = zero(); ru[uOff + (n - 1)] = 1; ru[uOff + 0] += -s; rows.push(ru)
+      const rv = zero(); rv[vOff + (n - 1)] = 1; rv[vOff + 0] += -s; rows.push(rv)
+    }
+    if (this.nWrap >= 2) {
+      const ru = zero(); ru[uOff + (n - 2)] = 1; ru[uOff + 0] += -s * (1 + r); ru[uOff + 1] += s * r; rows.push(ru)
+      const rv = zero(); rv[vOff + (n - 2)] = 1; rv[vOff + 0] += -s * (1 + r); rv[vOff + 1] += s * r; rows.push(rv)
+    }
+    // Closure gap Jacobian: ∂(lastCP − firstCP)/∂var via the analytic CP Jacobian.
+    const jac = this.cpJacobian()
+    const last = jac[0].dx.length - 1
+    const gx = zero(), gy = zero()
+    for (let k = 0; k < numVars; k++) {
+      gx[k] = jac[k].dx[last] - jac[k].dx[0]
+      gy[k] = jac[k].dy[last] - jac[k].dy[0]
+    }
+    rows.push(gx, gy)
+    return rows
+  }
+
   // Live g (curvature-derivative numerator) coefficients on the active set.
   private extremaConstraints(): number[] {
     const { knots, Zre, Zim, Wre, Wim } = this.curveHomogeneous()
@@ -164,11 +248,11 @@ export class PHCurveProblem implements OptimizationProblem {
   }
 
   get numConstraints(): number {
-    return this._numBoundConstraints + (this.constrainExtrema ? this.extremaActive.length : 0)
+    return this._numEq + this._numBoundConstraints + (this.constrainExtrema ? this.extremaActive.length : 0)
   }
 
   get numEqualityConstraints(): number {
-    return 0
+    return this._numEq
   }
 
   getVariables(): number[] {
@@ -180,6 +264,13 @@ export class PHCurveProblem implements OptimizationProblem {
     this.y0 = x[1]
     this.uCPs = x.slice(2, 2 + this.numU)
     this.vCPs = x.slice(2 + this.numU, 2 + this.numU + this.numV)
+    this._cpJac = null
+  }
+
+  // Analytic control-point Jacobian for the current (u,v), cached per state.
+  private cpJacobian(): CPDerivative[] {
+    if (!this._cpJac) this._cpJac = phControlPointJacobian(this.uCPs, this.vCPs, this.uvKnots, this.uvDegree)
+    return this._cpJac
   }
 
   computeObjective(): number {
@@ -215,7 +306,7 @@ export class PHCurveProblem implements OptimizationProblem {
       this.uCPs, this.vCPs, this.uvKnots, this.uvDegree, this.x0, this.y0,
     )
     const cps = phResult.controlPoints
-    const jac = phControlPointJacobian(this.uCPs, this.vCPs, this.uvKnots, this.uvDegree)
+    const jac = this.cpJacobian()
     const n = Math.min(cps.length, this.targetCPs.length)
     for (let v = 0; v < numVars; v++) {
       const { dx, dy } = jac[v]
@@ -244,6 +335,8 @@ export class PHCurveProblem implements OptimizationProblem {
 
   computeConstraints(): number[] {
     const out: number[] = []
+    // Equality constraints FIRST (convention): closed-curve closure + seam wrap.
+    if (this.closed) out.push(...this.equalityConstraints())
     // Curvature-VALUE bound: raw P± coefficients (feasibility is coeff > 0).
     if (this.constrained) out.push(...this.boundCoeffs())
     // Curvature-EXTREMA: live g coefficients on the active set.
@@ -253,6 +346,8 @@ export class PHCurveProblem implements OptimizationProblem {
 
   computeConstraintJacobian(): Matrix {
     const rows: Matrix = []
+    // Equality rows FIRST, matching computeConstraints order.
+    if (this.closed) rows.push(...this.equalityJacobian())
     // Exact Jacobian of the P± bound coefficients (Bernstein algebra).
     if (this.constrained) {
       rows.push(...phCurvatureBoundJacobian(this.uCPs, this.vCPs, this.uvKnots, this.kappaMax, this.subdivisions))
@@ -281,6 +376,9 @@ export class PHCurveProblem implements OptimizationProblem {
 
   getConstraintSigns(): number[] {
     const out: number[] = []
+    // Equality rows: sign is unused by the optimizer (equalities use a quadratic
+    // penalty, not the log barrier) — emit a placeholder to keep lengths aligned.
+    if (this.closed) for (let i = 0; i < this._numEq; i++) out.push(1)
     // Bound rows: sign −1 ⇒ feasibility (sign·c < 0) means coeff > 0.
     if (this.constrained) for (let i = 0; i < this._numBoundConstraints; i++) out.push(-1)
     // Extrema rows: the snapshotted sign that keeps each active g_j on its side.

@@ -129,6 +129,10 @@ export interface OptimizeOptions {
   curvatureBound?: number
   /** Subdivision depth for the curvature-value certificate (default 2). */
   curvatureSubdivisions?: number
+  /** Closed polynomial PH only: hold the curve closed (∮w²=0) and the seam wrap
+   *  continuous as equality constraints, and use the seam-aware inactive set for
+   *  extrema preservation. Absent ⇒ open curve. */
+  closed?: { wrapSign: number; seamContinuity: number }
   /** Force the constrained optimizer's inactive set to ∅ — every sign anchor
    * stays active, so the sign-change boundary cannot slide. Default false. */
   disableSliding?: boolean
@@ -552,6 +556,7 @@ export function optimizePHCurve(
         }
       : {}),
     ...(options.preserveCurvatureExtrema ? { preserveCurvatureExtrema: true } : {}),
+    ...(options.closed ? { closed: options.closed } : {}),
   }
 
   const problem = new PHCurveProblem(metadata, curveCPs, targetX, targetY, cpIndex, bound)
