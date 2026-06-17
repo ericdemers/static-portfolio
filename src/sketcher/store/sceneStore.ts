@@ -2117,6 +2117,13 @@ export const useSceneStore = create<SketcherState>((set, get) => ({
   },
 
   convertCurveType: (id, newKind) => {
+    // A live Transform widget is built for the curve's CURRENT representation
+    // (parallelogram/quadrilateral/mobius per kind); switching kind would leave
+    // it showing the wrong widget. Close it first — reverting its in-progress
+    // edit — so the user re-opens Transform to get the right widget for the new
+    // kind. (Same class of staleness for a Generate session: drop it too.)
+    if (get().transformActive) get().cancelTransform()
+    if (get().generate) get().cancelGenerate()
     const state = get()
     const curve = state.curves.find((c) => c.id === id)
     if (!curve || curve.kind === newKind) return
