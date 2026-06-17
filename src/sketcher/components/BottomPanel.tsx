@@ -42,6 +42,7 @@ function BasisFunctionsPanel({ curve }: CurvePanelProps) {
     insertKnotAtCurve,
     removeKnotFromCurve,
     saveToHistory,
+    phMetadata,
   } = useSceneStore()
 
   const [isDragging, setIsDragging] = useState(false)
@@ -51,6 +52,17 @@ function BasisFunctionsPanel({ curve }: CurvePanelProps) {
 
   // Check if this is a periodic curve
   const isPeriodic = curve.closed && isPeriodicRepresentation(curve)
+
+  // A closed PH curve's seam can be smoothed only down to its minimum multiplicity
+  // (degree − maxSeamContinuity = uvDegree + 1, e.g. 3 for a quintic). Once there
+  // (C² seam), the seam is as smooth as it gets — like an ordinary periodic
+  // B-spline's single junction knot — so it becomes a FIXED (non-selectable,
+  // lighter) knot rather than a movable one.
+  const phMeta = phMetadata.get(curve.id)
+  const phSeamAtMaxContinuity = !!(
+    phMeta && phMeta.kind === 'polynomial' && phMeta.closed &&
+    (phMeta.seamContinuity ?? 0) >= phMeta.uvDegree
+  )
 
   // Sample basis functions
   const basisData = useMemo(() => {
@@ -267,8 +279,10 @@ function BasisFunctionsPanel({ curve }: CurvePanelProps) {
         const isAtZero = Math.abs(k) < 1e-10
 
         if (isAtZero) {
-          if (knotsAtZeroCount === 1) {
-            // Only one knot at 0: it's fixed
+          if (knotsAtZeroCount === 1 || phSeamAtMaxContinuity) {
+            // Fixed seam: a single junction knot (ordinary periodic curve), or a
+            // closed PH curve whose seam has reached its smoothest (C²) — it can't
+            // be reduced further, so treat it like a fixed junction.
             if (fixedSeen.has(rounded)) {
               fixedSeen.get(rounded)!.indices.push(i)
             } else {
@@ -337,7 +351,7 @@ function BasisFunctionsPanel({ curve }: CurvePanelProps) {
       clampedKnots: clampedResult,
       interiorKnots: interiorResult,
     }
-  }, [degree, knots, isPeriodic, curve.closed])
+  }, [degree, knots, isPeriodic, curve.closed, phSeamAtMaxContinuity])
 
   return (
     <div className="h-full flex flex-col">
