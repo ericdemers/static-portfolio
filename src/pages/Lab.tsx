@@ -35,7 +35,7 @@ const labs = [
 
 export default function Lab() {
   return (
-    <div className="bg-gradient-to-br from-steelblue-900 to-steelblue-200 min-h-screen">
+    <div className="bg-steelblue-900 bg-gradient-to-br from-steelblue-900 to-steelblue-200 min-h-screen">
       <div className="min-h-screen flex flex-col gap-10 items-center justify-center px-4 py-16">
         <h1 className="font-thin text-transparent text-4xl md:text-6xl bg-clip-text bg-logo-gradient drop-shadow-[1px_1px_1px_rgba(150,150,150,0.8)] tracking-widest text-center">
           Lab

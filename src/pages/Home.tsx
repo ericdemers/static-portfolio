@@ -13,8 +13,12 @@ export default function Home() {
   // letter-spacing so it doesn't inherit the wordy `tracking-widest`.
   const expClass = 'ml-0.5 text-[0.45em] font-light text-white/40 tracking-normal align-super'
 
+  // bg-steelblue-900 is a solid (hex) fallback under the gradient: Tailwind v4
+  // gradients need @property (Safari 16.4), so on older Safari the gradient
+  // doesn't paint — without this the page would go white and the white text
+  // would vanish. Modern browsers paint the gradient over it (no change).
   return (
-    <div className="bg-gradient-to-br from-steelblue-900 to-steelblue-200 min-h-screen">
+    <div className="bg-steelblue-900 bg-gradient-to-br from-steelblue-900 to-steelblue-200 min-h-screen">
       <div className="h-screen flex flex-col gap-12 items-center justify-center px-4">
         {/* Wordmark */}
         <div className="animate-pulse-logo">

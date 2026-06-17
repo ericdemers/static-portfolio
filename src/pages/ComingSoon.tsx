@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom'
  */
 export default function ComingSoon() {
   return (
-    <div className="bg-gradient-to-br from-steelblue-900 to-steelblue-200 min-h-screen">
+    <div className="bg-steelblue-900 bg-gradient-to-br from-steelblue-900 to-steelblue-200 min-h-screen">
       <div className="h-screen flex flex-col gap-8 items-center justify-center px-4 text-center">
         <div className="font-thin text-transparent text-4xl md:text-6xl bg-clip-text bg-logo-gradient tracking-widest">
           Coming soon

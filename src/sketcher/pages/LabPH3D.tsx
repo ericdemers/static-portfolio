@@ -343,7 +343,7 @@ export default function LabPH3D() {
   )
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-steelblue-900 to-steelblue-200">
+    <div className="h-screen flex flex-col bg-steelblue-900 bg-gradient-to-br from-steelblue-900 to-steelblue-200">
       <header className="flex items-center gap-4 px-4 py-2 border-b border-gray-200 dark:border-gray-800">
         <Link to="/lab" className="text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400">
           Lab

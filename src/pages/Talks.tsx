@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 /** Presentations index. New talks get added here. */
 export default function Talks() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-steelblue-900 to-steelblue-200 px-6 py-16">
+    <div className="min-h-screen bg-steelblue-900 bg-gradient-to-br from-steelblue-900 to-steelblue-200 px-6 py-16">
       <div className="max-w-3xl mx-auto">
         <Link to="/" className="text-white/40 hover:text-neutral-300 text-sm tracking-widest font-thin">
           ← Numeric Elements
