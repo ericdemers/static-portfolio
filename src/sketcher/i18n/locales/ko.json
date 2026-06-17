@@ -39,8 +39,7 @@
     "spiral": "나선",
     "freehand": "자유 곡선",
     "circle": "원",
-    "ph": "PH",
-    "phSpline": "PH 스플라인"
+    "ph": "PH"
   },
   "hints": {
     "drawToStart": "그려서 시작하세요",

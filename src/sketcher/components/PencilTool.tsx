@@ -238,58 +238,11 @@ export default function PencilTool({ className }: { className?: string }) {
             )
           })}
 
-          {/* PH Curve — one tool (AB-PH: enforces the curvature-extrema bound,
-              supports offset + Möbius/Laguerre transforms). Drawn from two
-              points like a line. Offset appears below when a PH curve is
-              selected. */}
+          {/* PH — a freehand stroke fitted to a polynomial PH spline (hodograph
+              matching). Automatically C², editable afterward; supports Generate
+              (offset + Möbius/Laguerre) and curvature-extrema preservation. This
+              is the single PH drawing tool (the old two-point PH curve is gone). */}
           <div className="border-t border-gray-100 dark:border-gray-700 mt-1 pt-1">
-            {(() => {
-              const isActive = activeTool === 'complex-spiral'
-              const isPinned = isActive && toolLocked
-              return (
-                <div
-                  className={`flex items-center transition-colors ${
-                    isActive ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <button
-                    className={`flex-1 flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                      isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-200'
-                    }`}
-                    onClick={() => {
-                      setActiveTool(isActive ? 'none' : 'complex-spiral')
-                      setPencilExpanded(false)
-                    }}
-                  >
-                    {phCurveIcon}
-                    {t('tools.ph')}
-                  </button>
-
-                  <button
-                    className={`px-3 py-2.5 transition-colors ${
-                      isPinned
-                        ? 'text-blue-500 dark:text-blue-400'
-                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
-                    }`}
-                    onClick={() => {
-                      if (isPinned) {
-                        setToolLocked(false)
-                      } else {
-                        if (!isActive) setActiveTool('complex-spiral')
-                        setToolLocked(true)
-                      }
-                      setPencilExpanded(false)
-                    }}
-                    aria-label={isPinned ? 'Unpin PH Curve' : 'Pin PH Curve'}
-                  >
-                    {pinIcon(isPinned)}
-                  </button>
-                </div>
-              )
-            })()}
-
-            {/* PH Spline — freehand stroke fitted to a polynomial PH spline
-                (hodograph matching). Automatically C², editable afterward. */}
             {(() => {
               const isActive = activeTool === 'ph-freehand'
               const isPinned = isActive && toolLocked
@@ -309,7 +262,7 @@ export default function PencilTool({ className }: { className?: string }) {
                     }}
                   >
                     {phSplineIcon}
-                    {t('tools.phSpline')}
+                    {t('tools.ph')}
                   </button>
 
                   <button
@@ -327,7 +280,7 @@ export default function PencilTool({ className }: { className?: string }) {
                       }
                       setPencilExpanded(false)
                     }}
-                    aria-label={isPinned ? 'Unpin PH Spline' : 'Pin PH Spline'}
+                    aria-label={isPinned ? 'Unpin PH' : 'Pin PH'}
                   >
                     {pinIcon(isPinned)}
                   </button>

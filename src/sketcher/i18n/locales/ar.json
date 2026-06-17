@@ -39,8 +39,7 @@
     "spiral": "حلزوني",
     "freehand": "رسم حر",
     "circle": "دائرة",
-    "ph": "PH",
-    "phSpline": "سبلاين PH"
+    "ph": "PH"
   },
   "hints": {
     "drawToStart": "ارسم للبدء",

@@ -39,8 +39,7 @@
     "spiral": "Спираль",
     "freehand": "От руки",
     "circle": "Окружность",
-    "ph": "PH",
-    "phSpline": "PH-сплайн"
+    "ph": "PH"
   },
   "hints": {
     "drawToStart": "Рисуйте чтобы начать",
