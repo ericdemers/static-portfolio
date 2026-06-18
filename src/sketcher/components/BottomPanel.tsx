@@ -20,8 +20,10 @@ export default function BottomPanel() {
 
   if (!panelView || !selectedCurve) return null
 
+  // right edge stops at right-64 so the right-docked menus (RightContextMenu w-36,
+  // GeneratePanel w-60, both at right-3) never overlap the panel.
   return (
-    <div className="absolute bottom-16 left-3 right-3 h-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-30">
+    <div className="absolute bottom-16 left-3 right-64 h-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-30">
       {panelView === 'basis' && <BasisFunctionsPanel curve={selectedCurve} />}
       {panelView === 'curvature' && <CurvaturePanel curve={selectedCurve} />}
     </div>
