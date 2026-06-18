@@ -1,20 +1,15 @@
 // Being migrated to core/ incrementally; remove this once a file is on core.
-// Color palette for basis functions and control points
-export const basisColors = [
-  '#ef4444', // red
-  '#f97316', // orange
-  '#eab308', // yellow
-  '#22c55e', // green
-  '#14b8a6', // teal
-  '#3b82f6', // blue
-  '#8b5cf6', // purple
-  '#ec4899', // pink
-  '#f43f5e', // rose
-  '#06b6d4', // cyan
-  '#84cc16', // lime
-  '#a855f7', // violet
-]
+// Color for basis functions and their control points.
 
-export function getBasisColor(index: number): string {
-  return basisColors[index % basisColors.length]
+/**
+ * Basis-function color as a continuous spectral sweep from red (first) to purple
+ * (last) — no cycling. Interpolates the HSL hue 0→270 over the sequence, so every
+ * function gets a distinct hue and the endpoints are red and purple. `count` is
+ * the number of basis functions; with it omitted or ≤1 the color is red.
+ * (HSL is used deliberately — it works on old Safari, unlike oklch/color-mix.)
+ */
+export function getBasisColor(index: number, count = 1): string {
+  const t = count > 1 ? index / (count - 1) : 0
+  const hue = t * 270 // 0 = red → 270 = purple
+  return `hsl(${hue.toFixed(1)}, 75%, 52%)`
 }

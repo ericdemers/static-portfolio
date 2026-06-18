@@ -457,7 +457,7 @@ function BasisFunctionsPanel({ curve }: CurvePanelProps) {
                 key={basisIndex}
                 d={pathD}
                 fill="none"
-                stroke={getBasisColor(basisIndex)}
+                stroke={getBasisColor(basisIndex, basisData.numBasis)}
                 strokeWidth={1.5}
                 opacity={0.8}
               />
