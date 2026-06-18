@@ -2,14 +2,17 @@
 // Color for basis functions and their control points.
 
 /**
- * Basis-function color as a continuous spectral sweep from red (first) to purple
- * (last) — no cycling. Interpolates the HSL hue 0→270 over the sequence, so every
- * function gets a distinct hue and the endpoints are red and purple. `count` is
- * the number of basis functions; with it omitted or ≤1 the color is red.
+ * Basis-function color as a continuous spectral sweep — no cycling. `count` is the
+ * number of basis functions.
+ *  - open curve: hue 0→270, so first = red, last = purple (distinct endpoints).
+ *  - closed curve: hue sweeps the FULL wheel 0→360·(n−1)/n, so the last color
+ *    lands just shy of red and the seam wraps seamlessly (equal hue steps all the
+ *    way round the loop).
  * (HSL is used deliberately — it works on old Safari, unlike oklch/color-mix.)
  */
-export function getBasisColor(index: number, count = 1): string {
-  const t = count > 1 ? index / (count - 1) : 0
-  const hue = t * 270 // 0 = red → 270 = purple
+export function getBasisColor(index: number, count = 1, closed = false): string {
+  if (count <= 1) return 'hsl(0, 75%, 52%)'
+  const span = closed ? (360 * (count - 1)) / count : 270 // red→purple, or full wheel
+  const hue = ((index / (count - 1)) * span) % 360
   return `hsl(${hue.toFixed(1)}, 75%, 52%)`
 }

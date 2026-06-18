@@ -1316,7 +1316,7 @@ export default function SketcherCanvas({ config = {}, svgOverlay }: Props) {
                     // Use basis function colors when basis panel is open
                     const pointColor =
                       isSelected && panelView === 'basis'
-                        ? getBasisColor(index, points.length)
+                        ? getBasisColor(index, points.length, curve.closed)
                         : isSelected
                           ? '#3b82f6'
                           : '#9ca3af'
