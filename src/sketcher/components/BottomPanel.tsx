@@ -131,11 +131,27 @@ function BasisFunctionsPanel({ curve }: CurvePanelProps) {
     return { data, numBasis, tMin, tMax }
   }, [degree, knots, isPeriodic, curve.controlPoints.length])
 
-  const width = 800
-  const height = 160
+  // Responsive sizing: the SVG viewBox tracks the container's real pixel size, so
+  // it fills the full width (no letterboxing) and the knot bar stretches with the
+  // page — more room to drag knots.
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const [size, setSize] = useState({ w: 800, h: 160 })
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const ro = new ResizeObserver((entries) => {
+      const r = entries[0].contentRect
+      if (r.width > 4 && r.height > 4) setSize({ w: Math.round(r.width), h: Math.round(r.height) })
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const width = size.w
+  const height = size.h
   const padding = { left: 40, right: 20, top: 10, bottom: 50 }
-  const plotWidth = width - padding.left - padding.right
-  const plotHeight = height - padding.top - padding.bottom - 20 // Reserve space for knot bar
+  const plotWidth = Math.max(40, width - padding.left - padding.right)
+  const plotHeight = Math.max(20, height - padding.top - padding.bottom - 20) // Reserve space for knot bar
   const knotBarY = padding.top + plotHeight + 15
 
   // Convert x coordinate to parameter value
@@ -359,10 +375,11 @@ function BasisFunctionsPanel({ curve }: CurvePanelProps) {
         {t('panels.basisFunctions')} ({t('panels.degree')} {degree})
       </div>
 
-      <div className="flex-1 overflow-auto p-2">
+      <div ref={wrapRef} className="flex-1 overflow-hidden p-2">
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="w-full h-full"
+          preserveAspectRatio="none"
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
@@ -790,11 +807,26 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
   const minCurvature = Math.min(...curvatures)
   const maxCurvatureVal = Math.max(...curvatures)
 
-  const width = 800
-  const height = preserveCurvatureExtrema && constraintState ? 160 : 140
-  const padding = { left: 40, right: 20, top: 10, bottom: preserveCurvatureExtrema && constraintState ? 50 : 30 }
-  const plotWidth = width - padding.left - padding.right
-  const plotHeight = height - padding.top - padding.bottom - (preserveCurvatureExtrema && constraintState ? 20 : 0)
+  // Responsive sizing: the SVG viewBox tracks the container's real pixel size so
+  // the chart fills the full width (matches the basis panel; no letterboxing).
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const [size, setSize] = useState({ w: 800, h: 150 })
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const ro = new ResizeObserver((entries) => {
+      const r = entries[0].contentRect
+      if (r.width > 4 && r.height > 4) setSize({ w: Math.round(r.width), h: Math.round(r.height) })
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const extremaBar = !!(preserveCurvatureExtrema && constraintState)
+  const width = size.w
+  const height = size.h
+  const padding = { left: 40, right: 20, top: 10, bottom: extremaBar ? 50 : 30 }
+  const plotWidth = Math.max(40, width - padding.left - padding.right)
+  const plotHeight = Math.max(20, height - padding.top - padding.bottom - (extremaBar ? 20 : 0))
   const gBarY = padding.top + plotHeight + 15
 
   // Normalize curvature for display
@@ -947,11 +979,12 @@ function CurvaturePanel({ curve }: CurvePanelProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-2">
+      <div ref={wrapRef} className="flex-1 overflow-hidden p-2">
         <svg
           ref={kSvgRef}
           viewBox={`0 0 ${width} ${height}`}
           className="w-full h-full"
+          preserveAspectRatio="none"
           style={{ touchAction: 'none' }}
           onPointerMove={active ? onWinMove : undefined}
           onPointerUp={active ? onWinUp : undefined}
