@@ -542,7 +542,7 @@ export function computeComplexCurvatureConstraintState(
 // Periodic Inactive Set (with wrap-around) — same pattern as PeriodicRationalBSplineCurveProblem
 // ============================================================================
 
-function computeOpenInactiveSet(gCPs: number[]): Set<number> {
+export function computeOpenInactiveSet(gCPs: number[]): Set<number> {
   const inactive = new Set<number>()
   const n = gCPs.length
   if (n === 0) return inactive
@@ -577,7 +577,7 @@ function computeOpenInactiveSet(gCPs: number[]): Set<number> {
   return inactive
 }
 
-function computePeriodicInactiveSet(gCPs: number[]): Set<number> {
+export function computePeriodicInactiveSet(gCPs: number[]): Set<number> {
   const inactive = new Set<number>()
   const n = gCPs.length
   if (n === 0) return inactive

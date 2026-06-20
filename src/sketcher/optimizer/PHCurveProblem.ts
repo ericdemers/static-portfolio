@@ -19,7 +19,7 @@ import type { Matrix } from './linearAlgebra'
 import { computePHCurveFromUV, type PHMetadata } from './phCurve'
 import { phCurvatureBoundCoeffs, phCurvatureBoundJacobian } from './phCurvatureBound'
 import { phControlPointJacobian, type CPDerivative } from './phCurveAnalytic'
-import { computeGCPsFromHomogeneous, computeOpenComplexCurvatureConstraintState, computeClosedPolynomialCurvatureConstraintState } from './complexAlgebra'
+import { phCurvatureConstraintState, phCurvatureExtremaNumerator } from './phCurvatureExtrema'
 import type { Point2D } from '../types/curve'
 
 /**
@@ -135,10 +135,8 @@ export class PHCurveProblem implements OptimizationProblem {
     this.constrainExtrema = bound.preserveCurvatureExtrema ?? false
     if (this.constrainExtrema) {
       try {
-        const { knots, Zre, Zim, Wre, Wim } = this.curveHomogeneous()
-        const state = this.closed
-          ? computeClosedPolynomialCurvatureConstraintState(knots, Zre, Zim, Wre, Wim)
-          : computeOpenComplexCurvatureConstraintState(knots, Zre, Zim, Wre, Wim)
+        // Low-degree generator-side g (Rust ne-core ph::curvature_numerator port).
+        const state = phCurvatureConstraintState(this.uCPs, this.vCPs, this.uvKnots, this.closed)
         const inactive = new Set(state.inactiveIndices)
         for (let i = 0; i < state.signs.length; i++) {
           if (inactive.has(i)) continue
@@ -167,19 +165,6 @@ export class PHCurveProblem implements OptimizationProblem {
 
   private boundCoeffs(): number[] {
     return phCurvatureBoundCoeffs(this.uCPs, this.vCPs, this.uvKnots, this.kappaMax, this.subdivisions)
-  }
-
-  // Current curve, expressed as homogeneous coords with unit weight (the curve
-  // is non-rational), as needed by the curvature-derivative-numerator machinery.
-  private curveHomogeneous(): {
-    knots: number[]; Zre: number[]; Zim: number[]; Wre: number[]; Wim: number[]
-  } {
-    const ph = computePHCurveFromUV(this.uCPs, this.vCPs, this.uvKnots, this.uvDegree, this.x0, this.y0)
-    const Zre: number[] = [], Zim: number[] = [], Wre: number[] = [], Wim: number[] = []
-    for (const p of ph.controlPoints) {
-      Zre.push(p.x); Zim.push(p.y); Wre.push(1); Wim.push(0)
-    }
-    return { knots: ph.knots, Zre, Zim, Wre, Wim }
   }
 
   // Closed-curve equality residuals (all should be driven to 0): seam-wrap
@@ -232,10 +217,10 @@ export class PHCurveProblem implements OptimizationProblem {
     return rows
   }
 
-  // Live g (curvature-derivative numerator) coefficients on the active set.
+  // Live g (curvature-derivative numerator) coefficients on the active set —
+  // the low-degree generator-side numerator (port of Rust ph::curvature_numerator).
   private extremaConstraints(): number[] {
-    const { knots, Zre, Zim, Wre, Wim } = this.curveHomogeneous()
-    const g = computeGCPsFromHomogeneous(knots, Zre, Zim, Wre, Wim)
+    const g = phCurvatureExtremaNumerator(this.uCPs, this.vCPs, this.uvKnots).flattenControlPoints()
     return this.extremaActive.map((idx) => g[idx] ?? 0)
   }
 
@@ -354,6 +339,15 @@ export class PHCurveProblem implements OptimizationProblem {
     }
     // Finite-difference Jacobian of the active g coefficients w.r.t. the
     // variables (matches the complex-rational PH curvature-extrema path).
+    //
+    // NOTE: an analytic chain-rule version (∂g/∂Z · ∂Z/∂generator) was tried and
+    // reverted — it was correct but ~3× SLOWER, because a polynomial PH curve is run
+    // through the complex-RATIONAL g machinery, which inflates g to ~degree 44 /
+    // ~700 Bernstein coefficients (unit weight carried as a degree-5 BD + the ·w̄
+    // factor). FD evaluates that g once per variable; differentiating it per column
+    // costs more. The real lever is a low-degree POLYNOMIAL curvature-extrema
+    // numerator for PH (g = Im(ā²(a·a″ − 3/2·a′²)) with a = w², mirroring Rust
+    // ne-core ph::curvature_numerator), which shrinks g and speeds up this eval too.
     if (this.constrainExtrema) {
       const numVars = this.numVariables
       const vars = this.getVariables()
